@@ -1,0 +1,81 @@
+# Gurdy 2.0 — SINGLE SOURCE OF TRUTH for robot geometry, mass, limits and gains.
+# Read by: the xacro (URDF), the MJCF generator (sim_mujoco/) and gurdy_core (IK, gait).
+# Units: SI (m, kg, rad, s, N·m). Frames: body x forward, y left, z up.
+# Never type inertias by hand — they are computed from the shapes below (gurdy_core.robot).
+
+name: gurdy
+
+body:
+  shape: box
+  size: [0.30, 0.18, 0.06]        # x, y, z
+  mass: 1.40                      # frame + battery + electronics
+
+legs:
+  # Each segment is a link starting at its joint and extending along local +x by `length`.
+  segments:
+    coxa:  {length: 0.05, shape: box,      size_yz: [0.04, 0.03], mass: 0.10}   # hip-yaw servo
+    femur: {length: 0.08, shape: box,      size_yz: [0.03, 0.03], mass: 0.12}   # hip-pitch servo + bracket
+    tibia: {length: 0.12, shape: cylinder, radius: 0.010,         mass: 0.06}   # ends at foot centre
+  foot: {radius: 0.015, friction: 1.0}   # collision sphere at tibia end (mass included in tibia)
+  # Hip-yaw axis positions on the body (z = body mid-plane). Left side listed; right side is
+  # mirrored (y -> -y, yaw -> -yaw). Leg names: lf lm lr (left), rf rm rr (right).
+  mounts:
+    front:  {xy: [ 0.13, 0.07], yaw: 0.785}    # 45°
+    middle: {xy: [ 0.00, 0.09], yaw: 1.571}    # 90°
+    rear:   {xy: [-0.13, 0.07], yaw: 2.356}    # 135°
+
+joints:
+  # Angle conventions (all legs, in the leg frame: x outward along mount yaw, z up):
+  #   hip_yaw   + = foot swings counter-clockwise seen from above
+  #   hip_pitch + = femur up
+  #   knee      + = tibia bends DOWN relative to the femur; 0 = straight.
+  hip_yaw:   {lower: -0.70, upper: 0.70}
+  hip_pitch: {lower: -1.00, upper: 1.50}
+  knee:      {lower:  0.00, upper: 2.40}      # ONE-SIDED: knee can never bend backwards (upwards)
+  all:
+    effort: 2.5          # N·m  (DS3218-class servo)
+    velocity: 6.0        # rad/s
+    damping: 0.05        # N·m·s/rad (viscous, in both sims)
+    friction: 0.02       # N·m (Coulomb)
+    # Reflected rotor inertia (kg·m²). Gazebo Harmonic (SDFormat 14 / gz-physics DART) has NO
+    # joint armature (checked 2026-11-14), so with armature_model: link_inertia it is added to
+    # the child link's inertia about the joint axis IN BOTH SIMS (MJCF armature=0) => identical
+    # dynamics. Side effect (same in both sims): a parent joint with a parallel axis (hip_pitch)
+    # also feels the child's (knee) added inertia. Without it the tibia (~3e-4 kg·m²) is unstable
+    # under explicit PD at 500 Hz (kd*dt/I > 2) — the Gurdy 1.0 chatter problem.
+    armature: 0.005
+    armature_model: link_inertia     # link_inertia (sim parity) | native (MuJoCo-only armature)
+
+control:
+  # Same PD law in both sims: tau = kp*(q_ref - q) - kd*qdot, clipped to ±effort.
+  # Gazebo: gz_ros2_control effort interface + PD at pd_rate_hz.
+  # MuJoCo: PD applied every physics step (timestep = 1/pd_rate_hz).
+  kp: 20.0               # N·m/rad
+  kd: 0.30               # N·m·s/rad
+  pd_rate_hz: 500        # ros2_control update rate in sim (= MuJoCo physics rate)
+  policy_rate_hz: 50     # gait node / RL policy (joint targets)
+
+nominal_stance:
+  body_height: 0.11      # hip axis above ground (foot sphere touches ground)
+  foot_reach: 0.14       # horizontal distance hip-yaw axis -> foot centre, hip_yaw = 0
+
+command_limits: {vx: 0.15, vy: 0.10, wz: 0.60}    # m/s, m/s, rad/s
+
+sensors:
+  imu: {pos: [0.0, 0.0, 0.0], rate_hz: 200, gyro_noise: 0.005, accel_noise: 0.02}
+  depth_camera:
+    pos: [0.15, 0.0, 0.02]
+    pitch_down: 0.17     # rad
+    width: 320
+    height: 240
+    rate_hz: 15
+    hfov: 1.047
+    range: [0.10, 5.0]
+
+sim:
+  gravity: 9.81
+  gazebo_step: 0.001     # s; PD runs every 2nd step (500 Hz)
+  mujoco_timestep: 0.002 # s; = 1/pd_rate_hz
+  # Euler: actuator PD is explicit, like Gazebo's sampled PD (implicitfast would damp it
+  # implicitly). Confirmed or revised by the Gazebo<->MuJoCo step-response parity test.
+  mujoco_integrator: Euler

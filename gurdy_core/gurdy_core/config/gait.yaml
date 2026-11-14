@@ -1,0 +1,8 @@
+# Tripod gait parameters (robot geometry lives in gurdy_description/config/robot.yaml).
+tripod:
+  groups: [[lf, rm, lr], [rf, lm, rr]]   # legs that swing together
+  cycle_time: 0.8        # s, one full cycle (both groups swing once)
+  duty_factor: 0.5       # fraction of the cycle a leg is on the ground
+  step_height: 0.04      # m, swing apex above stance height
+  swing_profile: cycloid # foot path during swing
+  max_stride: 0.07       # m, cap on foot travel per stance phase

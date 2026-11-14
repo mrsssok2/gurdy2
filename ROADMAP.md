@@ -18,20 +18,22 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 
 ## Phase 1 — Robot + ROS 2 base
 - [x] Docker image: ROS 2 Jazzy + Gazebo Harmonic + ros2_control + MuJoCo; `compose.yaml` with WSLg GUI, port 8080 published
-- [ ] `robot.yaml` single source of truth (dimensions, masses, limits, damping, gains)
+- [x] `robot.yaml` single source of truth (dimensions, masses, limits, damping, gains) + `gait.yaml` + loader/tests in `gurdy_core`
 - [ ] 18-DOF xacro (6 legs × hip-yaw, hip-pitch, knee), inertias computed from geometry, one-sided knee limits, joint damping/friction, IMU, forward depth camera
 - [ ] Gazebo spawn + `ros_gz_bridge` (clock, IMU, camera, depth, ground-truth odom)
-- [ ] ros2_control via `gz_ros2_control` (joint_state_broadcaster + joint-group position controller)
+- [ ] ros2_control via `gz_ros2_control` **effort** interface (joint_state_broadcaster + joint-group PD at 500 Hz, same kp/kd as MuJoCo)
 - [ ] `gurdy_core`: leg FK/IK + tripod gait math (pure Python, unit-tested)
 - [ ] Tripod gait node following `/cmd_vel` (vx, vy, yaw rate)
-- [ ] MuJoCo MJCF generated from the same `robot.yaml`; URDF↔MJCF parity test
+- [ ] MuJoCo MJCF generated from the same `robot.yaml`; URDF↔MJCF parity test (masses, inertias incl. folded-in armature, limits)
+- [ ] Joint step-response parity test: same step command in Gazebo and MuJoCo, compare rise time and overshoot
 - [ ] One bringup launch + keyboard teleop
 - [ ] Chatter/health metric script
 
 **AC**
 - `docker compose up sim` opens Gazebo GUI through WSLg; RViz shows the robot model and TF.
 - URDF passes `check_urdf`; all 18 joints present; total mass and inertias match `robot.yaml`; knee can never bend backwards (limits + IK test).
-- Robot stands stably for 60 s with no visible chatter (chatter metric below threshold).
+- Robot stands stably for 60 s with no visible chatter (chatter metric below threshold) — proves the armature-as-link-inertia compensation in Gazebo.
+- Joint step response: rise time and overshoot match between Gazebo and MuJoCo (tolerance set and reported in the test).
 - Teleop: walks forward, backward, strafes, turns in place. Measured mean velocity within ±25 % of command for vx = 0.10 m/s and yaw = 0.3 rad/s; no fall in a 2-minute session.
 - Same tripod gait runs in MuJoCo headless; forward speed within ±30 % of Gazebo.
 - Measured and recorded: Gazebo RTF (GUI and headless), container RAM.

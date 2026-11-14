@@ -75,6 +75,13 @@ Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
   is read by the xacro (URDF), the MJCF generator, and the IK library. Parity is checked by a test.
 - **Shared pure-Python core** (`gurdy_core`): kinematics/IK and gait math, no ROS imports, used by
   the ROS gait node and the MuJoCo env alike. Unit-tested without ROS.
+- **Same PD in both sims:** `tau = kp*(q_ref - q) - kd*qdot`, clipped to effort, at **500 Hz**
+  (Gazebo: `gz_ros2_control` effort interface; MuJoCo: every 2 ms physics step). Gait/RL at 50 Hz.
+- **Armature:** Gazebo Harmonic (SDFormat 14 / gz-physics DART) has no joint armature, so the
+  reflected rotor inertia (0.005 kg·m²) is folded into each child link's inertia about its joint
+  axis in **both** URDF and MJCF (MJCF `armature=0`), via `Robot.link_inertia()`. Without it the
+  tibia is unstable under explicit PD (tested).
+- Robot geometry lives in `robot.yaml`; gait timing in `gurdy_core/gurdy_core/config/gait.yaml`.
 - Gait/policy nodes publish joint targets; everything above them speaks only `/cmd_vel`
   (`geometry_msgs/Twist`: linear.x, linear.y, angular.z), so Nav2/teleop/LLM are swappable.
 
@@ -119,6 +126,7 @@ docker compose run --rm sim scripts/check_display.sh   # sockets, OpenGL rendere
 docker compose exec sim /entrypoint.sh <cmd>      # run a ROS/gz command in the running container
 GZ_GALLIUM_DRIVER=llvmpipe docker compose up sim  # fallback: CPU rendering if GPU path breaks
 docker compose down                               # stop
+docker compose run --rm --no-deps sim bash -c 'cd gurdy_core && python3 -m pytest -q'   # core tests
 ```
 _colcon build / teleop / tests are added as Phase 1 continues._
 
@@ -128,4 +136,8 @@ _colcon build / teleop / tests are added as Phase 1 continues._
   gz_ros2_control, RViz, MuJoCo 3.3.0), `compose.yaml` profile `sim` (WSLg, /dev/dxg, port 8080,
   mem_limit 6g). Measured: shapes.sdf with GUI, d3d12 renderer → RTF 0.998–1.001; container RAM
   ≈ 420 MiB; CPU ≈ 130–180 %.
-- Next: step 1.2 — `robot.yaml` (single source of truth); values proposed, awaiting approval.
+- Step 1.2 done: `robot.yaml` (approved values), `gait.yaml`, `gurdy_core.robot` loader,
+  `gurdy_core.kinematics` (leg FK/IK, static torques); 16 tests pass in the container.
+  Computed: total mass 3.08 kg; stance q = (0, 0.307, 1.763) rad; tripod holding torque
+  hip_pitch 0.81 N·m → 3.1× headroom to 2.5 N·m.
+- Next: step 1.3 — 18-DOF xacro generated from robot.yaml (check_urdf, RViz).
