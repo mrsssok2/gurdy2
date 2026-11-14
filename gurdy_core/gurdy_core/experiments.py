@@ -192,3 +192,87 @@ def parity_check_step(gz_steps: list[dict], mj_steps: list[dict]) -> list[dict]:
         }
         out.append({"joint": a["joint"], "amp": a["amp"], **checks, "pass": all(checks.values())})
     return out
+
+
+# ====================================================================== velocity tracking
+# (t_start, duration, (vx, vy, wz)); 2 s stops between segments; then 20 s of random commands.
+TRACK_SETTLE = 3.0
+TRACK_SEGMENT = 12.0
+TRACK_STOP = 2.0
+TRACK_SKIP = 2.0            # s ignored at the start of each segment (acceleration, start-up)
+TRACK_SEGMENTS = [
+    ("forward", (0.10, 0.0, 0.0)),
+    ("backward", (-0.10, 0.0, 0.0)),
+    ("strafe_left", (0.0, 0.08, 0.0)),
+    ("strafe_right", (0.0, -0.08, 0.0)),
+    ("turn_left", (0.0, 0.0, 0.3)),
+    ("turn_right", (0.0, 0.0, -0.3)),
+    ("combined", (0.08, 0.04, 0.2)),
+]
+TRACK_RANDOM = 20.0
+TRACK_TOL = 0.25            # AC: mean velocity within +-25 % of command
+FALL_Z = 0.06               # m, body height below this = fall
+FALL_TILT = 0.6             # rad (~34 deg) roll/pitch = fall
+
+
+def tracking_protocol(seed: int = 7):
+    """List of (t, cmd) changes, list of analysis windows (name, t0, t1, cmd), total duration."""
+    rng = np.random.default_rng(seed)
+    changes, windows = [(0.0, (0.0, 0.0, 0.0))], []
+    t = TRACK_SETTLE
+    for name, cmd in TRACK_SEGMENTS:
+        changes.append((t, cmd))
+        windows.append((name, t + TRACK_SKIP, t + TRACK_SEGMENT, cmd))
+        t += TRACK_SEGMENT
+        changes.append((t, (0.0, 0.0, 0.0)))
+        t += TRACK_STOP
+    lim = np.array([0.15, 0.10, 0.60])
+    for k in range(int(TRACK_RANDOM / 2.0)):
+        changes.append((t, tuple(float(x) for x in rng.uniform(-1, 1, 3) * lim)))
+        t += 2.0
+    changes.append((t, (0.0, 0.0, 0.0)))
+    t += TRACK_STOP
+    return changes, windows, t
+
+
+def cmd_at(changes, t):
+    cmd = changes[0][1]
+    for tc, c in changes:
+        if tc <= t + 1e-9:
+            cmd = c
+    return cmd
+
+
+def analyze_tracking(t, x, y, yaw, z, roll, pitch) -> dict:
+    """Body-frame mean velocities per segment from a ground-truth pose trace."""
+    t, x, y = np.asarray(t), np.asarray(x), np.asarray(y)
+    yaw_u = np.unwrap(np.asarray(yaw))
+    _, windows, total = tracking_protocol()
+    out = []
+    for name, t0, t1, cmd in windows:
+        m = np.where((t >= t0) & (t <= t1))[0]
+        i0, i1 = m[0], m[-1]
+        dt = t[i1] - t[i0]
+        # body-frame velocity: rotate each world displacement by the heading at that sample
+        dx, dy = np.diff(x[i0:i1 + 1]), np.diff(y[i0:i1 + 1])
+        c, s = np.cos(yaw_u[i0:i1]), np.sin(yaw_u[i0:i1])
+        vbx = np.sum(c * dx + s * dy) / dt
+        vby = np.sum(-s * dx + c * dy) / dt
+        wz = (yaw_u[i1] - yaw_u[i0]) / dt
+        meas = np.array([vbx, vby, wz])
+        cmd = np.array(cmd)
+        k = int(np.argmax(np.abs(cmd)))                 # main axis of this segment
+        err = (meas[k] - cmd[k]) / cmd[k]
+        out.append({"segment": name, "cmd": cmd.tolist(), "measured": meas.tolist(),
+                    "main_axis_error_pct": float(100 * err), "pass": bool(abs(err) <= TRACK_TOL)})
+    fell = bool(np.any(np.asarray(z) < FALL_Z) or np.any(np.abs(roll) > FALL_TILT) or np.any(np.abs(pitch) > FALL_TILT))
+    return {"segments": out, "fell": fell, "duration_s": float(t[-1] - t[0]),
+            "min_body_z": float(np.min(z)), "max_tilt_rad": float(max(np.max(np.abs(roll)), np.max(np.abs(pitch)))),
+            "all_pass": bool(all(o["pass"] for o in out) and not fell)}
+
+
+def quat_to_rpy(qw, qx, qy, qz):
+    roll = np.arctan2(2 * (qw * qx + qy * qz), 1 - 2 * (qx * qx + qy * qy))
+    pitch = np.arcsin(np.clip(2 * (qw * qy - qz * qx), -1, 1))
+    yaw = np.arctan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz))
+    return roll, pitch, yaw

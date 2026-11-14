@@ -13,7 +13,9 @@ import mujoco
 import numpy as np
 
 from gurdy_core.experiments import (STAND_RECORD, STAND_SETTLE, analyze_stand, analyze_step,
-                                    stance_vector, step_protocol)
+                                    analyze_tracking, cmd_at, quat_to_rpy, stance_vector,
+                                    step_protocol, tracking_protocol)
+from gurdy_core.gait import TripodGait
 from gurdy_core.robot import load_robot
 from sim_mujoco.mjcf import build_mjcf
 
@@ -62,7 +64,34 @@ def run_stand(robot=None) -> dict:
     return res
 
 
+def run_tracking(robot=None) -> dict:
+    """Same /cmd_vel protocol as Gazebo: commands at 20 Hz, TripodGait at policy rate (50 Hz)."""
+    robot = robot or load_robot()
+    m, d, qadr, vadr = _setup(robot, fixed_base=False)
+    gait = TripodGait(robot)
+    changes, _, total = tracking_protocol()
+    decim = int(round(gait.dt / m.opt.timestep))
+    cmd_period = int(round(0.05 / m.opt.timestep))
+    rows, k, cmd = [], 0, (0.0, 0.0, 0.0)
+    wall = time.perf_counter()
+    while d.time < total - 1e-9:
+        if k % cmd_period == 0:
+            cmd = cmd_at(changes, d.time)
+        if k % decim == 0:
+            d.ctrl[:] = gait.step(cmd)
+        mujoco.mj_step(m, d)
+        k += 1
+        if k % 10 == 0:                           # 50 Hz pose log like Gazebo's odometry
+            rows.append((d.time, *d.qpos[:7]))
+    wall = time.perf_counter() - wall
+    a = np.array(rows)
+    roll, pitch, yaw = quat_to_rpy(a[:, 4], a[:, 5], a[:, 6], a[:, 7])
+    res = analyze_tracking(a[:, 0], a[:, 1], a[:, 2], yaw, a[:, 3], roll, pitch)
+    res.update({"sim": "mujoco", "rtf": total / wall, "ik_failures": gait.ik_failures})
+    return res
+
+
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "step"
-    out = run_step() if mode == "step" else run_stand()
+    out = {"step": run_step, "stand": run_stand, "track": run_tracking}[mode]()
     print(json.dumps(out, indent=2))

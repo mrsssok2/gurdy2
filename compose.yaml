@@ -2,9 +2,10 @@
 # RAM rule: run only ONE heavy profile at a time (sim / rl / ops).
 #
 #   docker compose build sim
-#   docker compose up sim                     # opens Gazebo GUI through WSLg
+#   docker compose up sim                     # walking robot in Gazebo GUI (WSLg)
 #   docker compose run --rm sim bash          # interactive shell in the sim image
 #   docker compose run --rm sim scripts/check_display.sh
+#   docker compose --profile '*' down         # stop everything (plain `down` skips profiles)
 
 x-wslg: &wslg
   environment:
@@ -46,5 +47,6 @@ services:
     init: true
     stdin_open: true
     tty: true
-    # Step 1.1 smoke test: Gazebo Harmonic demo world. Replaced by the bringup launch later.
-    command: ["gz", "sim", "-v", "3", "shapes.sdf"]
+    # Walking robot in Gazebo (builds the workspace on first run). Drive it from a second
+    # terminal:  docker compose exec sim bash  ->  ros2 run teleop_twist_keyboard ...
+    command: ["/home/ubuntu/gurdy2/scripts/start_sim.sh"]

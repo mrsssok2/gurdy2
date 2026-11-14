@@ -86,13 +86,11 @@ def _setup(context):
     spawn = Node(package="ros_gz_sim", executable="create", output="screen",
                  arguments=["-topic", "robot_description", "-name", "gurdy",
                             "-z", "0.0" if fixed else str(base_z)])
-    if sensors:
-        bridge_cfg = os.path.join(get_package_share_directory("gurdy_gazebo"), "config", "bridge.yaml")
-        clock = Node(package="ros_gz_bridge", executable="parameter_bridge", output="screen",
-                     parameters=[{"config_file": bridge_cfg, "use_sim_time": True}])
-    else:
-        clock = Node(package="ros_gz_bridge", executable="parameter_bridge", output="screen",
-                     arguments=["/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"])
+    # bridge.yaml: clock + ground-truth odom always; sensor topics are lazy (cost nothing unless
+    # subscribed, and absent in Gazebo when sensors:=false).
+    bridge_cfg = os.path.join(get_package_share_directory("gurdy_gazebo"), "config", "bridge.yaml")
+    clock = Node(package="ros_gz_bridge", executable="parameter_bridge", output="screen",
+                 parameters=[{"config_file": bridge_cfg, "use_sim_time": True}])
     jsb = Node(package="controller_manager", executable="spawner",
                arguments=["joint_state_broadcaster", "--controller-manager-timeout", "60"])
     pd = Node(package="controller_manager", executable="spawner",

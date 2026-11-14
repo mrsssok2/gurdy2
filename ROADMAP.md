@@ -22,11 +22,11 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 - [x] 18-DOF xacro (6 legs × hip-yaw, hip-pitch, knee), inertias computed from geometry, one-sided knee limits, joint damping/friction, IMU + depth camera frames (Gazebo sensor plugins in next step)
 - [x] Gazebo spawn + `ros_gz_bridge` (clock, IMU, camera, depth, ground-truth odom); matching IMU + camera in MuJoCo
 - [x] ros2_control via `gz_ros2_control` **effort** interface (joint_state_broadcaster + `gurdy_control/JointPDController` at 500 Hz, same kp/kd as MuJoCo)
-- [ ] `gurdy_core`: leg FK/IK + tripod gait math (pure Python, unit-tested)
-- [ ] Tripod gait node following `/cmd_vel` (vx, vy, yaw rate)
+- [x] `gurdy_core`: leg FK/IK + tripod gait math (pure Python, unit-tested)
+- [x] Tripod gait node following `/cmd_vel` (vx, vy, yaw rate) — tracking results in `docs/results/phase1_tracking.md`
 - [x] MuJoCo MJCF generated from the same `robot.yaml`; URDF↔MJCF parity test (masses, inertias, limits, damping)
 - [x] Joint step-response parity test: same step command in Gazebo and MuJoCo, compare rise time, overshoot and steady sag (`docs/results/phase1_parity.md`)
-- [ ] One bringup launch + keyboard teleop
+- [x] One bringup launch + keyboard teleop (`docker compose up sim`; teleop via `docker compose exec`) — manual teleop session pending
 - [x] Chatter/health metric script (`scripts/parity_experiments.sh stand`, metrics in `gurdy_core.experiments`)
 
 **AC**

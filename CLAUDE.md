@@ -143,7 +143,13 @@ ros2 launch gurdy_gazebo sim.launch.py [gui:=false] [fixed_base:=true] [robot_ya
 scripts/parity_experiments.sh step|stand OUT_DIR [robot.yaml]   # Gazebo vs MuJoCo (+ chatter)
 python3 -m sim_mujoco.mjcf > /tmp/gurdy.xml                      # generated MuJoCo model
 ```
-_Teleop is added with the gait node._
+```bash
+docker compose up sim                            # walking robot, Gazebo GUI (builds on first run)
+docker compose exec sim bash                     # 2nd terminal, then:
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p speed:=0.1 -p turn:=0.3
+scripts/tracking_experiments.sh OUT_DIR          # (in container) 2-min tracking test, both sims
+python3 scripts/measure_rtf.py                   # (in container, sim running) RTF from sim/wall time
+```
 
 ## Current status
 - Phase 0: done except `.env.example` + README stub. Repo is in WSL at `~/projects/gurdy2`.
@@ -170,4 +176,9 @@ _Teleop is added with the gait node._
   Headless rendering must use the NVIDIA adapter (`MESA_D3D12_DEFAULT_ADAPTER_NAME`), else Intel iGPU.
 - **RTF method:** `scripts/measure_rtf.py` (sim/wall from /clock, + MuJoCo host benchmark). Host speed
   varied ~3x during 2026-11-14 (MuJoCo benchmark 34–170): Gazebo perf numbers pending a stable host.
-- Next: `gurdy_core` tripod gait math, gait node, bringup + teleop, velocity-tracking test.
+- Gait done: `gurdy_core.gait.TripodGait` (SE(2) stance, cycloid swing, stride cap, accel limits,
+  start-up half step), `gurdy_gait` node (/cmd_vel -> PD refs, 0.5 s timeout, /gait/cmd), `gurdy_bringup`
+  sim launch; `docker compose up sim` starts the walking robot. Tracking (2-min protocol): Gazebo
+  vx 0.10 → −8.2 %, wz 0.3 → −11.3 %, no fall; MuJoCo forward within +6.4 % of Gazebo.
+- Remaining Phase 1: manual teleop session by the user; stable-host RTF (GUI + headless) and RAM;
+  then tick the Phase 1 AC. GUI RTF was low (0.35–0.55) on a throttled host — investigate.
