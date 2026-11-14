@@ -1,0 +1,8 @@
+# Phase 2 training config: flat ground, no domain randomisation (steps 2.2-2.4).
+env:
+  episode_s: 20.0
+  command_period_s: 5.0        # command resampled every 5 s
+  resample_command: true
+  zero_command_prob: 0.15
+  action_scale: {hip_yaw: 0.3, hip_pitch: 0.5, knee: 0.5}   # rad per unit action
+  init_joint_noise: 0.05       # rad, uniform, at reset

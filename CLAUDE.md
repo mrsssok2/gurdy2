@@ -180,4 +180,8 @@ docker compose run --rm rl bash -c 'cd rl && python3 -m pytest -q'
   `gurdy_core/rl_obs.py` (shared obs builder), `rl/envs/gurdy_env.py` (skeleton, placeholder reward),
   `rl/vec_env.py` BatchedSubprocVecEnv (10 workers × 4 envs: 6.8k env steps/s, 1.55 GiB vs SB3
   SubprocVecEnv 3.3k / 3.1 GiB), PPO loop 3.6k samples/s with torch threads 2 (4 is slower).
-- Next: 2.2 (full env + tests).
+- 2.2 done: env config `rl/configs/flat.yaml`, fixed commands via reset options, foot contacts,
+  info diagnostics (never in obs). Tests: check_env, obs layout/history, **obs invariant to world
+  position/heading/linear velocity** (no privileged inputs), targets within limits, seeding, command
+  sampling/resampling, truncation, falls. Note: MuJoCo sensors (gyro) are 1 physics step (2 ms) old.
+- Next: 2.3 (reward + sanity tests). Sigma floors: σ_v ≥ 0.02 m/s, σ_ω ≥ 0.05 rad/s (user decision).

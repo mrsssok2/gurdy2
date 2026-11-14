@@ -56,9 +56,10 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - [x] **2.1** `rl` image + compose profile; env skeleton; benchmark 1/4/6/8/10 workers + one PPO update
   — AC: steps/s and RAM per worker count recorded, n_envs chosen, container < 6 GB
   — done: batched VecEnv 10×4 = 40 envs, 6.8k env steps/s, PPO 3.6k samples/s, 1.75 GiB (`docs/results/phase2_bench.md`)
-- [ ] **2.2** Gymnasium env (flat): shared obs builder in `gurdy_core`, action mapping, termination,
+- [x] **2.2** Gymnasium env (flat): shared obs builder in `gurdy_core`, action mapping, termination,
   command sampling — AC: `check_env` passes; tests: obs layout/dims, no privileged inputs, targets
   always within joint limits, deterministic seeding
+  — done: 11 env tests + VecEnv equivalence test pass (`rl/tests/`)
 - [ ] **2.3** Reward + sanity tests — AC: every term unit-tested; walking at 50 % of command clearly beats
   standing; tripod walker ≥ 2–3× standing under every move command (pure turning included);
   standing wins at zero command; tripod reference return recorded

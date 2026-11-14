@@ -8,9 +8,11 @@
 * Observation: gurdy_core.rl_obs (proprioception only, 3-frame history, 195 values).
 * Episode: 20 s; command resampled every 5 s (15 % zero commands); terminates on a fall
   (body below FALL_Z, tilt above FALL_TILT, or body box touching the ground).
+* reset(options={"command": (vx, vy, wz)}) fixes the command (evaluation/tests); with
+  config resample_command false it is kept for the whole episode.
+* info: ground-truth diagnostics for logging/reward/eval ONLY (never part of the observation).
 
-Step 2.1 status: skeleton for benchmarking. The reward is a placeholder (tracking term only);
-the full reward and its sanity tests are step 2.3.
+Config: rl/configs/*.yaml, section `env` (defaults below).
 """
 from __future__ import annotations
 
@@ -27,10 +29,17 @@ from sim_mujoco.mjcf import build_mjcf
 DEFAULTS = {
     "episode_s": 20.0,
     "command_period_s": 5.0,
+    "resample_command": True,
     "zero_command_prob": 0.15,
     "action_scale": {"hip_yaw": 0.3, "hip_pitch": 0.5, "knee": 0.5},
     "init_joint_noise": 0.05,
 }
+
+
+def load_config(path: str) -> dict:
+    import yaml
+    with open(path) as f:
+        return yaml.safe_load(f)
 
 
 class GurdyEnv(gym.Env):
@@ -60,6 +69,8 @@ class GurdyEnv(gym.Env):
         self.vadr = np.array([m.joint(n).dofadr[0] for n in r.joint_names])
         self.gyro_adr = m.sensor("imu_gyro").adr[0]
         self.body_geom = m.geom("body").id
+        self.foot_geoms = np.array([m.geom(f"{leg}_foot").id for leg in LEG_NAMES])
+        self.floor_geom = m.geom("floor").id
         self.key = m.key("stance").id
 
         self.action_space = gym.spaces.Box(-1.0, 1.0, (len(r.joint_names),), np.float32)
@@ -87,6 +98,16 @@ class GurdyEnv(gym.Env):
         R = d.xmat[1].reshape(3, 3)                    # body 1 = base_link
         return R.T @ d.qvel[0:3], d.qvel[5]            # qvel[3:6] is already body frame
 
+    def foot_contacts(self) -> np.ndarray:
+        """Boolean per leg (LEG_NAMES order): foot sphere touching the floor."""
+        d = self.data
+        out = np.zeros(len(LEG_NAMES), dtype=bool)
+        if d.ncon:
+            g = d.contact.geom[:d.ncon]
+            touching = g[(g == self.floor_geom).any(axis=1)].ravel()
+            out = np.isin(self.foot_geoms, touching)
+        return out
+
     def _fallen(self) -> bool:
         d = self.data
         g = gravity_in_body(d.qpos[3:7])
@@ -107,26 +128,34 @@ class GurdyEnv(gym.Env):
         mujoco.mj_forward(m, d)
         self.steps = 0
         self.prev_action = np.zeros(self.action_space.shape[0])
-        self.command = self._sample_command()
+        self.q_ref = self.q_stance.copy()
+        fixed = (options or {}).get("command")
+        self.fixed_command = fixed is not None
+        self.command = np.asarray(fixed, dtype=float) if self.fixed_command else self._sample_command()
         obs = self.hist.reset(self._frame())
-        return obs.astype(np.float32), {}
+        return obs.astype(np.float32), {"command": self.command.copy()}
 
     def step(self, action):
         a = np.minimum(np.maximum(np.asarray(action, dtype=float), -1.0), 1.0)
         d = self.data
-        d.ctrl[:] = np.minimum(np.maximum(self.q_stance + self.scale * a, self.q_lo), self.q_hi)
+        self.q_ref = np.minimum(np.maximum(self.q_stance + self.scale * a, self.q_lo), self.q_hi)
+        d.ctrl[:] = self.q_ref
+        cmd = self.command.copy()                      # command this step was taken under
         mujoco.mj_step(self.model, d, nstep=self.n_sub)
         self.steps += 1
-        if self.steps % self.cmd_steps == 0:
-            self.command = self._sample_command()
 
         v, wz = self._body_velocity()
         # Placeholder reward (step 2.1): tracking only. Full reward = step 2.3.
-        e = np.sum((v[:2] - self.command[:2]) ** 2) / 0.1 ** 2 + (wz - self.command[2]) ** 2 / 0.3 ** 2
+        e = np.sum((v[:2] - cmd[:2]) ** 2) / 0.1 ** 2 + (wz - cmd[2]) ** 2 / 0.3 ** 2
         reward = float(np.exp(-e))
 
         terminated = self._fallen()
         truncated = self.steps >= self.max_steps
         self.prev_action = a
+        if (self.cfg["resample_command"] and not self.fixed_command
+                and self.steps % self.cmd_steps == 0):
+            self.command = self._sample_command()
         obs = self.hist.push(self._frame())
-        return obs.astype(np.float32), reward, terminated, truncated, {}
+        info = {"command": cmd, "body_vel": v, "yaw_rate": float(wz), "body_z": float(d.qpos[2]),
+                "foot_contact": self.foot_contacts()}
+        return obs.astype(np.float32), reward, terminated, truncated, info
