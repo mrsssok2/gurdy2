@@ -1,0 +1,177 @@
+<?xml version="1.0"?>
+<!-- Gurdy 2.0: 18-DOF hexapod. ALL numbers come from config/robot.yaml (single source of truth).
+     Inertias are computed here from the shapes with the same formulas as gurdy_core.robot;
+     test/test_urdf.py checks the expanded URDF against gurdy_core. -->
+<robot name="gurdy" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="robot_yaml" default="$(find gurdy_description)/config/robot.yaml"/>
+  <xacro:property name="cfg" value="${xacro.load_yaml('$(arg robot_yaml)')}"/>
+
+  <xacro:property name="seg" value="${cfg['legs']['segments']}"/>
+  <xacro:property name="jc" value="${cfg['joints']['all']}"/>
+
+  <xacro:property name="L1" value="${seg['coxa']['length']}"/>
+  <xacro:property name="L2" value="${seg['femur']['length']}"/>
+  <xacro:property name="L3" value="${seg['tibia']['length']}"/>
+
+  <material name="body_grey"><color rgba="0.25 0.27 0.30 1"/></material>
+  <material name="servo_blue"><color rgba="0.15 0.35 0.75 1"/></material>
+  <material name="leg_orange"><color rgba="0.95 0.55 0.10 1"/></material>
+  <material name="foot_black"><color rgba="0.05 0.05 0.05 1"/></material>
+
+  <!-- Solid-box inertial about COM at (cx,0,0). -->
+  <xacro:macro name="box_inertial" params="m sx sy sz cx:=0 add_x:=0 add_y:=0 add_z:=0">
+    <inertial>
+      <origin xyz="${cx} 0 0" rpy="0 0 0"/>
+      <mass value="${m}"/>
+      <inertia ixx="${m/12.0*(sy**2+sz**2) + add_x}" ixy="0" ixz="0"
+               iyy="${m/12.0*(sx**2+sz**2) + add_y}" iyz="0"
+               izz="${m/12.0*(sx**2+sy**2) + add_z}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- ============================ body ============================ -->
+  <xacro:property name="bs" value="${cfg['body']['size']}"/>
+  <link name="base_link">
+    <visual>
+      <geometry><box size="${bs[0]} ${bs[1]} ${bs[2]}"/></geometry>
+      <material name="body_grey"/>
+    </visual>
+    <collision>
+      <geometry><box size="${bs[0]} ${bs[1]} ${bs[2]}"/></geometry>
+    </collision>
+    <xacro:box_inertial m="${cfg['body']['mass']}" sx="${bs[0]}" sy="${bs[1]}" sz="${bs[2]}"/>
+  </link>
+
+  <!-- ============================ legs ============================ -->
+  <xacro:macro name="joint_props" params="type">
+    <limit lower="${cfg['joints'][type]['lower']}" upper="${cfg['joints'][type]['upper']}"
+           effort="${jc['effort']}" velocity="${jc['velocity']}"/>
+    <dynamics damping="${jc['damping']}" friction="${jc['friction']}"/>
+  </xacro:macro>
+
+  <!-- side: 1 = left, -1 = right (mirror y and yaw) -->
+  <xacro:macro name="leg" params="name mount side">
+    <xacro:property name="mt" value="${cfg['legs']['mounts'][mount]}"/>
+
+    <joint name="${name}_hip_yaw" type="revolute">
+      <parent link="base_link"/>
+      <child link="${name}_coxa"/>
+      <origin xyz="${mt['xy'][0]} ${side*mt['xy'][1]} 0" rpy="0 0 ${side*mt['yaw']}"/>
+      <axis xyz="0 0 1"/>
+      <xacro:joint_props type="hip_yaw"/>
+    </joint>
+    <link name="${name}_coxa">
+      <xacro:property name="s" value="${seg['coxa']}"/>
+      <visual>
+        <origin xyz="${L1/2} 0 0"/>
+        <geometry><box size="${L1} ${s['size_yz'][0]} ${s['size_yz'][1]}"/></geometry>
+        <material name="servo_blue"/>
+      </visual>
+      <xacro:box_inertial m="${s['mass']}" sx="${L1}" sy="${s['size_yz'][0]}" sz="${s['size_yz'][1]}"
+                          cx="${L1/2}"/>
+    </link>
+
+    <!-- hip_pitch: + = femur up => axis -y -->
+    <joint name="${name}_hip_pitch" type="revolute">
+      <parent link="${name}_coxa"/>
+      <child link="${name}_femur"/>
+      <origin xyz="${L1} 0 0" rpy="0 0 0"/>
+      <axis xyz="0 -1 0"/>
+      <xacro:joint_props type="hip_pitch"/>
+    </joint>
+    <link name="${name}_femur">
+      <xacro:property name="s" value="${seg['femur']}"/>
+      <visual>
+        <origin xyz="${L2/2} 0 0"/>
+        <geometry><box size="${L2} ${s['size_yz'][0]} ${s['size_yz'][1]}"/></geometry>
+        <material name="servo_blue"/>
+      </visual>
+      <xacro:box_inertial m="${s['mass']}" sx="${L2}" sy="${s['size_yz'][0]}" sz="${s['size_yz'][1]}"
+                          cx="${L2/2}"/>
+    </link>
+
+    <!-- knee: + = tibia bends DOWN => axis +y. Lower limit is 0 (one-sided). -->
+    <joint name="${name}_knee" type="revolute">
+      <parent link="${name}_femur"/>
+      <child link="${name}_tibia"/>
+      <origin xyz="${L2} 0 0" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <xacro:joint_props type="knee"/>
+    </joint>
+    <link name="${name}_tibia">
+      <xacro:property name="s" value="${seg['tibia']}"/>
+      <xacro:property name="m" value="${s['mass']}"/>
+      <xacro:property name="r" value="${s['radius']}"/>
+      <visual>
+        <origin xyz="${L3/2} 0 0" rpy="0 ${pi/2} 0"/>
+        <geometry><cylinder radius="${r}" length="${L3}"/></geometry>
+        <material name="leg_orange"/>
+      </visual>
+      <visual>
+        <origin xyz="${L3} 0 0"/>
+        <geometry><sphere radius="${cfg['legs']['foot']['radius']}"/></geometry>
+        <material name="foot_black"/>
+      </visual>
+      <!-- Only the foot collides with the world (legs are thin; keeps contacts cheap). -->
+      <collision name="${name}_foot_collision">
+        <origin xyz="${L3} 0 0"/>
+        <geometry><sphere radius="${cfg['legs']['foot']['radius']}"/></geometry>
+      </collision>
+      <inertial>
+        <origin xyz="${L3/2} 0 0" rpy="0 0 0"/>
+        <mass value="${m}"/>
+        <!-- solid cylinder along x -->
+        <inertia ixx="${0.5*m*r**2}" ixy="0" ixz="0"
+                 iyy="${m*(3*r**2 + L3**2)/12.0}" iyz="0"
+                 izz="${m*(3*r**2 + L3**2)/12.0}"/>
+      </inertial>
+    </link>
+    <!-- Massless foot frame at the foot centre (for IK, contact checks, TF). -->
+    <joint name="${name}_foot_joint" type="fixed">
+      <parent link="${name}_tibia"/>
+      <child link="${name}_foot"/>
+      <origin xyz="${L3} 0 0"/>
+    </joint>
+    <link name="${name}_foot"/>
+  </xacro:macro>
+
+  <xacro:leg name="lf" mount="front"  side="1"/>
+  <xacro:leg name="lm" mount="middle" side="1"/>
+  <xacro:leg name="lr" mount="rear"   side="1"/>
+  <xacro:leg name="rf" mount="front"  side="-1"/>
+  <xacro:leg name="rm" mount="middle" side="-1"/>
+  <xacro:leg name="rr" mount="rear"   side="-1"/>
+
+  <!-- ============================ sensor frames ============================ -->
+  <!-- Sensor plugins are added for Gazebo in step 1.4; here only the frames. -->
+  <xacro:property name="imu" value="${cfg['sensors']['imu']}"/>
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <origin xyz="${imu['pos'][0]} ${imu['pos'][1]} ${imu['pos'][2]}"/>
+  </joint>
+  <link name="imu_link"/>
+
+  <xacro:property name="cam" value="${cfg['sensors']['depth_camera']}"/>
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+    <origin xyz="${cam['pos'][0]} ${cam['pos'][1]} ${cam['pos'][2]}" rpy="0 ${cam['pitch_down']} 0"/>
+  </joint>
+  <link name="camera_link">
+    <visual>
+      <origin xyz="-0.01 0 0"/>
+      <geometry><box size="0.02 0.08 0.025"/></geometry>
+      <material name="foot_black"/>
+    </visual>
+  </link>
+  <!-- ROS optical convention: z forward, x right, y down -->
+  <joint name="camera_optical_joint" type="fixed">
+    <parent link="camera_link"/>
+    <child link="camera_optical_frame"/>
+    <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+  </joint>
+  <link name="camera_optical_frame"/>
+
+</robot>

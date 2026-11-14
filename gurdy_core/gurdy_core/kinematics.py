@@ -117,3 +117,56 @@ def tripod_static_torques(robot: Robot) -> np.ndarray:
     """Per-joint holding torque in the nominal stance with only 3 feet on the ground."""
     weight = robot.total_mass * robot.sim["gravity"]
     return static_leg_torques(robot, leg_ik(robot, nominal_foot(robot)), (0.0, 0.0, weight / 3.0))
+
+
+def _rot_z(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1.0]])
+
+
+def _rot_y(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, 0, s], [0, 1.0, 0], [-s, 0, c]])
+
+
+def joint_effective_inertias(robot: Robot, q) -> np.ndarray:
+    """Inertia each joint 'feels' with the body held fixed (diagonal of the leg's mass matrix):
+    sum over distal links of  a^T R I R^T a + m |a x (c - p)|^2.  Order (hip_yaw, hip_pitch, knee).
+    """
+    l1, l2, l3 = robot.lengths
+    yaw, pitch, knee = q
+    R0 = _rot_z(yaw)
+    R1 = R0 @ _rot_y(-pitch)        # hip_pitch axis is -y, + = up
+    R2 = R1 @ _rot_y(knee)          # knee axis is +y, + = down
+    hip = R0 @ np.array([l1, 0, 0])
+    kn = hip + R1 @ np.array([l2, 0, 0])
+    links = []
+    for seg, R, origin in (("coxa", R0, np.zeros(3)), ("femur", R1, hip), ("tibia", R2, kn)):
+        s = robot.segments[seg]
+        links.append((s.mass, origin + R @ s.com, R @ np.diag(robot.link_inertia(seg)) @ R.T))
+    axes = [(np.array([0, 0, 1.0]), np.zeros(3), 0),
+            (R0 @ np.array([0, -1.0, 0]), hip, 1),
+            (R1 @ np.array([0, 1.0, 0]), kn, 2)]
+    out = np.zeros(3)
+    for j, (a, p, first) in enumerate(axes):
+        for m, c, I in links[first:]:
+            out[j] += a @ I @ a + m * np.sum(np.cross(a, c - p) ** 2)
+    return out
+
+
+def min_joint_inertias(robot: Robot, n: int = 4000, seed: int = 0) -> np.ndarray:
+    """Smallest effective inertia per joint over random poses inside the joint limits."""
+    rng = np.random.default_rng(seed)
+    lims = [robot.joint_limits[t] for t in ("hip_yaw", "hip_pitch", "knee")]
+    qs = np.column_stack([rng.uniform(lo, hi, n) for lo, hi in lims])
+    return np.min([joint_effective_inertias(robot, q) for q in qs], axis=0)
+
+
+def pd_stability_ratios(robot: Robot) -> dict[str, np.ndarray]:
+    """Discrete-time stability numbers for the explicit sampled PD, per joint (worst case pose):
+    kd*dt/I (explicit damping; hard limit 2) and sqrt(kp/I)*dt (explicit stiffness; limit 2)."""
+    dt = 1.0 / robot.control["pd_rate_hz"]
+    i_min = min_joint_inertias(robot)
+    return {"I_min": i_min,
+            "kd_dt_over_I": robot.control["kd"] * dt / i_min,
+            "omega_dt": np.sqrt(robot.control["kp"] / i_min) * dt}

@@ -19,6 +19,7 @@ x-wslg: &wslg
     QT_QPA_PLATFORM: xcb          # Qt over X11 (XWayland) is more reliable than native Wayland here
     QT_X11_NO_MITSHM: "1"
     ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+    PYTHONPATH: /home/ubuntu/gurdy2/gurdy_core   # pure-Python core importable everywhere
   devices:
     - /dev/dxg
 

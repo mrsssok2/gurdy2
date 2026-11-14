@@ -4,8 +4,8 @@ import copy
 import numpy as np
 import pytest
 
-from gurdy_core.kinematics import (IKError, leg_fk, leg_ik, nominal_foot, nominal_joint_angles,
-                                   tripod_static_torques)
+from gurdy_core.kinematics import (IKError, joint_effective_inertias, leg_fk, leg_ik, nominal_foot,
+                                   nominal_joint_angles, pd_stability_ratios, tripod_static_torques)
 from gurdy_core.robot import (LEG_NAMES, SEGMENTS, Robot, box_inertia, cylinder_x_inertia,
                               load_gait, load_robot)
 
@@ -64,28 +64,41 @@ def test_inertias_match_mujoco(robot):
         assert np.sort(got) == pytest.approx(np.sort(robot.segments[name].shape_inertia()), rel=1e-6), name
 
 
-def test_armature_added_about_joint_axis(robot):
-    a = robot.armature
-    assert a > 0 and robot.armature_model == "link_inertia"
-    for seg, axis in (("coxa", 2), ("femur", 1), ("tibia", 1)):
-        diff = robot.link_inertia(seg) - robot.segments[seg].shape_inertia()
-        expected = np.zeros(3)
-        expected[axis] = a
-        assert diff == pytest.approx(expected), seg
-    assert robot.mjcf_armature() == 0.0, "armature must not be counted twice in MJCF"
+def test_link_inertias_are_physical_rigid_bodies(robot):
+    """Triangle inequality A + B >= C for every link (MuJoCo rejects violations)."""
+    for name in ["body"] + list(SEGMENTS):
+        I = robot.body_inertia() if name == "body" else robot.link_inertia(name)
+        for k in range(3):
+            assert I[k] <= I[(k + 1) % 3] + I[(k + 2) % 3] + 1e-15, name
 
 
-def test_explicit_pd_is_numerically_stable(robot):
-    """Lightest joint (knee: tibia about its joint axis) under the sampled PD at pd_rate_hz.
-    kd*dt/I < 2 is the hard stability limit for explicit damping; demand a 4x margin."""
+def test_armature_is_zero_in_both_sims(robot):
+    assert robot.joint_common["armature"] == 0.0
+    bad = copy.deepcopy(robot.raw)
+    bad["joints"]["all"]["armature"] = 0.005
+    with pytest.raises(ValueError, match="armature"):
+        Robot(bad)
+
+
+def test_effective_inertia_matches_simple_cases(robot):
+    """Knee inertia = tibia about its end (pose independent); yaw with leg straight out is the
+    largest lever arm."""
     tib = robot.segments["tibia"]
     i_knee = robot.link_inertia("tibia")[1] + tib.mass * (tib.length / 2) ** 2
+    for q in ([0, 0, 0], [0.3, 0.5, 1.2], [-0.5, -0.8, 2.3]):
+        assert joint_effective_inertias(robot, q)[2] == pytest.approx(i_knee)
+    assert joint_effective_inertias(robot, [0, 0, 0])[0] > joint_effective_inertias(robot, [0, 0, 2.0])[0]
+
+
+def test_explicit_pd_is_stable_for_every_joint(robot):
+    """Sampled PD at pd_rate_hz, worst-case pose per joint: kd*dt/I and omega*dt (hard limit 2
+    for both) must stay well below 2 (< 0.5 => 4x margin)."""
+    r = pd_stability_ratios(robot)
+    assert np.all(r["kd_dt_over_I"] < 0.5), r
+    assert np.all(r["omega_dt"] < 1.0), r
+    # Old gains (kd 0.3, no armature) would have been unstable on the knee: documents the decision.
     dt = 1.0 / robot.control["pd_rate_hz"]
-    assert robot.control["kd"] * dt / i_knee < 0.5
-    assert np.sqrt(robot.control["kp"] / i_knee) * dt < 0.5
-    # ...and show that WITHOUT armature it would be unstable (the Gurdy 1.0 chatter case).
-    i_bare = tib.shape_inertia()[1] + tib.mass * (tib.length / 2) ** 2
-    assert robot.control["kd"] * dt / i_bare > 2.0
+    assert 0.30 * dt / r["I_min"][2] > 2.0
 
 
 # ------------------------------------------------------------------ knee is one-sided

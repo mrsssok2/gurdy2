@@ -35,23 +35,24 @@ joints:
   all:
     effort: 2.5          # N·m  (DS3218-class servo)
     velocity: 6.0        # rad/s
-    damping: 0.05        # N·m·s/rad (viscous, in both sims)
+    # Servo back-EMF modelled as PHYSICAL joint damping: integrated implicitly by both DART
+    # (Gazebo) and MuJoCo (Euler integrator), so it stays stable on light links. Most of the
+    # damping lives here; the controller kd below is small.
+    damping: 0.25        # N·m·s/rad
     friction: 0.02       # N·m (Coulomb)
-    # Reflected rotor inertia (kg·m²). Gazebo Harmonic (SDFormat 14 / gz-physics DART) has NO
-    # joint armature (checked 2026-11-14), so with armature_model: link_inertia it is added to
-    # the child link's inertia about the joint axis IN BOTH SIMS (MJCF armature=0) => identical
-    # dynamics. Side effect (same in both sims): a parent joint with a parallel axis (hip_pitch)
-    # also feels the child's (knee) added inertia. Without it the tibia (~3e-4 kg·m²) is unstable
-    # under explicit PD at 500 Hz (kd*dt/I > 2) — the Gurdy 1.0 chatter problem.
-    armature: 0.005
-    armature_model: link_inertia     # link_inertia (sim parity) | native (MuJoCo-only armature)
+    # Reflected rotor inertia: 0 in BOTH sims. Gazebo Harmonic (SDFormat 14 / gz-physics DART)
+    # has no joint armature (checked 2026-11-14), and folding it into link inertias is either
+    # non-physical (MuJoCo rejects it) or inflates body inertia 70-160 % (rotor-disc model).
+    # Decision 2026-11-14: armature 0, passive damping instead => identical robot in both sims.
+    armature: 0.0
 
 control:
-  # Same PD law in both sims: tau = kp*(q_ref - q) - kd*qdot, clipped to ±effort.
+  # Same PD law in both sims: tau = kp*(q_ref - q) - kd*qdot, clipped to ±effort
+  # (explicit, sampled at pd_rate_hz; joint damping above acts on top of it, implicitly).
   # Gazebo: gz_ros2_control effort interface + PD at pd_rate_hz.
   # MuJoCo: PD applied every physics step (timestep = 1/pd_rate_hz).
   kp: 20.0               # N·m/rad
-  kd: 0.30               # N·m·s/rad
+  kd: 0.05               # N·m·s/rad (stability: kd*dt/I_min well below 2, tested)
   pd_rate_hz: 500        # ros2_control update rate in sim (= MuJoCo physics rate)
   policy_rate_hz: 50     # gait node / RL policy (joint targets)
 
@@ -76,6 +77,6 @@ sim:
   gravity: 9.81
   gazebo_step: 0.001     # s; PD runs every 2nd step (500 Hz)
   mujoco_timestep: 0.002 # s; = 1/pd_rate_hz
-  # Euler: actuator PD is explicit, like Gazebo's sampled PD (implicitfast would damp it
-  # implicitly). Confirmed or revised by the Gazebo<->MuJoCo step-response parity test.
+  # Euler: joint damping implicit, actuator PD explicit — same treatment as Gazebo/DART
+  # (implicit joint damping) + gz_ros2_control (sampled PD). Checked by the step-response test.
   mujoco_integrator: Euler

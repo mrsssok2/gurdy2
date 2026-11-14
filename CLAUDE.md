@@ -77,10 +77,12 @@ Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
   the ROS gait node and the MuJoCo env alike. Unit-tested without ROS.
 - **Same PD in both sims:** `tau = kp*(q_ref - q) - kd*qdot`, clipped to effort, at **500 Hz**
   (Gazebo: `gz_ros2_control` effort interface; MuJoCo: every 2 ms physics step). Gait/RL at 50 Hz.
-- **Armature:** Gazebo Harmonic (SDFormat 14 / gz-physics DART) has no joint armature, so the
-  reflected rotor inertia (0.005 kg·m²) is folded into each child link's inertia about its joint
-  axis in **both** URDF and MJCF (MJCF `armature=0`), via `Robot.link_inertia()`. Without it the
-  tibia is unstable under explicit PD (tested).
+  kp 20, kd 0.05 (small); most damping is **physical joint damping 0.25 N·m·s/rad** (servo
+  back-EMF), integrated implicitly by DART and MuJoCo (Euler).
+- **No armature (decided 2026-11-14):** Gazebo Harmonic (SDFormat 14 / gz-physics DART) has no
+  joint armature; folding it into link inertias is non-physical (MuJoCo rejects it) or inflates body
+  inertia 70–160 %. So armature = 0 in both sims (enforced by the loader). Worst-case explicit-PD
+  ratios (tested): kd·dt/I ≤ 0.35, ω·dt ≤ 0.53 (hard limit 2).
 - Robot geometry lives in `robot.yaml`; gait timing in `gurdy_core/gurdy_core/config/gait.yaml`.
 - Gait/policy nodes publish joint targets; everything above them speaks only `/cmd_vel`
   (`geometry_msgs/Twist`: linear.x, linear.y, angular.z), so Nav2/teleop/LLM are swappable.
@@ -136,8 +138,10 @@ _colcon build / teleop / tests are added as Phase 1 continues._
   gz_ros2_control, RViz, MuJoCo 3.3.0), `compose.yaml` profile `sim` (WSLg, /dev/dxg, port 8080,
   mem_limit 6g). Measured: shapes.sdf with GUI, d3d12 renderer → RTF 0.998–1.001; container RAM
   ≈ 420 MiB; CPU ≈ 130–180 %.
-- Step 1.2 done: `robot.yaml` (approved values), `gait.yaml`, `gurdy_core.robot` loader,
-  `gurdy_core.kinematics` (leg FK/IK, static torques); 16 tests pass in the container.
-  Computed: total mass 3.08 kg; stance q = (0, 0.307, 1.763) rad; tripod holding torque
-  hip_pitch 0.81 N·m → 3.1× headroom to 2.5 N·m.
-- Next: step 1.3 — 18-DOF xacro generated from robot.yaml (check_urdf, RViz).
+- Step 1.2 done: `robot.yaml`, `gait.yaml`, `gurdy_core.robot` loader, `gurdy_core.kinematics`
+  (leg FK/IK, static torques, effective joint inertias, PD stability ratios). Total mass 3.08 kg;
+  stance q = (0, 0.307, 1.763) rad; tripod holding torque hip_pitch 0.81 N·m → 3.1× headroom.
+- Step 1.3 done: `gurdy_description` xacro (18 DOF, from robot.yaml), display launch + RViz,
+  `test_urdf.py` (check_urdf, mass/inertia, limits, FK parity, MuJoCo mass-matrix parity).
+- Next: Gazebo spawn + ros2_control effort PD controller (500 Hz), MJCF generator, then the
+  chatter test and the Gazebo↔MuJoCo step-response parity test.

@@ -136,33 +136,16 @@ class Robot:
     def total_mass(self) -> float:
         return self.body_mass + len(LEG_NAMES) * self.leg_mass
 
-    @property
-    def armature(self) -> float:
-        return float(self.joint_common.get("armature", 0.0))
-
-    @property
-    def armature_model(self) -> str:
-        return self.joint_common.get("armature_model", "link_inertia")
-
     def body_inertia(self) -> np.ndarray:
         return box_inertia(self.body_mass, *self.body_size)
 
     def link_inertia(self, segment: str) -> np.ndarray:
-        """Diagonal COM inertia used in BOTH URDF and MJCF for this segment.
+        """Diagonal COM inertia of a leg segment (same value in URDF and MJCF).
 
-        With armature_model == 'link_inertia' the reflected rotor inertia is added about the
-        driving joint's axis (Gazebo has no joint armature; this keeps both sims identical).
+        No armature is folded in: Gazebo cannot model joint armature, so it is 0 in both sims
+        (see robot.yaml); servo back-EMF is modelled as joint damping instead.
         """
-        seg = self.segments[segment]
-        inertia = seg.shape_inertia().copy()
-        if self.armature_model == "link_inertia":
-            axis = np.abs(np.array(JOINT_AXIS[SEGMENT_JOINT[segment]]))
-            inertia += self.armature * axis
-        return inertia
-
-    def mjcf_armature(self) -> float:
-        """Armature value to put on MJCF joints (0 when it is folded into link inertia)."""
-        return self.armature if self.armature_model == "native" else 0.0
+        return self.segments[segment].shape_inertia()
 
     # ------------------------------------------------------------ checks
     def _validate(self) -> None:
@@ -175,8 +158,8 @@ class Robot:
         for s in self.segments.values():
             if s.mass <= 0 or s.length <= 0:
                 raise ValueError(f"segment {s.name} needs positive mass and length")
-        if self.armature_model not in ("link_inertia", "native"):
-            raise ValueError(f"armature_model must be link_inertia|native, got {self.armature_model}")
+        if float(self.joint_common.get("armature", 0.0)) != 0.0:
+            raise ValueError("joints.all.armature must be 0: Gazebo cannot model it (sim parity)")
         pd_dt = 1.0 / self.control["pd_rate_hz"]
         if not np.isclose(self.sim["mujoco_timestep"], pd_dt):
             raise ValueError("sim.mujoco_timestep must equal 1/control.pd_rate_hz (same PD rate in both sims)")
