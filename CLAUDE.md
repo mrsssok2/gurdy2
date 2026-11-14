@@ -20,9 +20,12 @@ Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
 
 ## Machine / environment
 - Windows 11 + WSL2 Ubuntu + Docker Desktop (WSL integration), VS Code.
-- 16 GB RAM total; `.wslconfig` caps WSL at **8 GB RAM + 8 GB swap**. CPU only — **no NVIDIA GPU**.
-- Gazebo GUI via **WSLg** (X11/Wayland sockets mounted into the container). Rendering is software
-  or iGPU — keep cameras small (≤ 320x240) and frame rates modest.
+- 16 GB RAM total; `.wslconfig` caps WSL at **8 GB RAM + 8 GB swap**. 12 logical CPUs.
+- GPU (measured 2026-11-14): **NVIDIA GeForce RTX 4050 Laptop, 6 GB VRAM**, driver 621.14, visible in
+  WSL (`/usr/lib/wsl/lib/nvidia-smi`); Docker Desktop has the `nvidia` runtime. So far it is used only
+  for OpenGL rendering (Mesa d3d12). Whether to use CUDA for RL/LLM work is **not yet decided**.
+- Gazebo GUI via **WSLg** (`/mnt/wslg` + its X11 socket mounted into the container; host
+  `/tmp/.X11-unix` is empty on this distro). Keep cameras small (≤ 320x240) and frame rates modest.
 - Free GPUs only on Google Colab / Kaggle (used for LLM training in Phase 5, via notebooks).
 
 ## Hard rules
@@ -101,10 +104,21 @@ gurdy2/
 ```
 
 ## Common commands
-_Filled in during Phase 1 (build image, start sim, colcon build, teleop, tests)._
+```bash
+docker compose build sim                          # build ROS/Gazebo image (gurdy2/ros:jazzy, ~5 GB)
+docker compose up sim                             # Gazebo GUI via WSLg (currently the shapes.sdf smoke test)
+docker compose run --rm sim bash                  # shell in the image (ROS sourced, repo at ~/gurdy2)
+docker compose run --rm sim scripts/check_display.sh   # sockets, OpenGL renderer, versions, MuJoCo
+docker compose exec sim /entrypoint.sh <cmd>      # run a ROS/gz command in the running container
+GZ_GALLIUM_DRIVER=llvmpipe docker compose up sim  # fallback: CPU rendering if GPU path breaks
+docker compose down                               # stop
+```
+_colcon build / teleop / tests are added as Phase 1 continues._
 
 ## Current status
-- Phase 0: CLAUDE.md, ROADMAP.md, .gitignore, LICENSE (MIT) done; folder structure approved.
-- Repo being moved by the user from `C:\Users\mahadev\projects\gurdy2` to WSL `~/projects/gurdy2`.
-- Next: Phase 1 step 1.1 (Docker image + compose `sim` profile + WSLg check). Phase 1 plan is in
-  ROADMAP.md; start Docker Desktop first.
+- Phase 0: done except `.env.example` + README stub. Repo is in WSL at `~/projects/gurdy2`.
+- Phase 1 step 1.1 done: `docker/ros/Dockerfile` (Jazzy, Gazebo Harmonic gz-sim 8.15.0, ros2_control,
+  gz_ros2_control, RViz, MuJoCo 3.3.0), `compose.yaml` profile `sim` (WSLg, /dev/dxg, port 8080,
+  mem_limit 6g). Measured: shapes.sdf with GUI, d3d12 renderer → RTF 0.998–1.001; container RAM
+  ≈ 420 MiB; CPU ≈ 130–180 %.
+- Next: step 1.2 — `robot.yaml` (single source of truth).

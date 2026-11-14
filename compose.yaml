@@ -1,0 +1,44 @@
+# Gurdy 2.0 — one compose file, one profile per part.
+# RAM rule: run only ONE heavy profile at a time (sim / rl / ops).
+#
+#   docker compose build sim
+#   docker compose up sim                     # opens Gazebo GUI through WSLg
+#   docker compose run --rm sim bash          # interactive shell in the sim image
+#   docker compose run --rm sim scripts/check_display.sh
+
+x-wslg: &wslg
+  environment:
+    DISPLAY: ${DISPLAY:-:0}
+    WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-wayland-0}
+    XDG_RUNTIME_DIR: /mnt/wslg/runtime-dir
+    PULSE_SERVER: unix:/mnt/wslg/PulseServer
+    # OpenGL via WSL GPU: Mesa d3d12 → DirectX → host GPU (measured: RTX 4050 Laptop).
+    # Fallback to CPU rendering:  GZ_GALLIUM_DRIVER=llvmpipe docker compose up sim
+    LD_LIBRARY_PATH: /usr/lib/wsl/lib
+    GALLIUM_DRIVER: ${GZ_GALLIUM_DRIVER:-d3d12}
+    QT_QPA_PLATFORM: xcb          # Qt over X11 (XWayland) is more reliable than native Wayland here
+    QT_X11_NO_MITSHM: "1"
+    ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+  devices:
+    - /dev/dxg
+
+services:
+  sim:
+    profiles: [sim]
+    image: gurdy2/ros:jazzy
+    build:
+      context: docker/ros
+    <<: *wslg
+    volumes:
+      - /mnt/wslg:/mnt/wslg
+      - /mnt/wslg/.X11-unix:/tmp/.X11-unix   # host /tmp/.X11-unix is empty on this distro
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+      - .:/home/ubuntu/gurdy2
+    ports:
+      - "8080:8080"       # reserved: rosbridge / web UI (later phases)
+    mem_limit: 6g         # keep headroom inside WSL's 8 GB
+    init: true
+    stdin_open: true
+    tty: true
+    # Step 1.1 smoke test: Gazebo Harmonic demo world. Replaced by the bringup launch later.
+    command: ["gz", "sim", "-v", "3", "shapes.sdf"]

@@ -12,12 +12,12 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 - [x] Monorepo folder structure approved (see CLAUDE.md)
 - [x] `.gitignore`, LICENSE (MIT)
 - [ ] `.env.example` (names only), README stub
-- [ ] Repo moved to WSL filesystem (`~/projects/gurdy2`)
+- [x] Repo moved to WSL filesystem (`~/projects/gurdy2`)
 
 ---
 
 ## Phase 1 — Robot + ROS 2 base
-- [ ] Docker image: ROS 2 Jazzy + Gazebo Harmonic + ros2_control + MuJoCo; `compose.yaml` with WSLg GUI, port 8080 published
+- [x] Docker image: ROS 2 Jazzy + Gazebo Harmonic + ros2_control + MuJoCo; `compose.yaml` with WSLg GUI, port 8080 published
 - [ ] `robot.yaml` single source of truth (dimensions, masses, limits, damping, gains)
 - [ ] 18-DOF xacro (6 legs × hip-yaw, hip-pitch, knee), inertias computed from geometry, one-sided knee limits, joint damping/friction, IMU, forward depth camera
 - [ ] Gazebo spawn + `ros_gz_bridge` (clock, IMU, camera, depth, ground-truth odom)
