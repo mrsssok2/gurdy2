@@ -1,0 +1,36 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Secrets — never commit
+.env
+*.key
+
+# ROS 2 / colcon
+build/
+install/
+log/
+
+# Training / data artifacts (large)
+runs/
+checkpoints/
+*.onnx
+*.gguf
+*.safetensors
+rosbags/
+*.mcap
+*.db3
+
+# Node / web
+node_modules/
+.next/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
