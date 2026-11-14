@@ -6,3 +6,6 @@ tripod:
   step_height: 0.04      # m, swing apex above stance height
   swing_profile: cycloid # foot path during swing
   max_stride: 0.07       # m, cap on foot travel per stance phase
+  # Command acceleration limits (operator/Nav2 input can jump; feet must not).
+  max_lin_accel: 0.5     # m/s^2   (0 -> 0.15 m/s in 0.3 s)
+  max_ang_accel: 2.0     # rad/s^2 (0 -> 0.6 rad/s in 0.3 s)
