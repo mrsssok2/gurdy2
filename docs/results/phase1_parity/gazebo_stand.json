@@ -1,16 +1,16 @@
 {
-  "duration_s": 59.996,
-  "samples": 29935,
+  "duration_s": 59.98800000000001,
+  "samples": 29883,
   "sample_rate_hz": 499.99999999983305,
   "worst": {
-    "qd_rms": 4.488654431454867e-06,
-    "q_p2p": 0.00026929857439061955,
-    "tau_std": 0.0006273041303374153
+    "qd_rms": 4.488060588902689e-06,
+    "q_p2p": 0.0002692286072336625,
+    "tau_std": 0.000627308838191963
   },
   "worst_joint": {
     "qd_rms": "rm_knee",
-    "q_p2p": "rm_knee",
-    "tau_std": "rm_hip_pitch"
+    "q_p2p": "lm_knee",
+    "tau_std": "lm_hip_pitch"
   },
   "chatter_pass": true,
   "chatter_limits": {
@@ -18,14 +18,14 @@
     "q_p2p": 0.005,
     "tau_std": 0.05
   },
-  "dominant_qd_freq_hz_median": 0.01670285618840264,
+  "dominant_qd_freq_hz_median": 0.01673192115918191,
   "sag_rad_by_type": {
-    "hip_yaw": 7.341337369548957e-19,
-    "hip_pitch": 0.025039393035584157,
-    "knee": 0.020224080237418875
+    "hip_yaw": -5.321762591293492e-18,
+    "hip_pitch": 0.02504219931100625,
+    "knee": 0.020224666040406358
   },
-  "body_height_fk_m": 0.10803097234950718,
+  "body_height_fk_m": 0.10803072499444298,
   "nominal_body_height_m": 0.11,
   "sim": "gazebo",
-  "rtf": 0.9587759163652162
+  "rtf": 0.5434081830865832
 }

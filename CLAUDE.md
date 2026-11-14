@@ -45,6 +45,8 @@ Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
 5. **Commit after each working step** with a clear message. **Ask before pushing.**
 6. If something is ambiguous or risky, **ask**.
 7. Keep ROADMAP.md checkboxes and this file current as we progress.
+8. **Before measuring, check `docker ps`**: no other sim containers may run (they share CPU, and
+   without isolation they share /clock). Stop GUI demos when done (`docker rm -f <name>`).
 
 ## Lessons from Gurdy 1.0 (design constraints, not trivia)
 | Gurdy 1.0 problem | Gurdy 2.0 rule |
@@ -131,7 +133,7 @@ docker compose run --rm sim bash                  # shell in the image (ROS sour
 docker compose run --rm sim scripts/check_display.sh   # sockets, OpenGL renderer, versions, MuJoCo
 docker compose exec sim /entrypoint.sh <cmd>      # run a ROS/gz command in the running container
 GZ_GALLIUM_DRIVER=llvmpipe docker compose up sim  # fallback: CPU rendering if GPU path breaks
-docker compose down                               # stop
+docker compose --profile '*' down                # stop ALL services (plain `down` skips profiled ones!)
 # inside the container (docker compose run --rm sim bash):
 cd ros2_ws && colcon build --symlink-install && source install/setup.bash && cd ..
 colcon test --base-paths ros2_ws && colcon test-result          # ROS package tests (run in ros2_ws)
@@ -158,7 +160,9 @@ _Teleop is added with the gait node._
   (empty world, `sim.launch.py` generating controller params from robot.yaml), `sim_mujoco`
   (MJCF generator + tests + experiments). Step-response parity PASS (rise within 4 ms), chatter
   PASS in both sims, standing body height equal within 0.2 mm. Gazebo RTF ≈ 1.0 headless.
-- Open items: KDL warns about inertia on root link `base_link` (TF only, harmless); lower
-  joint_state_broadcaster rate (500 Hz makes robot_state_publisher use ~27 % CPU).
+- Fixed: massless `base_link` root + `body_link` (no KDL warning); `/joint_states` at 100 Hz
+  (`js_rate` launch arg). Containers are isolated (`GZ_PARTITION`=hostname,
+  `ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`) after two sims cross-talked over /clock and /stats.
+  Clean RTF: Gazebo headless 0.96, GUI 0.55 (open item: GUI process ~100 % CPU).
 - Next: Gazebo sensors + bridge (IMU, depth camera, ground-truth odom), then `gurdy_core` tripod
   gait math, gait node, teleop.

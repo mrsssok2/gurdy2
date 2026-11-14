@@ -35,7 +35,8 @@ RUN chmod +x /entrypoint.sh
 
 USER ubuntu
 WORKDIR /home/ubuntu/gurdy2
-RUN echo 'source /opt/ros/jazzy/setup.bash' >> ~/.bashrc \
+RUN echo 'export GZ_PARTITION=${GZ_PARTITION:-$(hostname)}  # same as entrypoint.sh' >> ~/.bashrc \
+ && echo 'source /opt/ros/jazzy/setup.bash' >> ~/.bashrc \
  && echo '[ -f ~/gurdy2/ros2_ws/install/setup.bash ] && source ~/gurdy2/ros2_ws/install/setup.bash' >> ~/.bashrc
 
 ENTRYPOINT ["/entrypoint.sh"]

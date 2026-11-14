@@ -26,8 +26,10 @@ from gurdy_core.kinematics import leg_ik, nominal_foot
 from gurdy_core.robot import load_robot
 
 
-def controllers_params(robot) -> dict:
-    """ros2_control parameters derived from robot.yaml (single source of truth)."""
+def controllers_params(robot, js_rate: int) -> dict:
+    """ros2_control parameters derived from robot.yaml (single source of truth).
+    joint_state_broadcaster runs at js_rate (100 Hz default: 500 Hz /joint_states made
+    robot_state_publisher burn ~27 % CPU); the PD controller runs at pd_rate_hz."""
     c = robot.control
     return {
         "controller_manager": {"ros__parameters": {
@@ -35,6 +37,7 @@ def controllers_params(robot) -> dict:
             "joint_state_broadcaster": {"type": "joint_state_broadcaster/JointStateBroadcaster"},
             "joint_pd_controller": {"type": "gurdy_control/JointPDController"},
         }},
+        "joint_state_broadcaster": {"ros__parameters": {"update_rate": int(js_rate)}},
         "joint_pd_controller": {"ros__parameters": {
             "joints": robot.joint_names,
             "kp": float(c["kp"]),
@@ -56,7 +59,7 @@ def _setup(context):
 
     fd, ctrl_yaml = tempfile.mkstemp(prefix="gurdy_controllers_", suffix=".yaml")
     with os.fdopen(fd, "w") as f:
-        yaml.safe_dump(controllers_params(robot), f)
+        yaml.safe_dump(controllers_params(robot, int(LaunchConfiguration("js_rate").perform(context))), f)
 
     q0 = leg_ik(robot, nominal_foot(robot))
     base_z = 0.3 if fixed else robot.stance["body_height"] + 0.005
@@ -98,6 +101,7 @@ def generate_launch_description():
         DeclareLaunchArgument("gui", default_value="true"),
         DeclareLaunchArgument("fixed_base", default_value="false"),
         DeclareLaunchArgument("world", default_value="empty"),
+        DeclareLaunchArgument("js_rate", default_value="100", description="/joint_states rate (Hz)"),
         DeclareLaunchArgument("robot_yaml", default_value="",
                               description="alternative robot.yaml (experiments / fault injection)"),
         OpaqueFunction(function=_setup),

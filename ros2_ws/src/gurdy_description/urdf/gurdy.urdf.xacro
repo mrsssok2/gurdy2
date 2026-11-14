@@ -38,7 +38,15 @@
 
   <!-- ============================ body ============================ -->
   <xacro:property name="bs" value="${cfg['body']['size']}"/>
-  <link name="base_link">
+  <!-- base_link: massless root frame (KDL/robot_state_publisher cannot use an inertial root).
+       The body's mass lives in body_link on a fixed joint; Gazebo merges the two (same physics). -->
+  <link name="base_link"/>
+  <joint name="body_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="body_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+  <link name="body_link">
     <visual>
       <geometry><box size="${bs[0]} ${bs[1]} ${bs[2]}"/></geometry>
       <material name="body_grey"/>

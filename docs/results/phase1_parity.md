@@ -70,11 +70,17 @@ STAND: chatter both pass = True, body height diff 0.22 mm (tol 2 mm) -> PASS
 
 ## Performance / resources
 
-| | Gazebo (headless) | MuJoCo |
-|---|---|---|
-| RTF, no recorder | 1.02 (`gz topic /stats`, 21 samples) | — |
-| RTF, with 500 Hz Python recorder | 0.96–1.00 | 77–125 |
-| RAM | container 290–325 MiB | 62 MiB (step), 101 MiB (stand) peak RSS |
+Re-measured after isolating containers (`GZ_PARTITION`, `ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`).
+An earlier RTF measurement (1.02 headless / 0.85 GUI) was contaminated by a second Gazebo instance
+on the same Docker network sharing `/stats` and `/clock`; it is withdrawn. The parity metrics above
+were re-run after isolation and are identical to the earlier run.
 
-Note: `robot_state_publisher` uses ~27 % CPU because `joint_state_broadcaster` publishes at the
-500 Hz controller rate; lower its rate for normal runs (later step).
+| | Gazebo headless | Gazebo GUI (WSLg, d3d12) | MuJoCo |
+|---|---|---|---|
+| RTF, no recorder (30 s, 300 `/stats` samples) | 0.96 | 0.55 (shadows on or off) | — |
+| RTF, with 500 Hz Python recorder | 0.54–0.98 | — | 47–125 |
+| RAM | container 290–325 MiB | +~450 MiB GUI process | 62 MiB (step), 101 MiB (stand) peak RSS |
+
+`/joint_states` now publishes at 100 Hz by default (`js_rate`, 500 Hz only for these tests);
+`robot_state_publisher` CPU dropped from ~27–36 % to ~10–12 %.
+Open: GUI RTF 0.55 — the GUI process uses ~100 % CPU; investigate before demos.

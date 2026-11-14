@@ -82,7 +82,8 @@ def test_total_mass(urdf, robot):
 
 def test_inertias_from_gurdy_core(urdf, robot):
     links = _links(urdf)
-    assert _inertia_diag(links["base_link"]) == pytest.approx(robot.body_inertia(), rel=1e-9)
+    assert links["base_link"].find("inertial") is None, "root must be massless (KDL)"
+    assert _inertia_diag(links["body_link"]) == pytest.approx(robot.body_inertia(), rel=1e-9)
     for leg in LEG_NAMES:
         for seg in ("coxa", "femur", "tibia"):
             link = links[f"{leg}_{seg}"]

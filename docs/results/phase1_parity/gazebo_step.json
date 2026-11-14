@@ -1,31 +1,31 @@
 {
   "sim": "gazebo",
-  "rtf": 0.9965346277376952,
-  "samples": 6976,
+  "rtf": 0.9798678238948834,
+  "samples": 6966,
   "steps": [
     {
       "rise_time_s": 0.040000000000000036,
-      "overshoot_pct": 2.8238078542131007e-09,
-      "steady_error_rad": 0.0011941890548952533,
-      "peak_velocity": 1.599300798012284,
+      "overshoot_pct": 2.842748259013206e-09,
+      "steady_error_rad": 0.0011941890548927067,
+      "peak_velocity": 1.599300798022129,
       "joint": "lf_hip_yaw",
       "amp": 0.05,
-      "onset_delay_s": 0.0009999999999998899
+      "onset_delay_s": 0.001000000000000334
     },
     {
       "rise_time_s": 0.04600000000000115,
-      "overshoot_pct": 1.059052845420183e-08,
-      "steady_error_rad": 0.006247428472934746,
-      "peak_velocity": 1.7244623864542155,
+      "overshoot_pct": 1.0662071225908676e-08,
+      "steady_error_rad": 0.006247428463449944,
+      "peak_velocity": 1.7244623894517974,
       "joint": "lf_hip_pitch",
       "amp": 0.05,
       "onset_delay_s": 0.0
     },
     {
       "rise_time_s": 0.04800000000000004,
-      "overshoot_pct": 2.7323499018905295e-08,
-      "steady_error_rad": 0.00229172931314503,
-      "peak_velocity": 1.8712818724283888,
+      "overshoot_pct": 2.732256643156461e-08,
+      "steady_error_rad": 0.002291729312801305,
+      "peak_velocity": 1.8712818705548817,
       "joint": "lf_knee",
       "amp": 0.05,
       "onset_delay_s": 0.0
@@ -34,25 +34,25 @@
       "rise_time_s": 0.05000000000000071,
       "overshoot_pct": 4.622746629934227e-10,
       "steady_error_rad": 0.0011944228641966315,
-      "peak_velocity": 5.881242759234676,
+      "peak_velocity": 5.881242759234647,
       "joint": "lf_hip_yaw",
       "amp": 0.3,
       "onset_delay_s": 0.0009999999999994458
     },
     {
-      "rise_time_s": 0.054999999999999716,
-      "overshoot_pct": 1.5759837879159022e-09,
-      "steady_error_rad": 0.005976300655060385,
-      "peak_velocity": 5.676522767483166,
+      "rise_time_s": 0.05599999999999916,
+      "overshoot_pct": 1.5866197244918112e-09,
+      "steady_error_rad": 0.005976300655018751,
+      "peak_velocity": 5.6765227674833145,
       "joint": "lf_hip_pitch",
       "amp": 0.3,
       "onset_delay_s": 0.0
     },
     {
-      "rise_time_s": 0.057000000000000384,
-      "overshoot_pct": 3.941647008787186e-09,
-      "steady_error_rad": 0.002865792933257616,
-      "peak_velocity": 5.846041634891595,
+      "rise_time_s": 0.05600000000000094,
+      "overshoot_pct": 3.915645585550465e-09,
+      "steady_error_rad": 0.0028657929331803444,
+      "peak_velocity": 5.846041634891596,
       "joint": "lf_knee",
       "amp": 0.3,
       "onset_delay_s": 0.0
