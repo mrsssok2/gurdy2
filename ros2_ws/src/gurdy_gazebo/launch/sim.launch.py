@@ -50,6 +50,7 @@ def controllers_params(robot, js_rate: int) -> dict:
 def _setup(context):
     gui = LaunchConfiguration("gui").perform(context).lower() == "true"
     fixed = LaunchConfiguration("fixed_base").perform(context).lower() == "true"
+    sensors = LaunchConfiguration("sensors").perform(context).lower() == "true"
     world = LaunchConfiguration("world").perform(context)
 
     desc_share = get_package_share_directory("gurdy_description")
@@ -67,12 +68,14 @@ def _setup(context):
         os.path.join(desc_share, "urdf", "gurdy.urdf.xacro"),
         mappings={"sim_gazebo": "true", "controllers_yaml": ctrl_yaml, "robot_yaml": robot_yaml,
                   "initial_q": " ".join(f"{v:.6f}" for v in q0),
-                  "fixed_base": str(fixed).lower(), "base_z": str(base_z)},
+                  "fixed_base": str(fixed).lower(), "base_z": str(base_z),
+                  "sensors": str(sensors).lower()},
     ).toxml()
 
     if not world.endswith(".sdf"):
         world = os.path.join(get_package_share_directory("gurdy_gazebo"), "worlds", world + ".sdf")
-    gz_args = f"-r -v 2 {world}" + ("" if gui else " -s")
+    # Headless: server only; cameras then need EGL headless rendering.
+    gz_args = f"-r -v 2 {world}" + ("" if gui else " -s --headless-rendering")
 
     gz = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
@@ -83,8 +86,13 @@ def _setup(context):
     spawn = Node(package="ros_gz_sim", executable="create", output="screen",
                  arguments=["-topic", "robot_description", "-name", "gurdy",
                             "-z", "0.0" if fixed else str(base_z)])
-    clock = Node(package="ros_gz_bridge", executable="parameter_bridge",
-                 arguments=["/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"], output="screen")
+    if sensors:
+        bridge_cfg = os.path.join(get_package_share_directory("gurdy_gazebo"), "config", "bridge.yaml")
+        clock = Node(package="ros_gz_bridge", executable="parameter_bridge", output="screen",
+                     parameters=[{"config_file": bridge_cfg, "use_sim_time": True}])
+    else:
+        clock = Node(package="ros_gz_bridge", executable="parameter_bridge", output="screen",
+                     arguments=["/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"])
     jsb = Node(package="controller_manager", executable="spawner",
                arguments=["joint_state_broadcaster", "--controller-manager-timeout", "60"])
     pd = Node(package="controller_manager", executable="spawner",
@@ -101,6 +109,7 @@ def generate_launch_description():
         DeclareLaunchArgument("gui", default_value="true"),
         DeclareLaunchArgument("fixed_base", default_value="false"),
         DeclareLaunchArgument("world", default_value="empty"),
+        DeclareLaunchArgument("sensors", default_value="true", description="IMU, RGB-D camera, GT odom"),
         DeclareLaunchArgument("js_rate", default_value="100", description="/joint_states rate (Hz)"),
         DeclareLaunchArgument("robot_yaml", default_value="",
                               description="alternative robot.yaml (experiments / fault injection)"),

@@ -164,5 +164,10 @@ _Teleop is added with the gait node._
   (`js_rate` launch arg). Containers are isolated (`GZ_PARTITION`=hostname,
   `ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`) after two sims cross-talked over /clock and /stats.
   Clean RTF: Gazebo headless 0.96, GUI 0.55 (open item: GUI process ~100 % CPU).
-- Next: Gazebo sensors + bridge (IMU, depth camera, ground-truth odom), then `gurdy_core` tripod
-  gait math, gait node, teleop.
+- Sensors done: IMU (/imu, 200 Hz), RGB-D (/camera/{image,depth_image,camera_info,points}, lazy
+  bridge), ground-truth odom (/odom/ground_truth, no TF). `sensors:=false` loads no render engine.
+  Verified: accel z 9.807, odom z 0.1080, depth centre 0.749 m (geometry 0.754; MuJoCo 0.739).
+  Headless rendering must use the NVIDIA adapter (`MESA_D3D12_DEFAULT_ADAPTER_NAME`), else Intel iGPU.
+- **RTF method:** `scripts/measure_rtf.py` (sim/wall from /clock, + MuJoCo host benchmark). Host speed
+  varied ~3x during 2026-11-14 (MuJoCo benchmark 34–170): Gazebo perf numbers pending a stable host.
+- Next: `gurdy_core` tripod gait math, gait node, bringup + teleop, velocity-tracking test.

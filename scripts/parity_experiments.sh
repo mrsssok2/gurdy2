@@ -11,7 +11,7 @@ export PYTHONPATH=$HOME/gurdy2/gurdy_core:$HOME/gurdy2/sim_mujoco:${PYTHONPATH:-
 [ -n "$YAML" ] && export GURDY_ROBOT_YAML=$(realpath "$YAML")
 FIXED=$([ "$MODE" = step ] && echo true || echo false)
 
-ros2 launch gurdy_gazebo sim.launch.py gui:=false js_rate:=500 fixed_base:=$FIXED ${YAML:+robot_yaml:=$GURDY_ROBOT_YAML} \
+ros2 launch gurdy_gazebo sim.launch.py gui:=false sensors:=false js_rate:=500 fixed_base:=$FIXED ${YAML:+robot_yaml:=$GURDY_ROBOT_YAML} \
   > "$OUT/gazebo_launch_$MODE.log" 2>&1 &
 LAUNCH=$!
 for _ in $(seq 120); do

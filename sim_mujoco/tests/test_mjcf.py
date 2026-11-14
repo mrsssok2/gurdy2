@@ -76,3 +76,24 @@ def test_no_self_collision(robot):
                 continue
             ok = (m.geom_contype[g] & m.geom_conaffinity[h]) or (m.geom_contype[h] & m.geom_conaffinity[g])
             assert not ok, (m.geom(g).name, m.geom(h).name)
+
+
+def test_imu_sensors_and_camera(robot):
+    m = mujoco.MjModel.from_xml_string(build_mjcf(robot))
+    d = mujoco.MjData(m)
+    mujoco.mj_resetDataKeyframe(m, d, 0)
+    for _ in range(1000):                        # 2 s standing
+        mujoco.mj_step(m, d)
+    acc = d.sensor("imu_accel").data
+    assert acc[2] == pytest.approx(robot.sim["gravity"], abs=0.1)   # specific force when at rest
+    cam = robot.sensors["depth_camera"]
+    c = m.camera("depth_camera")
+    vfov = np.degrees(2 * np.arctan(np.tan(cam["hfov"] / 2) * cam["height"] / cam["width"]))
+    assert m.cam_fovy[c.id] == pytest.approx(vfov, rel=1e-4)
+    # Optical axis (-z_cam) in body frame points forward and down by pitch_down.
+    mujoco.mj_forward(m, d)
+    R = d.cam_xmat[c.id].reshape(3, 3)
+    body_R = d.xmat[m.body("base_link").id].reshape(3, 3)
+    view = body_R.T @ (-R[:, 2])
+    p = cam["pitch_down"]
+    assert view == pytest.approx([np.cos(p), 0.0, -np.sin(p)], abs=1e-6)

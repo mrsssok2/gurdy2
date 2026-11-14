@@ -55,6 +55,70 @@
   <xacro:foot_friction leg="rm"/>
   <xacro:foot_friction leg="rr"/>
 
+  <!-- ============================ sensors (values from robot.yaml) ============================ -->
+  <xacro:if value="$(arg sensors)">
+    <!-- Sensor systems are loaded with the robot, so sensors:=false means no rendering at all
+         (the render engine in the world file cost ~60 % RTF even without cameras). -->
+    <gazebo>
+      <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+        <render_engine>ogre2</render_engine>
+      </plugin>
+      <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+    </gazebo>
+    <xacro:property name="imu" value="${cfg['sensors']['imu']}"/>
+    <gazebo reference="imu_link">
+      <sensor name="imu" type="imu">
+        <gz_frame_id>imu_link</gz_frame_id>
+        <topic>/imu</topic>
+        <update_rate>${imu['rate_hz']}</update_rate>
+        <always_on>true</always_on>
+        <imu>
+          <xacro:property name="gn" value="${imu['gyro_noise']}"/>
+          <xacro:property name="an" value="${imu['accel_noise']}"/>
+          <angular_velocity>
+            <x><noise type="gaussian"><mean>0</mean><stddev>${gn}</stddev></noise></x>
+            <y><noise type="gaussian"><mean>0</mean><stddev>${gn}</stddev></noise></y>
+            <z><noise type="gaussian"><mean>0</mean><stddev>${gn}</stddev></noise></z>
+          </angular_velocity>
+          <linear_acceleration>
+            <x><noise type="gaussian"><mean>0</mean><stddev>${an}</stddev></noise></x>
+            <y><noise type="gaussian"><mean>0</mean><stddev>${an}</stddev></noise></y>
+            <z><noise type="gaussian"><mean>0</mean><stddev>${an}</stddev></noise></z>
+          </linear_acceleration>
+        </imu>
+      </sensor>
+    </gazebo>
+
+    <xacro:property name="cam" value="${cfg['sensors']['depth_camera']}"/>
+    <gazebo reference="camera_link">
+      <sensor name="depth_camera" type="rgbd_camera">
+        <!-- gz cameras look along +x of camera_link; ROS image frame = optical frame -->
+        <gz_frame_id>camera_optical_frame</gz_frame_id>
+        <topic>/camera</topic>   <!-- -> /camera/image, /camera/depth_image, /camera/points, /camera/camera_info -->
+        <update_rate>${cam['rate_hz']}</update_rate>
+        <always_on>true</always_on>
+        <camera>
+          <horizontal_fov>${cam['hfov']}</horizontal_fov>
+          <image><width>${cam['width']}</width><height>${cam['height']}</height><format>R8G8B8</format></image>
+          <clip><near>${cam['range'][0]}</near><far>${cam['range'][1]}</far></clip>
+          <depth_camera><clip><near>${cam['range'][0]}</near><far>${cam['range'][1]}</far></clip></depth_camera>
+        </camera>
+      </sensor>
+    </gazebo>
+
+    <!-- Ground-truth odometry for MEASURING (velocity tracking). No TF: Nav2 will use real odometry. -->
+    <gazebo>
+      <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
+        <odom_frame>odom</odom_frame>
+        <robot_base_frame>base_link</robot_base_frame>
+        <odom_publish_frequency>50</odom_publish_frequency>
+        <dimensions>3</dimensions>
+        <odom_topic>/model/gurdy/odometry</odom_topic>
+        <tf_topic>/model/gurdy/odometry/tf</tf_topic>
+      </plugin>
+    </gazebo>
+  </xacro:if>
+
   <!-- fixed_base:=true bolts base_link to the world (legs hang free) for step-response tests. -->
   <xacro:if value="$(arg fixed_base)">
     <link name="world"/>

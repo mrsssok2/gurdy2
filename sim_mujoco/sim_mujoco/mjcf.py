@@ -71,6 +71,12 @@ def build_mjcf(robot: Robot | None = None, fixed_base: bool = False, base_z: flo
         f'biasprm="0 {-c["kp"]} {-c["kd"]}" forcerange="{-effort} {effort}"/>'
         for n in r.joint_names)
     bx, by, bz = (s / 2 for s in r.body_size)
+    cam = r.sensors["depth_camera"]
+    p = cam["pitch_down"]
+    # MuJoCo cameras look along -z_cam with x_cam right, y_cam up: right = -y_body,
+    # up = (sin p, 0, cos p) gives a view direction pitched down by p (same as the URDF camera_link).
+    cam_xyaxes = f"0 -1 0 {np.sin(p):.9g} 0 {np.cos(p):.9g}"
+    fovy_deg = np.degrees(2 * np.arctan(np.tan(cam["hfov"] / 2) * cam["height"] / cam["width"]))
     q0 = leg_ik(r, nominal_foot(r))
     home_q = " ".join(_v(q0) for _ in LEG_NAMES)
     free_home = "" if fixed_base else f"0 0 {base_z} 1 0 0 0 "
@@ -85,7 +91,7 @@ def build_mjcf(robot: Robot | None = None, fixed_base: bool = False, base_z: flo
     <!-- robot geoms only touch the floor (contype 0 / conaffinity 1 vs floor 1 / 0) -->
     <default class="collision"><geom group="0" contype="0" conaffinity="1" friction="{mu} 0.005 0.0001" mass="0"/></default>
   </default>
-  <visual><global offwidth="640" offheight="480"/></visual>
+  <visual><global offwidth="{max(640, cam['width'])}" offheight="{max(480, cam['height'])}"/></visual>
   <worldbody>
     <light pos="0 0 3" dir="0 0 -1" directional="true"/>
     <geom name="floor" type="plane" size="5 5 0.05" contype="1" conaffinity="0" friction="1.0 0.005 0.0001" rgba="0.7 0.7 0.7 1"/>
@@ -93,12 +99,18 @@ def build_mjcf(robot: Robot | None = None, fixed_base: bool = False, base_z: flo
       {'' if fixed_base else '<freejoint name="root"/>'}
       <inertial pos="0 0 0" mass="{r.body_mass}" diaginertia="{_v(r.body_inertia())}"/>
       <geom name="body" class="collision" type="box" size="{bx} {by} {bz}" rgba="0.25 0.27 0.3 1"/>
-      <site name="imu" pos="{_v(r.sensors['imu']['pos'])}"/>{''.join(legs)}
+      <site name="imu" pos="{_v(r.sensors['imu']['pos'])}"/>
+      <camera name="depth_camera" pos="{_v(cam['pos'])}" xyaxes="{cam_xyaxes}" fovy="{fovy_deg:.6g}"/>{''.join(legs)}
     </body>
   </worldbody>
   <actuator>
 {actuators}
   </actuator>
+  <sensor>
+    <gyro name="imu_gyro" site="imu" noise="{r.sensors['imu']['gyro_noise']}"/>
+    <accelerometer name="imu_accel" site="imu" noise="{r.sensors['imu']['accel_noise']}"/>
+    <framequat name="imu_quat" objtype="site" objname="imu"/>
+  </sensor>
   <keyframe>
     <key name="stance" qpos="{free_home}{home_q}" ctrl="{home_q}"/>
   </keyframe>

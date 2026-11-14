@@ -11,6 +11,7 @@
   <xacro:arg name="initial_q" default=""/>       <!-- "hip_yaw hip_pitch knee" for all legs -->
   <xacro:arg name="fixed_base" default="false"/>
   <xacro:arg name="base_z" default="0.3"/>
+  <xacro:arg name="sensors" default="true"/>     <!-- IMU, RGB-D camera, ground-truth odometry -->
   <xacro:property name="cfg" value="${xacro.load_yaml('$(arg robot_yaml)')}"/>
 
   <xacro:property name="seg" value="${cfg['legs']['segments']}"/>

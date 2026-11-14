@@ -84,3 +84,9 @@ were re-run after isolation and are identical to the earlier run.
 `/joint_states` now publishes at 100 Hz by default (`js_rate`, 500 Hz only for these tests);
 `robot_state_publisher` CPU dropped from ~27–36 % to ~10–12 %.
 Open: GUI RTF 0.55 — the GUI process uses ~100 % CPU; investigate before demos.
+
+**Update (sensors step):** averaging instantaneous `/stats` RTF values proved unreliable; RTF is now
+measured as sim/wall time over 10 s windows (`scripts/measure_rtf.py`). During this session the
+host's speed varied ~3x (pure MuJoCo stepping benchmark 34–170× real time with nothing else running;
+likely Windows power/thermal management), so the RTF values above are provisional and will be
+re-measured on a stable host. Parity metrics use sim time and are unaffected.
