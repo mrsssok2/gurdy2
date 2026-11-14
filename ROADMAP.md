@@ -44,6 +44,7 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 - [ ] Reward: command tracking (dominant), penalties for energy, falls, joint jerk/action rate, body tilt
 - [ ] Reward sanity test: standing still under a move command scores lower than walking
 - [ ] PPO (SB3) with parallel CPU envs; config files; checkpoints, resume, TensorBoard logs
+- [ ] (Only if needed) CUDA setup for a CNN-encoder terrain policy: `gpu` compose profile / CUDA base image
 - [ ] Terrain curriculum: flat → slopes → rough heightfield → steps
 - [ ] Domain randomization: friction, link mass, motor strength, latency/noise
 - [ ] Evaluation script (fixed seeds, per-terrain metrics) + videos
@@ -74,7 +75,8 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 ---
 
 ## Phase 4 — Perception + voice
-- [ ] Object detection by name (YOLO small or small VLM), 3D position from depth
+- [ ] CUDA setup: `gpu` compose profile (or CUDA base image) using the RTX 4050; `nvidia-smi` check in container
+- [ ] Object detection by name (YOLO small or small VLM), trained/run on local GPU, CPU/ONNX fallback; 3D position from depth
 - [ ] `find_object(name)` / `go_to(object)` behaviours
 - [ ] Gnani Prisma STT + Timbre TTS (key from env var only); offline Whisper fallback
 - [ ] Replies always start with "Main ek AI assistant hoon"
@@ -83,6 +85,7 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 - Detects each demo-world object by name; precision/recall measured on a recorded set.
 - "Laal dabba dhundo" style command finds and approaches the object in sim.
 - Works with network off (Whisper fallback); STT latency measured for both paths.
+- Detector runs on GPU and on the CPU/ONNX fallback; FPS reported for both.
 
 ---
 
@@ -90,17 +93,17 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 - [ ] Tool schema: walk, turn, go_to, find_object, explore, stop, report
 - [ ] Synthetic dataset: Hindi/Hinglish/Kannada/English; noisy-STT variants; multi-step missions; ambiguous and unsafe requests
 - [ ] Held-out test split (incl. "baayen"/"haan ye" style confusions)
-- [ ] SFT (LoRA, PEFT/TRL) on Qwen3-0.6B and 1.7B — Colab/Kaggle notebooks
+- [ ] SFT (LoRA, PEFT/TRL) on Qwen3-0.6B locally (RTX 4050, 6 GB); Qwen3-1.7B with QLoRA 4-bit if it fits — Colab/Kaggle notebooks as fallback
 - [ ] DPO: prefer clarification over guessing; refuse unsafe actions
 - [ ] Eval harness: tool-call exact match, argument accuracy, direction errors, safety refusal rate, clarification rate — vs keyword parser and base model
-- [ ] GGUF quantization, Ollama Modelfile, CPU latency measured
+- [ ] GGUF quantization, Ollama Modelfile; latency measured on local GPU and CPU
 - [ ] Hugging Face model card (with eval table)
 - [ ] LangGraph mission agent calling ROS 2 tools
 
 **AC**
 - Fine-tuned model beats keyword parser and base model on tool-call accuracy and direction errors (numbers in model card).
 - Unsafe-request refusal ≥ 95 %, with low over-refusal on safe commands (both reported).
-- Runs offline on CPU via Ollama; latency per command reported.
+- Runs offline via Ollama on local GPU and on CPU only; latency per command reported for both.
 - End-to-end demo: spoken multi-step mission executed in sim.
 
 ---

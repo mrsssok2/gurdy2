@@ -22,11 +22,17 @@ Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
 - Windows 11 + WSL2 Ubuntu + Docker Desktop (WSL integration), VS Code.
 - 16 GB RAM total; `.wslconfig` caps WSL at **8 GB RAM + 8 GB swap**. 12 logical CPUs.
 - GPU (measured 2026-11-14): **NVIDIA GeForce RTX 4050 Laptop, 6 GB VRAM**, driver 621.14, visible in
-  WSL (`/usr/lib/wsl/lib/nvidia-smi`); Docker Desktop has the `nvidia` runtime. So far it is used only
-  for OpenGL rendering (Mesa d3d12). Whether to use CUDA for RL/LLM work is **not yet decided**.
+  WSL (`/usr/lib/wsl/lib/nvidia-smi`); Docker Desktop has the `nvidia` runtime. Used now for OpenGL
+  rendering (Mesa d3d12). GPU/CUDA plan (decided 2026-11-14):
+  - Phase 2 RL: MuJoCo PPO stays on **CPU**; GPU only if a later CNN-encoder terrain policy benefits.
+  - Phase 4 perception: train + run YOLO on local **CUDA**, with a CPU/ONNX fallback.
+  - Phase 5 LLM: LoRA on Qwen3-0.6B locally first; Qwen3-1.7B with QLoRA (4-bit) if it fits in
+    6 GB; Colab/Kaggle as fallback. Local GPU inference via Ollama.
+  - Add CUDA setup (CUDA base image or a `gpu` compose profile) **only when Phase 2/4 needs it**.
+  - VRAM is 6 GB: one GPU workload at a time, same as the RAM rule.
 - Gazebo GUI via **WSLg** (`/mnt/wslg` + its X11 socket mounted into the container; host
   `/tmp/.X11-unix` is empty on this distro). Keep cameras small (≤ 320x240) and frame rates modest.
-- Free GPUs only on Google Colab / Kaggle (used for LLM training in Phase 5, via notebooks).
+- Free cloud GPUs on Google Colab / Kaggle: fallback for Phase 5 LLM training (notebooks).
 
 ## Hard rules
 1. **Secrets** (e.g. `GNANI_API_KEY`) come only from environment variables. Never write them to
@@ -55,11 +61,12 @@ Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
 ## Tech stack (decided)
 - ROS 2 **Jazzy** + Gazebo **Harmonic** (`ros_gz`, `gz_ros2_control`) in Docker on Ubuntu 24.04.
 - ros2_control with `joint_state_broadcaster` + a joint-group position controller.
-- MuJoCo + Gymnasium + Stable-Baselines3 PPO (CPU, `SubprocVecEnv`).
+- MuJoCo + Gymnasium + Stable-Baselines3 PPO (CPU, `SubprocVecEnv`; GPU only for a CNN encoder).
 - SLAM: slam_toolbox (2D, light) first; RTAB-Map optional. Nav2.
 - Perception: YOLO (small) or small VLM; Voice: Gnani Prisma STT / Timbre TTS, Whisper fallback.
   Spoken/text replies start with **"Main ek AI assistant hoon"**.
-- LLM: Qwen3-0.6B/1.7B, LoRA via PEFT/TRL (SFT → DPO), GGUF → Ollama, LangGraph agent.
+- LLM: Qwen3-0.6B/1.7B, LoRA/QLoRA via PEFT/TRL (SFT → DPO) on local RTX 4050 (Colab/Kaggle
+  fallback), GGUF → Ollama (local GPU inference), LangGraph agent.
 - Ops: Redpanda, Qdrant, HDBSCAN, PostgreSQL, Redis/Celery, FastAPI, LangGraph investigator.
 - Web: Next.js/TypeScript, rosbridge, three.js. CI: GitHub Actions.
 
@@ -121,4 +128,4 @@ _colcon build / teleop / tests are added as Phase 1 continues._
   gz_ros2_control, RViz, MuJoCo 3.3.0), `compose.yaml` profile `sim` (WSLg, /dev/dxg, port 8080,
   mem_limit 6g). Measured: shapes.sdf with GUI, d3d12 renderer → RTF 0.998–1.001; container RAM
   ≈ 420 MiB; CPU ≈ 130–180 %.
-- Next: step 1.2 — `robot.yaml` (single source of truth).
+- Next: step 1.2 — `robot.yaml` (single source of truth); values proposed, awaiting approval.
