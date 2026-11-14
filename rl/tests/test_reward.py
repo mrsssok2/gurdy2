@@ -107,6 +107,28 @@ def test_air_time_and_stand_still_gating():
     assert _terms(q=q)["stand_still"] == 0.0
 
 
+def test_combine_clips_and_scales():
+    w = {"track": 0.3, "alive": 0.05, "energy": -0.5, "joint_acc": -0.4, "fall": 0.0, "air_time": -0.1}
+    r, applied, clipped = R.combine(w, 1.0, True)
+    assert r == 0.0 and clipped                                   # -0.65 clipped to 0
+    r, applied, clipped = R.combine(w, 0.1, True)
+    assert applied["energy"] == pytest.approx(-0.05) and applied["joint_acc"] == pytest.approx(-0.04)
+    assert applied["track"] == 0.3 and applied["air_time"] == -0.1   # not penalty-scaled
+    assert r == pytest.approx(0.3 + 0.05 - 0.05 - 0.04 - 0.1) and not clipped
+    r, _, _ = R.combine({**w, "fall": -10.0}, 1.0, True)
+    assert r == -10.0                                             # fall kept outside the clip
+    r, _, _ = R.combine(w, 1.0, False)
+    assert r == pytest.approx(-0.65)
+
+
+def test_falling_never_beats_surviving():
+    """With only_positive, any surviving step is >= 0, a fall is -10 once: an episode that
+    falls at step k returns <= the same episode surviving."""
+    surviving = [R.combine({"track": 0.0, "alive": 0.05, "energy": -3.0, "fall": 0.0}, 1.0, True)[0]] * 100
+    falling = surviving[:10] + [R.combine({"track": 0.0, "alive": 0.05, "energy": -3.0, "fall": -10.0}, 1.0, True)[0]]
+    assert sum(falling) < sum(surviving)
+
+
 def test_ema_filter():
     f = np.zeros(3)
     for _ in range(100):

@@ -12,6 +12,12 @@ command size (0.21 at kappa 0.8, 0.018 at 0.5); floors keep zero / pure-turn com
 (user decision 2026-11-14: 0.02 m/s, 0.05 rad/s). kappa is annealed 0.8 -> 0.5 during training.
 
 All other terms are small shaping penalties/bonuses; weights live in rl/configs/*.yaml (`reward`).
+
+Combining (fix after the first smoke run, where noise-driven penalties made every step ~-1.2 so
+that falling early beat surviving):
+  * PENALTY_TERMS are multiplied by penalty_scale (curriculum 0.1 -> 1.0 during training);
+  * only_positive: r = max(0, sum of all terms except fall) + fall term — the fall penalty is a
+    separate terminal term, so a fall always loses future reward AND costs |fall|.
 """
 from __future__ import annotations
 
@@ -23,6 +29,8 @@ DEFAULTS = {
     "sigma_w_floor": 0.05,     # rad/s
     "air_time_target": 0.2,    # s; touchdowns after longer swings are rewarded (only when moving)
     "track_filter_s": 0.2,     # s; EMA time constant of the tracked velocity (0 = instantaneous)
+    "only_positive": True,     # clip the per-step sum (except the fall term) at >= 0
+    "penalty_scale": 1.0,      # multiplier on PENALTY_TERMS (training curriculum sets it)
     "weights": {
         "track": 1.5,
         "alive": 0.05,
@@ -41,6 +49,7 @@ DEFAULTS = {
 }
 
 _ZERO = 1e-6
+PENALTY_TERMS = ("tilt", "vz", "ang_xy", "energy", "torque", "joint_acc", "action_rate", "foot_slip")
 
 
 def is_moving(command) -> bool:
@@ -108,3 +117,13 @@ def terms(*, v_body, w_body, track_vel, gravity_body, command, kappa, cfg, joint
 
 def weighted(term_values: dict, weights: dict) -> dict:
     return {k: weights[k] * v for k, v in term_values.items()}
+
+
+def combine(weighted_terms: dict, penalty_scale: float, only_positive: bool):
+    """Apply the penalty curriculum and the non-negative clip.
+    Returns (reward, applied_terms, clipped)."""
+    applied = {k: (v * penalty_scale if k in PENALTY_TERMS else v) for k, v in weighted_terms.items()}
+    body = sum(v for k, v in applied.items() if k != "fall")
+    clipped = bool(only_positive and body < 0.0)
+    reward = (max(0.0, body) if only_positive else body) + applied.get("fall", 0.0)
+    return float(reward), applied, clipped

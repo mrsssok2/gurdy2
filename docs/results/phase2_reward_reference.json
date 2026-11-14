@@ -1,7 +1,7 @@
 {
   "forward": {
     "stand": {
-      "return": 108.43020665455013,
+      "return": 108.67045714121475,
       "max_abs_action": 0.0,
       "fell": false,
       "terms": {
@@ -21,7 +21,7 @@
       }
     },
     "tripod": {
-      "return": 405.1913018575937,
+      "return": 405.3752906514617,
       "max_abs_action": 0.7893686947330708,
       "fell": false,
       "terms": {
@@ -41,7 +41,7 @@
       }
     },
     "half": {
-      "return": 287.4969876265817,
+      "return": 287.68097642044967,
       "max_abs_action": 0.7760724401752541,
       "fell": false,
       "terms": {
@@ -63,7 +63,7 @@
   },
   "backward": {
     "stand": {
-      "return": 108.51380660737398,
+      "return": 108.77313002530865,
       "max_abs_action": 0.0,
       "fell": false,
       "terms": {
@@ -83,7 +83,7 @@
       }
     },
     "tripod": {
-      "return": 405.0041326562808,
+      "return": 405.21447502205916,
       "max_abs_action": 0.7893894011417535,
       "fell": false,
       "terms": {
@@ -103,7 +103,7 @@
       }
     },
     "half": {
-      "return": 287.4689221757527,
+      "return": 287.6792645415311,
       "max_abs_action": 0.7760850298934977,
       "fell": false,
       "terms": {
@@ -125,7 +125,7 @@
   },
   "strafe_left": {
     "stand": {
-      "return": 108.84162889806561,
+      "return": 109.07107016915224,
       "max_abs_action": 0.0,
       "fell": false,
       "terms": {
@@ -145,7 +145,7 @@
       }
     },
     "tripod": {
-      "return": 437.1833682100167,
+      "return": 437.36057281428197,
       "max_abs_action": 0.7987478953630991,
       "fell": false,
       "terms": {
@@ -165,7 +165,7 @@
       }
     },
     "half": {
-      "return": 304.0360450211407,
+      "return": 304.2132496254059,
       "max_abs_action": 0.779258938311873,
       "fell": false,
       "terms": {
@@ -187,7 +187,7 @@
   },
   "strafe_right": {
     "stand": {
-      "return": 108.11951399369111,
+      "return": 108.38885862643671,
       "max_abs_action": 0.0,
       "fell": false,
       "terms": {
@@ -207,7 +207,7 @@
       }
     },
     "tripod": {
-      "return": 434.6760952747714,
+      "return": 434.89342384417847,
       "max_abs_action": 0.7859032335441651,
       "fell": false,
       "terms": {
@@ -227,7 +227,7 @@
       }
     },
     "half": {
-      "return": 301.2624089973568,
+      "return": 301.4797375667639,
       "max_abs_action": 0.7721561684607166,
       "fell": false,
       "terms": {
@@ -249,7 +249,7 @@
   },
   "turn_left": {
     "stand": {
-      "return": 108.68249701869418,
+      "return": 108.91334392089207,
       "max_abs_action": 0.0,
       "fell": false,
       "terms": {
@@ -269,7 +269,7 @@
       }
     },
     "tripod": {
-      "return": 420.491909541773,
+      "return": 420.67760725017473,
       "max_abs_action": 0.7610923912004022,
       "fell": false,
       "terms": {
@@ -289,7 +289,7 @@
       }
     },
     "half": {
-      "return": 268.95103829219664,
+      "return": 269.1367360005984,
       "max_abs_action": 0.7586388260317151,
       "fell": false,
       "terms": {
@@ -311,7 +311,7 @@
   },
   "turn_right": {
     "stand": {
-      "return": 108.23332177896822,
+      "return": 108.4995943594059,
       "max_abs_action": 0.0,
       "fell": false,
       "terms": {
@@ -331,7 +331,7 @@
       }
     },
     "tripod": {
-      "return": 420.2111541910656,
+      "return": 420.42032766523124,
       "max_abs_action": 0.7610776576081885,
       "fell": false,
       "terms": {
@@ -351,7 +351,7 @@
       }
     },
     "half": {
-      "return": 268.6406010441572,
+      "return": 268.8497745183229,
       "max_abs_action": 0.7586309949770497,
       "fell": false,
       "terms": {
@@ -373,7 +373,7 @@
   },
   "combined": {
     "stand": {
-      "return": 34.04106831149361,
+      "return": 34.5257224352607,
       "max_abs_action": 0.0,
       "fell": false,
       "terms": {
@@ -393,7 +393,7 @@
       }
     },
     "tripod": {
-      "return": 406.3734308632054,
+      "return": 406.80856112722324,
       "max_abs_action": 0.7761952217976359,
       "fell": false,
       "terms": {
@@ -413,7 +413,7 @@
       }
     },
     "half": {
-      "return": 179.35132303702557,
+      "return": 179.78645330104342,
       "max_abs_action": 0.7665714577570004,
       "fell": false,
       "terms": {
@@ -435,7 +435,7 @@
   },
   "slow": {
     "stand": {
-      "return": 108.38444513508094,
+      "return": 108.6152782172281,
       "max_abs_action": 0.0,
       "fell": false,
       "terms": {
@@ -455,7 +455,7 @@
       }
     },
     "tripod": {
-      "return": 427.1161764300485,
+      "return": 427.28486018876544,
       "max_abs_action": 0.7760724401752541,
       "fell": false,
       "terms": {
@@ -475,7 +475,7 @@
       }
     },
     "half": {
-      "return": 290.56073583248883,
+      "return": 290.72941959120584,
       "max_abs_action": 0.765932449001647,
       "fell": false,
       "terms": {
@@ -497,7 +497,7 @@
   },
   "fast_turn": {
     "stand": {
-      "return": 108.56837100232818,
+      "return": 108.8083311773226,
       "max_abs_action": 0.0,
       "fell": false,
       "terms": {
@@ -517,7 +517,7 @@
       }
     },
     "tripod": {
-      "return": 414.1661005694256,
+      "return": 414.35871236360856,
       "max_abs_action": 0.8176114418519252,
       "fell": false,
       "terms": {
@@ -537,7 +537,7 @@
       }
     },
     "half": {
-      "return": 269.1283503479051,
+      "return": 269.32096214208804,
       "max_abs_action": 0.7610923912004022,
       "fell": false,
       "terms": {

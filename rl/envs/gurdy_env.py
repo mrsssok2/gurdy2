@@ -56,6 +56,7 @@ class GurdyEnv(gym.Env):
         rc = reward_config or {}
         self.rcfg = {**R.DEFAULTS, **rc, "weights": {**R.DEFAULTS["weights"], **rc.get("weights", {})}}
         self.kappa = float(self.rcfg["kappa"])        # annealed by the training callback via set_attr
+        self.penalty_scale = float(self.rcfg["penalty_scale"])   # curriculum, set via set_attr
         self.robot = load_robot(robot_yaml)
         r = self.robot
         self.model = mujoco.MjModel.from_xml_string(build_mjcf(r))
@@ -180,8 +181,8 @@ class GurdyEnv(gym.Env):
             foot_contact=contact, foot_vel_xy=self.foot_velocities_xy(),
             air_bonus=self.air_timer.update(contact, self.rcfg["air_time_target"]),
             q=d.qpos[self.qadr], q_stance=self.q_stance, fallen=terminated)
-        terms = R.weighted(raw, self.rcfg["weights"])
-        reward = float(sum(terms.values()))
+        reward, terms, clipped = R.combine(R.weighted(raw, self.rcfg["weights"]), self.penalty_scale,
+                                           self.rcfg["only_positive"])
         self.qd_prev = qd
         truncated = self.steps >= self.max_steps
         self.prev_action = a
@@ -190,5 +191,6 @@ class GurdyEnv(gym.Env):
             self.command = self._sample_command()
         obs = self.hist.push(self._frame())
         info = {"command": cmd, "body_vel": v, "yaw_rate": float(wz), "body_z": float(d.qpos[2]),
-                "foot_contact": contact, "track_vel": self.track_vel.copy(), "reward_terms": terms}
+                "foot_contact": contact, "track_vel": self.track_vel.copy(), "reward_terms": terms,
+                "reward_clipped": clipped}
         return obs.astype(np.float32), reward, terminated, truncated, info
