@@ -9,8 +9,10 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 
 ## Phase 0 — Project setup
 - [x] CLAUDE.md and ROADMAP.md
-- [ ] Monorepo folder structure approved
-- [ ] `.gitignore`, `.env.example` (names only), LICENSE, README stub
+- [x] Monorepo folder structure approved (see CLAUDE.md)
+- [x] `.gitignore`, LICENSE (MIT)
+- [ ] `.env.example` (names only), README stub
+- [ ] Repo moved to WSL filesystem (`~/projects/gurdy2`)
 
 ---
 

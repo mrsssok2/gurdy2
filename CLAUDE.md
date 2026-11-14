@@ -68,11 +68,43 @@ Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
 - Gait/policy nodes publish joint targets; everything above them speaks only `/cmd_vel`
   (`geometry_msgs/Twist`: linear.x, linear.y, angular.z), so Nav2/teleop/LLM are swappable.
 
-## Repo layout
-_Proposed — awaiting user approval. Update this section once approved._
+## Repo layout (approved)
+Repo lives in the WSL filesystem: `~/projects/gurdy2` (not `/mnt/c/...` — bind mounts from the
+Windows drive are slow for colcon builds). License: MIT.
+
+```
+gurdy2/
+├── CLAUDE.md  ROADMAP.md  README.md  LICENSE  .env.example (variable names only)
+├── compose.yaml               # one file, profiles: sim, rl, nav, voice, brain, ops, web
+├── docker/
+│   ├── ros/Dockerfile         # Jazzy + Gazebo Harmonic + ros2_control + MuJoCo
+│   ├── rl/Dockerfile          # headless: MuJoCo + PyTorch CPU + SB3 (no ROS)
+│   └── ops/ …                 # Phase 6
+├── gurdy_core/                # pure Python, no ROS: leg FK/IK, gait math, robot.yaml loader
+│   └── tests/
+├── ros2_ws/src/               # colcon workspace
+│   ├── gurdy_description/     # robot.yaml (single source of truth), xacro, RViz config
+│   ├── gurdy_gazebo/          # worlds, gz bridge config, spawn launch
+│   ├── gurdy_control/         # ros2_control controller YAML
+│   ├── gurdy_gait/            # tripod gait node (/cmd_vel -> joint targets)
+│   ├── gurdy_bringup/         # top-level launch files
+│   ├── gurdy_interfaces/      # custom msgs/srvs/actions (when needed)
+│   └── (later) gurdy_rl_policy, gurdy_navigation, gurdy_perception, gurdy_voice, gurdy_agent
+├── sim_mujoco/                # MJCF generator (from robot.yaml) + parity test
+├── rl/                        # Phase 2: envs/, configs/, train.py, eval.py
+├── brain/                     # Phase 5: data_gen/, notebooks/, eval/, ollama/, agent/
+├── ops/                       # Phase 6: services/, workers/, api/, fault_injection/
+├── web/                       # Phase 7: Next.js app
+├── docs/                      # design notes, results/, gifs/, website
+├── scripts/                   # dev helpers (chatter metric, RAM monitor, ...)
+└── .github/workflows/
+```
 
 ## Common commands
 _Filled in during Phase 1 (build image, start sim, colcon build, teleop, tests)._
 
 ## Current status
-- Phase 0: CLAUDE.md + ROADMAP.md written; folder structure proposed; Phase 1 plan awaiting approval.
+- Phase 0: CLAUDE.md, ROADMAP.md, .gitignore, LICENSE (MIT) done; folder structure approved.
+- Repo being moved by the user from `C:\Users\mahadev\projects\gurdy2` to WSL `~/projects/gurdy2`.
+- Next: Phase 1 step 1.1 (Docker image + compose `sim` profile + WSLg check). Phase 1 plan is in
+  ROADMAP.md; start Docker Desktop first.
