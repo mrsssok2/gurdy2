@@ -46,17 +46,37 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 ---
 
 ## Phase 2 — RL locomotion (MuJoCo → Gazebo)
-- [ ] Gymnasium env (MuJoCo) with velocity-command observation, joint-target actions (residual over a nominal stance)
-- [ ] Reward: command tracking (dominant), penalties for energy, falls, joint jerk/action rate, body tilt
-- [ ] Reward sanity test: standing still under a move command scores lower than walking
-- [ ] PPO (SB3) with parallel CPU envs; config files; checkpoints, resume, TensorBoard logs
-- [ ] (Only if needed) CUDA setup for a CNN-encoder terrain policy: `gpu` compose profile / CUDA base image
-- [ ] Terrain curriculum: flat → slopes → rough heightfield → steps
-- [ ] Domain randomization: friction, link mass, motor strength, latency/noise
-- [ ] Evaluation script (fixed seeds, per-terrain metrics) + videos
-- [ ] Policy exported (ONNX/TorchScript) and deployed as ROS 2 node in Gazebo (sim-to-sim)
-- [ ] Experiment A: RL vs tripod gait on rough terrain
-- [ ] Experiment B: RL vs tripod gait with one leg disabled
+Plan approved 2026-11-14. Decisions: action option **A** (joint offsets around stance; B = residual on
+tripod only as fallback); observation = 3-frame history of proprioception only (gravity vector, gyro,
+joint pos/vel, previous action, command, gait clock) — no ground truth; asymmetric critic added by
+2.7 at the latest (earlier if tracking stalls); SB3 PPO on CPU, `log_std_init` ≈ ln 0.35, entropy coef
+≤ 0.001; reward = joint tracking term exp(−‖e_v‖²/σ_v² − e_ω²/σ_ω²) with command-relative sigmas
+(κ 0.8 → 0.5) so standing can't farm tracking reward; optional time-boxed MJX spike after CPU works.
+
+- [x] **2.1** `rl` image + compose profile; env skeleton; benchmark 1/4/6/8/10 workers + one PPO update
+  — AC: steps/s and RAM per worker count recorded, n_envs chosen, container < 6 GB
+  — done: batched VecEnv 10×4 = 40 envs, 6.8k env steps/s, PPO 3.6k samples/s, 1.75 GiB (`docs/results/phase2_bench.md`)
+- [ ] **2.2** Gymnasium env (flat): shared obs builder in `gurdy_core`, action mapping, termination,
+  command sampling — AC: `check_env` passes; tests: obs layout/dims, no privileged inputs, targets
+  always within joint limits, deterministic seeding
+- [ ] **2.3** Reward + sanity tests — AC: every term unit-tested; walking at 50 % of command clearly beats
+  standing; tripod walker ≥ 2–3× standing under every move command (pure turning included);
+  standing wins at zero command; tripod reference return recorded
+- [ ] **2.4** `train.py` + configs (flat, no DR), TensorBoard, checkpoints + resume — AC: flat tracking
+  error < 20 %, fall rate < 5 % over 100 episodes, resume verified, RAM peak + wall time recorded
+  (time box ~60M steps, then asymmetric critic, then option B)
+- [ ] **2.5** `eval.py`: same protocol for policy and tripod; tracking, falls, energy, cost of transport,
+  videos — AC: `docs/results/phase2_flat.md`
+- [ ] **2.6** (optional, time-boxed) MJX + JAX spike on the RTX 4050 — AC: go/no-go from measured
+  throughput (≥ 10× end-to-end) and stand/step parity vs CPU MuJoCo
+- [ ] **2.7** Domain randomization (friction, masses, motor strength, damping, latency, sensor noise,
+  pushes, leg failure) + asymmetric critic — AC: flat AC still met with DR; fall rate < 5 % at DR extremes
+- [ ] **2.8** Terrain curriculum (heightfield: rough 0.5–2 cm, slopes 5–12°, steps 1.5–3 cm) — AC:
+  success rate per level; RL beats tripod on rough terrain
+- [ ] **2.9** ONNX export + `gurdy_rl_policy` ROS node + Gazebo deployment — AC: ONNX == torch (1e-5);
+  walks in Gazebo without retraining; no fall in the 2-min protocol; tracking + sim-to-sim gap reported
+- [ ] **2.10** Experiment A (rough terrain, RL vs tripod, MuJoCo + Gazebo) and Experiment B (one leg
+  disabled) — AC: results tables in `docs/results/`
 
 **AC**
 - Training runs without freezing WSL (RAM stays under budget; numbers logged); resume from checkpoint works.

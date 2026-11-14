@@ -1,0 +1,95 @@
+{
+  "cpu": 12,
+  "host_benchmark_before": 64.56295998349177,
+  "single": {
+    "steps_per_s": 2179.336421655791,
+    "physics_only_steps_per_s": 3871.3079764553677,
+    "python_overhead_pct": 43.705423724742595,
+    "resets": 5
+  },
+  "vec": [
+    {
+      "workers": 1,
+      "env_steps_per_s": 790.4643562348624,
+      "ram_tree_mib": 703.26953125
+    },
+    {
+      "workers": 8,
+      "env_steps_per_s": 3324.843278140551,
+      "ram_tree_mib": 3070.9375
+    }
+  ],
+  "batched": [
+    {
+      "workers": 4,
+      "envs_per_worker": 4,
+      "num_envs": 16,
+      "env_steps_per_s": 3221.3976078782284,
+      "ram_tree_mib": 840.00390625
+    },
+    {
+      "workers": 6,
+      "envs_per_worker": 4,
+      "num_envs": 24,
+      "env_steps_per_s": 5205.9601408168055,
+      "ram_tree_mib": 1076.98046875
+    },
+    {
+      "workers": 8,
+      "envs_per_worker": 2,
+      "num_envs": 16,
+      "env_steps_per_s": 4951.573325072339,
+      "ram_tree_mib": 1302.68359375
+    },
+    {
+      "workers": 8,
+      "envs_per_worker": 4,
+      "num_envs": 32,
+      "env_steps_per_s": 5868.804284332637,
+      "ram_tree_mib": 1314.41796875
+    },
+    {
+      "workers": 8,
+      "envs_per_worker": 8,
+      "num_envs": 64,
+      "env_steps_per_s": 6114.862412528458,
+      "ram_tree_mib": 1337.8515625
+    },
+    {
+      "workers": 10,
+      "envs_per_worker": 4,
+      "num_envs": 40,
+      "env_steps_per_s": 6797.056437786091,
+      "ram_tree_mib": 1550.57421875
+    }
+  ],
+  "ppo_batched": [
+    {
+      "workers": 10,
+      "envs_per_worker": 4,
+      "num_envs": 40,
+      "n_steps": 409,
+      "torch_threads": 2,
+      "samples_per_iter": 16360,
+      "iter_s": 4.49520502949963,
+      "train_s": 1.3549847810008941,
+      "collect_s": 3.1402202484987356,
+      "overall_samples_per_s": 3639.433550335982,
+      "ram_tree_mib": 1694.875
+    },
+    {
+      "workers": 10,
+      "envs_per_worker": 4,
+      "num_envs": 40,
+      "n_steps": 409,
+      "torch_threads": 4,
+      "samples_per_iter": 16360,
+      "iter_s": 5.91129121799986,
+      "train_s": 1.3962997819999146,
+      "collect_s": 4.514991435999946,
+      "overall_samples_per_s": 2767.5848468070494,
+      "ram_tree_mib": 1721.33203125
+    }
+  ],
+  "host_benchmark_after": 70.01755968646437
+}

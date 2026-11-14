@@ -50,3 +50,28 @@ services:
     # Walking robot in Gazebo (builds the workspace on first run). Drive it from a second
     # terminal:  docker compose exec sim bash  ->  ros2 run teleop_twist_keyboard ...
     command: ["/home/ubuntu/gurdy2/scripts/start_sim.sh"]
+
+  # RL training (Phase 2): headless MuJoCo + SB3. Never run together with `sim` (RAM rule).
+  #   docker compose run --rm rl python3 rl/bench.py
+  #   docker compose run --rm --service-ports rl tensorboard --logdir runs --bind_all   # :6006
+  rl:
+    profiles: [rl]
+    image: gurdy2/rl:cpu
+    build:
+      context: docker/rl
+    environment:
+      MESA_D3D12_DEFAULT_ADAPTER_NAME: ${GPU_ADAPTER:-NVIDIA}   # EGL video rendering via WSL GPU
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+      GALLIUM_DRIVER: ${GZ_GALLIUM_DRIVER:-d3d12}
+    volumes:
+      - .:/home/ubuntu/gurdy2
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+    devices:
+      - /dev/dxg
+    ports:
+      - "6006:6006"       # TensorBoard
+    mem_limit: 6g
+    shm_size: 1g          # SubprocVecEnv pipes / torch
+    init: true
+    stdin_open: true
+    tty: true

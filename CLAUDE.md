@@ -149,6 +149,11 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p speed:=0.1 -p
 scripts/tracking_experiments.sh OUT_DIR          # (in container) 2-min tracking test, both sims
 python3 scripts/measure_rtf.py                   # (in container, sim running) RTF from sim/wall time
 ```
+```bash
+docker compose build rl                          # RL image (no ROS), ~2.9 GB
+docker compose run --rm rl python3 rl/bench.py   # throughput / RAM benchmark
+docker compose run --rm rl bash -c 'cd rl && python3 -m pytest -q'
+```
 
 ## Current status
 - **Phase 0 and Phase 1 done (2026-11-14), pushed to github.com/mrsssok2/gurdy2.** All Phase 1 AC
@@ -165,4 +170,14 @@ python3 scripts/measure_rtf.py                   # (in container, sim running) R
   (GZ_PARTITION, ROS_AUTOMATIC_DISCOVERY_RANGE); measure RTF as sim/wall over windows; host clock
   varies under load (report ranges + host benchmark); rclpy use_sim_time costs ~40 % CPU at 1 kHz /clock.
 - Open items: GUI RTF ~0.5 while walking; MuJoCo soft-contact foot splay (revisit `impratio` for RL).
-- Next: Phase 2 (RL locomotion in MuJoCo). Show the Phase 2 plan before building.
+- **Phase 2 in progress** (plan approved 2026-11-14, steps 2.1–2.10 in ROADMAP.md). Decisions: action
+  option A (offsets around stance; B residual only as fallback), 3-frame proprioceptive history, no
+  ground truth in obs, asymmetric critic by 2.7 at the latest; reward tracking term
+  exp(−‖e_v‖²/σ_v² − e_ω²/σ_ω²) with σ_v = max(0.03, κ‖v_cmd‖), σ_ω = max(0.1, κ|ω_cmd|), κ 0.8 → 0.5
+  (standing cannot farm tracking reward; tests: 50 % speed ≫ standing, tripod ≥ 2–3× standing for
+  every move command incl. pure turning); PPO log_std_init ln 0.35, ent_coef ≤ 0.001; MJX spike after CPU.
+- 2.1 done: `docker/rl` image (no ROS; MuJoCo 3.3.0 = sim image), compose profile `rl`,
+  `gurdy_core/rl_obs.py` (shared obs builder), `rl/envs/gurdy_env.py` (skeleton, placeholder reward),
+  `rl/vec_env.py` BatchedSubprocVecEnv (10 workers × 4 envs: 6.8k env steps/s, 1.55 GiB vs SB3
+  SubprocVecEnv 3.3k / 3.1 GiB), PPO loop 3.6k samples/s with torch threads 2 (4 is slower).
+- Next: 2.2 (full env + tests).
