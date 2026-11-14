@@ -1,0 +1,8 @@
+# Long flat-ground run (step 2.4): BC-initialised from the tripod gait (plan C2), gentler updates.
+# Start: train.py --init-from rl/runs/c2_bc/checkpoints/ppo_bc.zip  (critic warm-up from flat_C2_bc)
+_base: flat_C2_bc.yaml
+ppo:
+  learning_rate: 5.0e-5         # C2 smoke at 1e-4 had clip fraction ~0.3 (too large for fine-tuning)
+  target_kl: 0.015
+training:
+  total_timesteps: 60000000

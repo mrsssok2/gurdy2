@@ -24,6 +24,7 @@ import numpy as np
 
 from gurdy_core.experiments import FALL_TILT, FALL_Z
 from gurdy_core.kinematics import leg_ik, nominal_foot
+from gurdy_core.rl_action import ActionMapper
 from gurdy_core.rl_obs import OBS_DIM, ObsHistory, build_frame, gravity_in_body
 from gurdy_core.robot import JOINT_TYPES, LEG_NAMES, load_gait, load_robot
 from sim_mujoco.mjcf import build_mjcf
@@ -37,6 +38,7 @@ DEFAULTS = {
     "zero_command_prob": 0.15,
     "action_scale": {"hip_yaw": 0.3, "hip_pitch": 0.7, "knee": 0.6},
     "init_joint_noise": 0.05,
+    "action_filter_alpha": 1.0,     # EMA on actions: a_f = alpha*a + (1-alpha)*a_f_prev (1.0 = off)
 }
 
 
@@ -68,10 +70,9 @@ class GurdyEnv(gym.Env):
         self.cmd_steps = int(round(self.cfg["command_period_s"] / self.policy_dt))
         self.clock_period = float(load_gait()["tripod"]["cycle_time"])
 
-        self.q_stance = np.tile(leg_ik(r, nominal_foot(r)), len(LEG_NAMES))
-        self.scale = np.tile([self.cfg["action_scale"][t] for t in JOINT_TYPES], len(LEG_NAMES))
-        self.q_lo = np.tile([r.joint_limits[t][0] for t in JOINT_TYPES], len(LEG_NAMES))
-        self.q_hi = np.tile([r.joint_limits[t][1] for t in JOINT_TYPES], len(LEG_NAMES))
+        self.mapper = ActionMapper(r, self.cfg["action_scale"], self.cfg["action_filter_alpha"])
+        self.q_stance, self.scale = self.mapper.q_stance, self.mapper.scale
+        self.q_lo, self.q_hi = self.mapper.q_lo, self.mapper.q_hi
         self.cmd_lim = np.array([r.command_limits[k] for k in ("vx", "vy", "wz")])
 
         self.qadr = np.array([m.joint(n).qposadr[0] for n in r.joint_names])
@@ -148,6 +149,7 @@ class GurdyEnv(gym.Env):
         mujoco.mj_forward(m, d)
         self.steps = 0
         self.prev_action = np.zeros(self.action_space.shape[0])
+        self.mapper.reset()
         self.q_ref = self.q_stance.copy()
         self.qd_prev = d.qvel[self.vadr].copy()
         self.air_timer.reset()
@@ -159,9 +161,9 @@ class GurdyEnv(gym.Env):
         return obs.astype(np.float32), {"command": self.command.copy()}
 
     def step(self, action):
-        a = np.minimum(np.maximum(np.asarray(action, dtype=float), -1.0), 1.0)
         d = self.data
-        self.q_ref = np.minimum(np.maximum(self.q_stance + self.scale * a, self.q_lo), self.q_hi)
+        self.q_ref = self.mapper(action)               # clip, EMA filter (gurdy_core), joint targets
+        a = self.mapper.a_filt                         # filtered action = what the policy observes next
         d.ctrl[:] = self.q_ref
         cmd = self.command.copy()                      # command this step was taken under
         mujoco.mj_step(self.model, d, nstep=self.n_sub)

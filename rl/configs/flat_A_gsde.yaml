@@ -1,0 +1,11 @@
+# Smoke comparison A: gSDE exploration (noise resampled every 4 steps = 80 ms), lr 1e-4,
+# penalties start at 0.02x. log_std_init -4.0 gives an effective action std of ~0.10 at init
+# (calibrated: -3.5 -> 0.17, -3.0 -> 0.28), i.e. the same noise level as run B.
+_base: flat.yaml
+ppo:
+  learning_rate: 1.0e-4
+  use_sde: true
+  sde_sample_freq: 4
+  log_std_init: -4.0
+training:
+  penalty_curriculum: {start: 0.02, end: 1.0, from_step: 0, to_step: 15000000}

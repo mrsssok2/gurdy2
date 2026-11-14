@@ -1,0 +1,7 @@
+# Plan C2: BC warm start from the tripod gait (results labelled "BC-initialised from the tripod gait").
+# Same env/reward as C1 (action EMA alpha 0.5); PPO fine-tune at lr 1e-4 after a critic warm-up.
+_base: flat_C1_ema.yaml
+ppo:
+  log_std_init: -3.0            # ~0.05; bc.py sets the cloned policy's std explicitly (--bc-std)
+training:
+  critic_warmup_steps: 204800   # 10 PPO iterations with the actor frozen

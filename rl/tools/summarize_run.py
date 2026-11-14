@@ -16,7 +16,7 @@ KEYS = [
     ("reward_terms/ang_xy", "r_angxy"), ("reward_terms/action_rate", "r_arate"), ("reward_terms/vz", "r_vz"),
     ("reward_terms/torque", "r_torque"), ("reward_terms/air_time", "r_air"), ("reward_terms/stand_still", "r_still"),
     ("reward_terms/tilt", "r_tilt"), ("reward_terms/fall", "r_fall"),
-    ("train/std", "std"), ("train/entropy_loss", "entropy"), ("train/approx_kl", "kl"),
+    ("gurdy/action_std", "eff_std"), ("train/std", "std"), ("train/entropy_loss", "entropy"), ("train/approx_kl", "kl"),
     ("train/clip_fraction", "clipfrac"), ("train/explained_variance", "expl_var"),
     ("train/value_loss", "value_loss"), ("train/policy_gradient_loss", "pg_loss"),
     ("gurdy/penalty_scale", "pen_scale"), ("gurdy/reward_clipped_frac", "clipped"),

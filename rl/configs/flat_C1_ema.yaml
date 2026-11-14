@@ -1,0 +1,4 @@
+# Plan C1: run B's exploration (Gaussian std 0.1, lr 1e-4, penalties from 0.02x) + action EMA alpha 0.5.
+_base: flat_B_std01.yaml
+env:
+  action_filter_alpha: 0.5

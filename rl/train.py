@@ -30,6 +30,22 @@ def make_env(env_cfg, reward_cfg):
     return GurdyEnv(env_cfg, reward_config=reward_cfg)
 
 
+def deep_merge(base: dict, over: dict) -> dict:
+    out = dict(base)
+    for k, v in over.items():
+        out[k] = deep_merge(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
+
+
+def load_cfg(path: str) -> dict:
+    """YAML config with optional `_base: other.yaml` (relative path), deep-merged."""
+    cfg = yaml.safe_load(open(path)) or {}
+    base = cfg.pop("_base", None)
+    if base:
+        cfg = deep_merge(load_cfg(os.path.join(os.path.dirname(path), base)), cfg)
+    return cfg
+
+
 def git_hash():
     """Commit of the repo, read from .git directly (the rl image has no git binary)."""
     g = os.path.join(HERE, "..", ".git")
@@ -78,9 +94,38 @@ def find_latest(ckpt_dir):
 
 
 def vecnorm_for(ckpt):
-    m = re.search(r"ppo_(\d+)_steps\.zip$", ckpt)
-    tag = f"{m.group(1)}_steps" if m else "latest"
+    """ppo_<tag>.zip -> ppo_vecnormalize_<tag>.pkl (tag: <N>_steps, latest, bc)."""
+    tag = re.search(r"ppo_(.+)\.zip$", os.path.basename(ckpt)).group(1)
     return os.path.join(os.path.dirname(ckpt), f"ppo_vecnormalize_{tag}.pkl")
+
+
+def make_model(cfg, venv, run, seed):
+    from stable_baselines3 import PPO
+    pc = cfg["ppo"]
+    return PPO("MlpPolicy", venv, n_steps=pc["n_steps"], batch_size=pc["batch_size"],
+               n_epochs=pc["n_epochs"], learning_rate=pc["learning_rate"], gamma=pc["gamma"],
+               gae_lambda=pc["gae_lambda"], clip_range=pc["clip_range"], ent_coef=pc["ent_coef"],
+               vf_coef=pc["vf_coef"], max_grad_norm=pc["max_grad_norm"], target_kl=pc["target_kl"],
+               use_sde=pc.get("use_sde", False), sde_sample_freq=pc.get("sde_sample_freq", -1),
+               policy_kwargs=dict(net_arch=dict(pi=pc["net_arch"], vf=pc["net_arch"]),
+                                  log_std_init=pc["log_std_init"]),
+               tensorboard_log=os.path.join(run, "tb"), seed=seed, device="cpu", verbose=1)
+
+
+def make_venv(cfg, seed):
+    from vec_env import BatchedSubprocVecEnv
+    pc = cfg["ppo"]
+    venv = BatchedSubprocVecEnv(functools.partial(make_env, cfg["env"], cfg["reward"]),
+                                pc["n_workers"], pc["envs_per_worker"])
+    venv.seed(seed)
+    return venv
+
+
+def actor_parameters(policy):
+    """Parameters that define the action distribution (frozen during critic warm-up)."""
+    params = list(policy.action_net.parameters()) + [policy.log_std]
+    params += list(policy.mlp_extractor.policy_net.parameters())
+    return params
 
 
 def main():
@@ -89,6 +134,7 @@ def main():
     ap.add_argument("--name", required=True)
     ap.add_argument("--timesteps", type=int, help="total timesteps (overrides config)")
     ap.add_argument("--resume", help="checkpoint .zip, or 'latest'")
+    ap.add_argument("--init-from", help="start a NEW run from these weights (e.g. BC checkpoint ppo_bc.zip)")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
 
@@ -96,9 +142,7 @@ def main():
     from stable_baselines3 import PPO
     from stable_baselines3.common.callbacks import BaseCallback, CallbackList, CheckpointCallback
     from stable_baselines3.common.vec_env import VecNormalize
-    from vec_env import BatchedSubprocVecEnv
-
-    cfg = yaml.safe_load(open(a.config))
+    cfg = load_cfg(a.config)
     pc, tc = cfg["ppo"], cfg["training"]
     total = a.timesteps or tc["total_timesteps"]
     run = os.path.join(HERE, "runs", a.name)
@@ -111,12 +155,18 @@ def main():
         yaml.safe_dump({**cfg, "_run": {"git": git, "total_timesteps": total, "seed": a.seed,
                                         "resume": a.resume, "started": time.strftime("%Y-%m-%d %H:%M:%S")}}, f)
 
-    env_fn = functools.partial(make_env, cfg["env"], cfg["reward"])
-    venv = BatchedSubprocVecEnv(env_fn, pc["n_workers"], pc["envs_per_worker"])
-    venv.seed(a.seed)
+    venv = make_venv(cfg, a.seed)
     n_envs = venv.num_envs
+    warmup = 0
 
-    if a.resume:
+    if a.init_from:
+        venv = VecNormalize.load(vecnorm_for(a.init_from), venv)
+        venv.training = True
+        model = PPO.load(a.init_from, env=venv, device="cpu", tensorboard_log=os.path.join(run, "tb"))
+        model.num_timesteps = 0
+        warmup = int(tc.get("critic_warmup_steps", 0))
+        print(f"[train] new run initialised from {a.init_from}; critic warm-up {warmup} steps", flush=True)
+    elif a.resume:
         ckpt = find_latest(ckpt_dir) if a.resume == "latest" else a.resume
         venv = VecNormalize.load(vecnorm_for(ckpt), venv)
         venv.training = True
@@ -125,13 +175,7 @@ def main():
     else:
         venv = VecNormalize(venv, norm_obs=pc["normalize_obs"], norm_reward=pc["normalize_reward"],
                             clip_obs=10.0, gamma=pc["gamma"])
-        model = PPO("MlpPolicy", venv, n_steps=pc["n_steps"], batch_size=pc["batch_size"],
-                    n_epochs=pc["n_epochs"], learning_rate=pc["learning_rate"], gamma=pc["gamma"],
-                    gae_lambda=pc["gae_lambda"], clip_range=pc["clip_range"], ent_coef=pc["ent_coef"],
-                    vf_coef=pc["vf_coef"], max_grad_norm=pc["max_grad_norm"], target_kl=pc["target_kl"],
-                    policy_kwargs=dict(net_arch=dict(pi=pc["net_arch"], vf=pc["net_arch"]),
-                                       log_std_init=pc["log_std_init"]),
-                    tensorboard_log=os.path.join(run, "tb"), seed=a.seed, device="cpu", verbose=1)
+        model = make_model(cfg, venv, run, a.seed)
 
     class Metrics(BaseCallback):
         """Per-rollout means of every reward term, fall rate, tracking error, kappa, std, RAM."""
@@ -169,9 +213,18 @@ def main():
             lg.record("gurdy/kappa", self.kappa)
             lg.record("gurdy/penalty_scale", self.pscale)
             lg.record("gurdy/reward_clipped_frac", self.clipped / max(self.n, 1))
-            lg.record("gurdy/action_std", float(torch.exp(self.model.policy.log_std).mean()))
+            lg.record("gurdy/action_std", effective_std(self.model))
             lg.record("gurdy/ram_mib", tree_rss_mib())
             lg.record("gurdy/collect_samples_per_s", self.n / max(time.time() - self.t0, 1e-6))
+
+    def effective_std(m, n=1024):
+        """Mean action std of the policy distribution on recent rollout observations (works for
+        plain Gaussian and gSDE, where log_std is a features x actions matrix)."""
+        obs = m.rollout_buffer.observations.reshape(-1, m.rollout_buffer.obs_shape[0])
+        idx = np.random.default_rng(0).choice(len(obs), size=min(n, len(obs)), replace=False)
+        with torch.no_grad():
+            dist = m.policy.get_distribution(torch.as_tensor(obs[idx], dtype=torch.float32))
+            return float(dist.distribution.stddev.mean())
 
     ckpt_cb = CheckpointCallback(save_freq=max(1, tc["checkpoint_every"] // n_envs), save_path=ckpt_dir,
                                  name_prefix="ppo", save_vecnormalize=True)
@@ -189,8 +242,19 @@ def main():
     print(f"[train] run {run} | {n_envs} envs | {remaining} steps to go (target {total}) | git {git}", flush=True)
     t = time.time()
     try:
-        model.learn(total_timesteps=remaining, callback=CallbackList([Metrics(), ckpt_cb]),
-                    reset_num_timesteps=not a.resume, tb_log_name="PPO", progress_bar=False)
+        cbs = CallbackList([Metrics(), ckpt_cb])
+        if warmup:
+            # Critic warm-up: actor frozen (no gradient), so a random critic can't wreck the BC gait.
+            for p in actor_parameters(model.policy):
+                p.requires_grad_(False)
+            model.learn(total_timesteps=warmup, callback=cbs, reset_num_timesteps=True,
+                        tb_log_name="PPO", progress_bar=False)
+            for p in actor_parameters(model.policy):
+                p.requires_grad_(True)
+            print(f"[train] critic warm-up done at {model.num_timesteps} steps; actor unfrozen", flush=True)
+            remaining = max(0, total - model.num_timesteps)
+        model.learn(total_timesteps=remaining, callback=cbs,
+                    reset_num_timesteps=not (a.resume or warmup), tb_log_name="PPO", progress_bar=False)
     except KeyboardInterrupt:
         print("[train] interrupted", flush=True)
     finally:

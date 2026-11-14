@@ -30,3 +30,32 @@ docker compose --profile '*' down     # stop everything
 
 Details: [parity + chatter](docs/results/phase1_parity.md) ·
 [velocity tracking](docs/results/phase1_tracking.md). Design notes and rules: [CLAUDE.md](CLAUDE.md).
+
+## RL training (Phase 2)
+
+Runs live in `rl/runs/<name>/` (`train.log`, `tb/`, `checkpoints/` every 2M steps incl. VecNormalize
+stats; `ppo_latest.*` is written on stop). Training runs detached, so it survives closing VS Code.
+
+```bash
+# start (example: long flat run, BC-initialised from the tripod gait)
+mkdir -p rl/runs/flat_bc_v1
+docker compose run -d --name gurdy_train rl bash -c 'exec python3 rl/train.py \
+  --config rl/configs/flat_bc_long.yaml --name flat_bc_v1 \
+  --init-from rl/runs/c2_bc/checkpoints/ppo_bc.zip > rl/runs/flat_bc_v1/train.log 2>&1'
+
+# progress
+docker ps                                            # gurdy_train running?
+tail -f rl/runs/flat_bc_v1/train.log                 # live log (Ctrl+C stops tail, not training)
+docker compose run --rm rl python3 rl/tools/summarize_run.py flat_bc_v1   # curves as a table
+docker stats --no-stream gurdy_train                 # RAM / CPU
+# TensorBoard on http://localhost:6006
+docker compose run -d --name gurdy_tb --service-ports rl tensorboard --logdir rl/runs --bind_all --port 6006
+
+# stop (saves ppo_latest), then remove the container
+docker stop gurdy_train && docker rm gurdy_train
+
+# resume from the newest checkpoint (or --resume rl/runs/<name>/checkpoints/ppo_<N>_steps.zip)
+docker compose run -d --name gurdy_train rl bash -c 'exec python3 rl/train.py \
+  --config rl/configs/flat_bc_long.yaml --name flat_bc_v1 --resume latest >> rl/runs/flat_bc_v1/train.log 2>&1'
+```
+Never run training together with Gazebo (RAM rule); training uses ~1.6 GiB and ~7 CPU threads.

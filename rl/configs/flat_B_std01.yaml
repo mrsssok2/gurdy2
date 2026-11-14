@@ -1,0 +1,7 @@
+# Smoke comparison B: plain Gaussian exploration, initial std 0.1, lr 1e-4, penalties start at 0.02x.
+_base: flat.yaml
+ppo:
+  learning_rate: 1.0e-4
+  log_std_init: -2.303          # ln(0.1)
+training:
+  penalty_curriculum: {start: 0.02, end: 1.0, from_step: 0, to_step: 15000000}
