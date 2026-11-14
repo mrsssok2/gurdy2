@@ -20,14 +20,14 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 - [x] Docker image: ROS 2 Jazzy + Gazebo Harmonic + ros2_control + MuJoCo; `compose.yaml` with WSLg GUI, port 8080 published
 - [x] `robot.yaml` single source of truth (dimensions, masses, limits, damping, gains) + `gait.yaml` + loader/tests in `gurdy_core`
 - [x] 18-DOF xacro (6 legs × hip-yaw, hip-pitch, knee), inertias computed from geometry, one-sided knee limits, joint damping/friction, IMU + depth camera frames (Gazebo sensor plugins in next step)
-- [ ] Gazebo spawn + `ros_gz_bridge` (clock, IMU, camera, depth, ground-truth odom)
-- [ ] ros2_control via `gz_ros2_control` **effort** interface (joint_state_broadcaster + joint-group PD at 500 Hz, same kp/kd as MuJoCo)
+- [ ] Gazebo spawn + `ros_gz_bridge` (clock, IMU, camera, depth, ground-truth odom) — spawn + /clock done; sensors/odom pending
+- [x] ros2_control via `gz_ros2_control` **effort** interface (joint_state_broadcaster + `gurdy_control/JointPDController` at 500 Hz, same kp/kd as MuJoCo)
 - [ ] `gurdy_core`: leg FK/IK + tripod gait math (pure Python, unit-tested)
 - [ ] Tripod gait node following `/cmd_vel` (vx, vy, yaw rate)
-- [ ] MuJoCo MJCF generated from the same `robot.yaml`; URDF↔MJCF parity test (masses, inertias, limits, damping)
-- [ ] Joint step-response parity test: same step command in Gazebo and MuJoCo, compare rise time, overshoot and steady sag
+- [x] MuJoCo MJCF generated from the same `robot.yaml`; URDF↔MJCF parity test (masses, inertias, limits, damping)
+- [x] Joint step-response parity test: same step command in Gazebo and MuJoCo, compare rise time, overshoot and steady sag (`docs/results/phase1_parity.md`)
 - [ ] One bringup launch + keyboard teleop
-- [ ] Chatter/health metric script
+- [x] Chatter/health metric script (`scripts/parity_experiments.sh stand`, metrics in `gurdy_core.experiments`)
 
 **AC**
 - `docker compose up sim` opens Gazebo GUI through WSLg; RViz shows the robot model and TF.

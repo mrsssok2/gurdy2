@@ -1,0 +1,10 @@
+[project]
+name = "sim_mujoco"
+version = "0.1.0"
+description = "Gurdy 2.0 MuJoCo model generated from robot.yaml"
+license = {text = "MIT"}
+dependencies = ["mujoco", "numpy", "gurdy_core"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "../gurdy_core"]
+testpaths = ["tests"]

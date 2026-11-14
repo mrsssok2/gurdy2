@@ -1,0 +1,31 @@
+{
+  "duration_s": 59.99600000003024,
+  "samples": 29999,
+  "sample_rate_hz": 499.99999999938893,
+  "worst": {
+    "qd_rms": 5.2961808126716714e-14,
+    "q_p2p": 2.9753977059954195e-14,
+    "tau_std": 2.806461258311975e-13
+  },
+  "worst_joint": {
+    "qd_rms": "rm_knee",
+    "q_p2p": "lm_knee",
+    "tau_std": "rm_hip_pitch"
+  },
+  "chatter_pass": true,
+  "chatter_limits": {
+    "qd_rms": 0.01,
+    "q_p2p": 0.005,
+    "tau_std": 0.05
+  },
+  "dominant_qd_freq_hz_median": 0.05000166672216296,
+  "sag_rad_by_type": {
+    "hip_yaw": -6.244983668565069e-18,
+    "hip_pitch": 0.018514123369853717,
+    "knee": -0.0038924080881817297
+  },
+  "body_height_fk_m": 0.10825453612217163,
+  "nominal_body_height_m": 0.11,
+  "sim": "mujoco",
+  "rtf": 77.33452174676925
+}

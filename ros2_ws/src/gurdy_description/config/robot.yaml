@@ -35,11 +35,16 @@ joints:
   all:
     effort: 2.5          # N·m  (DS3218-class servo)
     velocity: 6.0        # rad/s
-    # Servo back-EMF modelled as PHYSICAL joint damping: integrated implicitly by both DART
-    # (Gazebo) and MuJoCo (Euler integrator), so it stays stable on light links. Most of the
-    # damping lives here; the controller kd below is small.
-    damping: 0.25        # N·m·s/rad
-    friction: 0.02       # N·m (Coulomb)
+    # Servo back-EMF modelled as PHYSICAL joint damping, integrated implicitly by DART (Gazebo)
+    # and MuJoCo (Euler). Chosen as effort / velocity = 2.5 / 6.0: torque saturation + damping then
+    # give the DC-servo torque-speed line tau_max(v) = effort * (1 - v / velocity), so the joint
+    # tops out at the no-load speed naturally. (With 0.25, Gazebo/DART hard-capped joints at the
+    # 6 rad/s URDF velocity limit while MuJoCo reached 10 rad/s -> saturated-step rise times
+    # differed 25-35 %; with 0.42 they match within 4 ms. Measured 2026-11-14, docs/results.)
+    damping: 0.42        # N·m·s/rad
+    # Coulomb friction: DART applies hard stiction, MuJoCo a soft frictionloss constraint, so
+    # steady-state errors differ by up to ~2.5 mrad (deadband = friction / kp = 1 mrad). Accepted.
+    friction: 0.02       # N·m
     # Reflected rotor inertia: 0 in BOTH sims. Gazebo Harmonic (SDFormat 14 / gz-physics DART)
     # has no joint armature (checked 2026-11-14), and folding it into link inertias is either
     # non-physical (MuJoCo rejects it) or inflates body inertia 70-160 % (rotor-disc model).

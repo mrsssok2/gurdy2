@@ -80,6 +80,15 @@ def test_armature_is_zero_in_both_sims(robot):
         Robot(bad)
 
 
+def test_damping_gives_servo_torque_speed_line(robot):
+    """effort / damping = top speed under full torque; must not exceed the joint velocity limit,
+    otherwise DART's hard velocity limit (Gazebo) and MuJoCo (no limit) diverge."""
+    jc = robot.joint_common
+    top_speed = jc["effort"] / jc["damping"]
+    assert top_speed <= jc["velocity"] * 1.0001
+    assert top_speed >= 0.95 * jc["velocity"], "damping should not make the servo much slower than spec"
+
+
 def test_effective_inertia_matches_simple_cases(robot):
     """Knee inertia = tibia about its end (pose independent); yaw with leg straight out is the
     largest lever arm."""

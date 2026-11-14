@@ -76,13 +76,17 @@ Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
 - **Shared pure-Python core** (`gurdy_core`): kinematics/IK and gait math, no ROS imports, used by
   the ROS gait node and the MuJoCo env alike. Unit-tested without ROS.
 - **Same PD in both sims:** `tau = kp*(q_ref - q) - kd*qdot`, clipped to effort, at **500 Hz**
-  (Gazebo: `gz_ros2_control` effort interface; MuJoCo: every 2 ms physics step). Gait/RL at 50 Hz.
-  kp 20, kd 0.05 (small); most damping is **physical joint damping 0.25 N·m·s/rad** (servo
-  back-EMF), integrated implicitly by DART and MuJoCo (Euler).
+  (Gazebo: `gurdy_control/JointPDController` on the `gz_ros2_control` effort interface; MuJoCo:
+  affine actuator, every 2 ms Euler step). Gait/RL at 50 Hz. kp 20, kd 0.05.
+- **Joint damping 0.42 = effort / velocity** (servo back-EMF; DC torque-speed line), implicit in DART
+  and MuJoCo. Needed because DART hard-enforces the URDF velocity limit and MuJoCo has none.
 - **No armature (decided 2026-11-14):** Gazebo Harmonic (SDFormat 14 / gz-physics DART) has no
   joint armature; folding it into link inertias is non-physical (MuJoCo rejects it) or inflates body
-  inertia 70–160 %. So armature = 0 in both sims (enforced by the loader). Worst-case explicit-PD
+  inertia 70–160 %. Armature = 0 in both sims (enforced by the loader). Worst-case explicit-PD
   ratios (tested): kd·dt/I ≤ 0.35, ω·dt ≤ 0.53 (hard limit 2).
+- **Known sim differences (accepted, measured):** joint Coulomb friction (DART hard vs MuJoCo soft,
+  ≤ 2.5 mrad steady error); MuJoCo soft foot contacts splay feet ~2 mm when standing (joint sag
+  distribution differs, body height equal). Details: `docs/results/phase1_parity.md`.
 - Robot geometry lives in `robot.yaml`; gait timing in `gurdy_core/gurdy_core/config/gait.yaml`.
 - Gait/policy nodes publish joint targets; everything above them speaks only `/cmd_vel`
   (`geometry_msgs/Twist`: linear.x, linear.y, angular.z), so Nav2/teleop/LLM are swappable.
@@ -128,9 +132,16 @@ docker compose run --rm sim scripts/check_display.sh   # sockets, OpenGL rendere
 docker compose exec sim /entrypoint.sh <cmd>      # run a ROS/gz command in the running container
 GZ_GALLIUM_DRIVER=llvmpipe docker compose up sim  # fallback: CPU rendering if GPU path breaks
 docker compose down                               # stop
-docker compose run --rm --no-deps sim bash -c 'cd gurdy_core && python3 -m pytest -q'   # core tests
+# inside the container (docker compose run --rm sim bash):
+cd ros2_ws && colcon build --symlink-install && source install/setup.bash && cd ..
+colcon test --base-paths ros2_ws && colcon test-result          # ROS package tests (run in ros2_ws)
+(cd gurdy_core && python3 -m pytest -q); (cd sim_mujoco && python3 -m pytest -q)
+ros2 launch gurdy_description display.launch.py                 # RViz + joint sliders
+ros2 launch gurdy_gazebo sim.launch.py [gui:=false] [fixed_base:=true] [robot_yaml:=...]
+scripts/parity_experiments.sh step|stand OUT_DIR [robot.yaml]   # Gazebo vs MuJoCo (+ chatter)
+python3 -m sim_mujoco.mjcf > /tmp/gurdy.xml                      # generated MuJoCo model
 ```
-_colcon build / teleop / tests are added as Phase 1 continues._
+_Teleop is added with the gait node._
 
 ## Current status
 - Phase 0: done except `.env.example` + README stub. Repo is in WSL at `~/projects/gurdy2`.
@@ -143,5 +154,11 @@ _colcon build / teleop / tests are added as Phase 1 continues._
   stance q = (0, 0.307, 1.763) rad; tripod holding torque hip_pitch 0.81 N·m → 3.1× headroom.
 - Step 1.3 done: `gurdy_description` xacro (18 DOF, from robot.yaml), display launch + RViz,
   `test_urdf.py` (check_urdf, mass/inertia, limits, FK parity, MuJoCo mass-matrix parity).
-- Next: Gazebo spawn + ros2_control effort PD controller (500 Hz), MJCF generator, then the
-  chatter test and the Gazebo↔MuJoCo step-response parity test.
+- Gazebo + control + MuJoCo done: `gurdy_control` (C++ JointPDController), `gurdy_gazebo`
+  (empty world, `sim.launch.py` generating controller params from robot.yaml), `sim_mujoco`
+  (MJCF generator + tests + experiments). Step-response parity PASS (rise within 4 ms), chatter
+  PASS in both sims, standing body height equal within 0.2 mm. Gazebo RTF ≈ 1.0 headless.
+- Open items: KDL warns about inertia on root link `base_link` (TF only, harmless); lower
+  joint_state_broadcaster rate (500 Hz makes robot_state_publisher use ~27 % CPU).
+- Next: Gazebo sensors + bridge (IMU, depth camera, ground-truth odom), then `gurdy_core` tripod
+  gait math, gait node, teleop.

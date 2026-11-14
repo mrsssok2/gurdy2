@@ -1,0 +1,60 @@
+{
+  "sim": "mujoco",
+  "rtf": 124.52484543255949,
+  "steps": [
+    {
+      "rise_time_s": 0.043999999999995154,
+      "overshoot_pct": 0.019016845444252972,
+      "steady_error_rad": 1.5100136083461002e-05,
+      "peak_velocity": 1.5606551070931924,
+      "joint": "lf_hip_yaw",
+      "amp": 0.05,
+      "onset_delay_s": 1.3322676295501878e-15
+    },
+    {
+      "rise_time_s": 0.045999999999994934,
+      "overshoot_pct": 1.9539925233402755e-12,
+      "steady_error_rad": 0.004699964839108006,
+      "peak_velocity": 1.7421882671307884,
+      "joint": "lf_hip_pitch",
+      "amp": 0.05,
+      "onset_delay_s": -2.1893598045608087e-13
+    },
+    {
+      "rise_time_s": 0.043999999999995154,
+      "overshoot_pct": 8.881784197001252e-13,
+      "steady_error_rad": -0.00010612724993874778,
+      "peak_velocity": 1.8870720753942947,
+      "joint": "lf_knee",
+      "amp": 0.05,
+      "onset_delay_s": -4.3876013933186186e-13
+    },
+    {
+      "rise_time_s": 0.052000000000017366,
+      "overshoot_pct": 0.0041058996621101684,
+      "steady_error_rad": 1.9566124784986538e-05,
+      "peak_velocity": 5.882201697112036,
+      "joint": "lf_hip_yaw",
+      "amp": 0.3,
+      "onset_delay_s": -6.590283874174929e-13
+    },
+    {
+      "rise_time_s": 0.0560000000000187,
+      "overshoot_pct": 2.2870594307278225e-12,
+      "steady_error_rad": 0.0045818783468882796,
+      "peak_velocity": 5.682246167822533,
+      "joint": "lf_hip_pitch",
+      "amp": 0.3,
+      "onset_delay_s": 8.881784197001252e-15
+    },
+    {
+      "rise_time_s": 0.0560000000000187,
+      "overshoot_pct": 2.886579864025407e-13,
+      "steady_error_rad": 0.00033172842479922693,
+      "peak_velocity": 5.906580653499428,
+      "joint": "lf_knee",
+      "amp": 0.3,
+      "onset_delay_s": 6.767919558114954e-13
+    }
+  ]
+}
