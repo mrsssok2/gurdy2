@@ -90,3 +90,21 @@ measured as sim/wall time over 10 s windows (`scripts/measure_rtf.py`). During t
 host's speed varied ~3x (pure MuJoCo stepping benchmark 34–170× real time with nothing else running;
 likely Windows power/thermal management), so the RTF values above are provisional and will be
 re-measured on a stable host. Parity metrics use sim time and are unaffected.
+
+## Final performance measurement (2026-11-14, laptop plugged in, "Best performance")
+
+`scripts/measure_rtf.py`, 3–4 windows of 10 s after 10 s warm-up, nothing else heavy running.
+The host benchmark (single-thread MuJoCo stepping, run during the measurement) still varied 38–117
+between runs — per-core clock drops under multi-core load — so ranges are given.
+
+| Configuration | RTF mean (windows) | Container RAM | Main CPU users |
+|---|---|---|---|
+| Headless, sensors off, standing | 0.79–0.82 (0.64–0.97) | 245 MiB | gz server 143 % |
+| Headless, sensors off, walking | 0.76 (0.60–0.92) | 288 MiB | gz server 160 %, bridge 41 %, rsp 16 %, gait 15 % |
+| Headless, sensors on (camera), standing | 0.69 (0.57–0.79) | 289 MiB | gz server 163 % |
+| GUI + sensors (default `compose up sim`), standing | 0.72 (0.70–0.75) | 550 MiB | gz server 164 %, GUI 109 % |
+| GUI + sensors, walking | 0.52 (0.49–0.57) | 576 MiB | gz server 170 %, GUI 116 % |
+
+RTF is limited by the single-threaded gz server (1 kHz DART + 500 Hz ros2_control). The gait node
+used ~55 % CPU when timed by rclpy sim time (1 kHz /clock in Python); it is now driven by
+/joint_states stamps: ~15 %. WSL total memory in use during GUI runs: ~1.7 GB of 7.9 GB.

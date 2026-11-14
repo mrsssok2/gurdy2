@@ -62,7 +62,7 @@ Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
 
 ## Tech stack (decided)
 - ROS 2 **Jazzy** + Gazebo **Harmonic** (`ros_gz`, `gz_ros2_control`) in Docker on Ubuntu 24.04.
-- ros2_control with `joint_state_broadcaster` + a joint-group position controller.
+- ros2_control with `joint_state_broadcaster` + `gurdy_control/JointPDController` (effort PD, 500 Hz).
 - MuJoCo + Gymnasium + Stable-Baselines3 PPO (CPU, `SubprocVecEnv`; GPU only for a CNN encoder).
 - SLAM: slam_toolbox (2D, light) first; RTAB-Map optional. Nav2.
 - Perception: YOLO (small) or small VLM; Voice: Gnani Prisma STT / Timbre TTS, Whisper fallback.
@@ -128,7 +128,6 @@ gurdy2/
 ## Common commands
 ```bash
 docker compose build sim                          # build ROS/Gazebo image (gurdy2/ros:jazzy, ~5 GB)
-docker compose up sim                             # Gazebo GUI via WSLg (currently the shapes.sdf smoke test)
 docker compose run --rm sim bash                  # shell in the image (ROS sourced, repo at ~/gurdy2)
 docker compose run --rm sim scripts/check_display.sh   # sockets, OpenGL renderer, versions, MuJoCo
 docker compose exec sim /entrypoint.sh <cmd>      # run a ROS/gz command in the running container
@@ -152,33 +151,18 @@ python3 scripts/measure_rtf.py                   # (in container, sim running) R
 ```
 
 ## Current status
-- Phase 0: done except `.env.example` + README stub. Repo is in WSL at `~/projects/gurdy2`.
-- Phase 1 step 1.1 done: `docker/ros/Dockerfile` (Jazzy, Gazebo Harmonic gz-sim 8.15.0, ros2_control,
-  gz_ros2_control, RViz, MuJoCo 3.3.0), `compose.yaml` profile `sim` (WSLg, /dev/dxg, port 8080,
-  mem_limit 6g). Measured: shapes.sdf with GUI, d3d12 renderer → RTF 0.998–1.001; container RAM
-  ≈ 420 MiB; CPU ≈ 130–180 %.
-- Step 1.2 done: `robot.yaml`, `gait.yaml`, `gurdy_core.robot` loader, `gurdy_core.kinematics`
-  (leg FK/IK, static torques, effective joint inertias, PD stability ratios). Total mass 3.08 kg;
-  stance q = (0, 0.307, 1.763) rad; tripod holding torque hip_pitch 0.81 N·m → 3.1× headroom.
-- Step 1.3 done: `gurdy_description` xacro (18 DOF, from robot.yaml), display launch + RViz,
-  `test_urdf.py` (check_urdf, mass/inertia, limits, FK parity, MuJoCo mass-matrix parity).
-- Gazebo + control + MuJoCo done: `gurdy_control` (C++ JointPDController), `gurdy_gazebo`
-  (empty world, `sim.launch.py` generating controller params from robot.yaml), `sim_mujoco`
-  (MJCF generator + tests + experiments). Step-response parity PASS (rise within 4 ms), chatter
-  PASS in both sims, standing body height equal within 0.2 mm. Gazebo RTF ≈ 1.0 headless.
-- Fixed: massless `base_link` root + `body_link` (no KDL warning); `/joint_states` at 100 Hz
-  (`js_rate` launch arg). Containers are isolated (`GZ_PARTITION`=hostname,
-  `ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`) after two sims cross-talked over /clock and /stats.
-  Clean RTF: Gazebo headless 0.96, GUI 0.55 (open item: GUI process ~100 % CPU).
-- Sensors done: IMU (/imu, 200 Hz), RGB-D (/camera/{image,depth_image,camera_info,points}, lazy
-  bridge), ground-truth odom (/odom/ground_truth, no TF). `sensors:=false` loads no render engine.
-  Verified: accel z 9.807, odom z 0.1080, depth centre 0.749 m (geometry 0.754; MuJoCo 0.739).
-  Headless rendering must use the NVIDIA adapter (`MESA_D3D12_DEFAULT_ADAPTER_NAME`), else Intel iGPU.
-- **RTF method:** `scripts/measure_rtf.py` (sim/wall from /clock, + MuJoCo host benchmark). Host speed
-  varied ~3x during 2026-11-14 (MuJoCo benchmark 34–170): Gazebo perf numbers pending a stable host.
-- Gait done: `gurdy_core.gait.TripodGait` (SE(2) stance, cycloid swing, stride cap, accel limits,
-  start-up half step), `gurdy_gait` node (/cmd_vel -> PD refs, 0.5 s timeout, /gait/cmd), `gurdy_bringup`
-  sim launch; `docker compose up sim` starts the walking robot. Tracking (2-min protocol): Gazebo
-  vx 0.10 → −8.2 %, wz 0.3 → −11.3 %, no fall; MuJoCo forward within +6.4 % of Gazebo.
-- Remaining Phase 1: manual teleop session by the user; stable-host RTF (GUI + headless) and RAM;
-  then tick the Phase 1 AC. GUI RTF was low (0.35–0.55) on a throttled host — investigate.
+- **Phase 0 and Phase 1 done (2026-11-14), pushed to github.com/mrsssok2/gurdy2.** All Phase 1 AC
+  met; results in `docs/results/phase1_parity.md` and `docs/results/phase1_tracking.md`.
+- Built: `gurdy_core` (robot.yaml loader, FK/IK, TripodGait, shared experiment protocols),
+  `gurdy_description` (xacro from robot.yaml, massless base_link root + body_link), `gurdy_control`
+  (C++ JointPDController, effort interface, 500 Hz), `gurdy_gazebo` (world, sim launch, sensors +
+  lazy bridge, GT odom), `gurdy_gait` (node timed by /joint_states stamps with catch-up),
+  `gurdy_bringup`, `sim_mujoco` (MJCF generator, IMU/camera, experiments).
+- Key numbers: tracking vx 0.10 → −8.3 %, wz 0.3 → −11.3 % (Gazebo); MuJoCo +6.5 % vs Gazebo;
+  step parity within 4 ms; no chatter. RTF headless 0.76–0.82, GUI 0.52–0.72 (gz server bound);
+  RAM 245–290 MiB headless, 550–576 MiB GUI.
+- Lessons: plain `docker compose down` skips profiled services; containers must be isolated
+  (GZ_PARTITION, ROS_AUTOMATIC_DISCOVERY_RANGE); measure RTF as sim/wall over windows; host clock
+  varies under load (report ranges + host benchmark); rclpy use_sim_time costs ~40 % CPU at 1 kHz /clock.
+- Open items: GUI RTF ~0.5 while walking; MuJoCo soft-contact foot splay (revisit `impratio` for RL).
+- Next: Phase 2 (RL locomotion in MuJoCo). Show the Phase 2 plan before building.

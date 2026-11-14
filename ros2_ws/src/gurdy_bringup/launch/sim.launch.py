@@ -24,7 +24,7 @@ def generate_launch_description():
             get_package_share_directory("gurdy_gazebo"), "launch", "sim.launch.py")),
         launch_arguments={a: LaunchConfiguration(a) for a in args}.items())
     gait = Node(package="gurdy_gait", executable="gait_node", output="screen",
-                parameters=[{"use_sim_time": True, "robot_yaml": LaunchConfiguration("robot_yaml")}])
+                parameters=[{"robot_yaml": LaunchConfiguration("robot_yaml")}])   # timed by /joint_states stamps
     rviz = Node(package="rviz2", executable="rviz2", condition=IfCondition(LaunchConfiguration("rviz")),
                 arguments=["-d", os.path.join(get_package_share_directory("gurdy_description"), "rviz", "display.rviz")],
                 parameters=[{"use_sim_time": True}])

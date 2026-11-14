@@ -11,8 +11,10 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 - [x] CLAUDE.md and ROADMAP.md
 - [x] Monorepo folder structure approved (see CLAUDE.md)
 - [x] `.gitignore`, LICENSE (MIT)
-- [ ] `.env.example` (names only), README stub
+- [x] `.env.example` (names only), README stub
 - [x] Repo moved to WSL filesystem (`~/projects/gurdy2`)
+
+**Phase 0 done.**
 
 ---
 
@@ -26,18 +28,20 @@ RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 - [x] Tripod gait node following `/cmd_vel` (vx, vy, yaw rate) — tracking results in `docs/results/phase1_tracking.md`
 - [x] MuJoCo MJCF generated from the same `robot.yaml`; URDF↔MJCF parity test (masses, inertias, limits, damping)
 - [x] Joint step-response parity test: same step command in Gazebo and MuJoCo, compare rise time, overshoot and steady sag (`docs/results/phase1_parity.md`)
-- [x] One bringup launch + keyboard teleop (`docker compose up sim`; teleop via `docker compose exec`) — manual teleop session pending
+- [x] One bringup launch + keyboard teleop (`docker compose up sim`; teleop via `docker compose exec`) — manual teleop session done (user, 2026-11-14)
 - [x] Chatter/health metric script (`scripts/parity_experiments.sh stand`, metrics in `gurdy_core.experiments`)
 
-**AC**
-- `docker compose up sim` opens Gazebo GUI through WSLg; RViz shows the robot model and TF.
-- URDF passes `check_urdf`; all 18 joints present; total mass and inertias match `robot.yaml`; knee can never bend backwards (limits + IK test).
-- Robot stands stably for 60 s with no visible chatter (chatter metric below threshold) in Gazebo and MuJoCo (no armature; passive joint damping).
-- Joint step response: rise time and overshoot match between Gazebo and MuJoCo (tolerance set and reported in the test).
-- Teleop: walks forward, backward, strafes, turns in place. Measured mean velocity within ±25 % of command for vx = 0.10 m/s and yaw = 0.3 rad/s; no fall in a 2-minute session.
-- Same tripod gait runs in MuJoCo headless; forward speed within ±30 % of Gazebo.
-- Measured and recorded: Gazebo RTF (GUI and headless), container RAM.
-- `colcon test` and `pytest gurdy_core` pass in the container.
+**AC** — ✅ all met 2026-11-14 (results: `docs/results/phase1_parity.md`, `docs/results/phase1_tracking.md`)
+- ✅ `docker compose up sim` opens Gazebo GUI through WSLg; RViz shows the robot model and TF.
+- ✅ URDF passes `check_urdf`; all 18 joints present; total mass and inertias match `robot.yaml`; knee can never bend backwards (limits + IK test).
+- ✅ Robot stands stably for 60 s with no chatter in Gazebo and MuJoCo (worst joint RMS velocity 4.5e-6 rad/s vs limit 1e-2; no armature, passive joint damping).
+- ✅ Joint step response: rise time and overshoot match between Gazebo and MuJoCo (rise within 4 ms; tolerances in `gurdy_core.experiments.PARITY_TOL`).
+- ✅ Teleop: walks forward, backward, strafes, turns in place (user session, no falls). Measured vx = 0.10 m/s → −8.3 %, yaw = 0.3 rad/s → −11.3 % (limit ±25 %); no fall in the 2-minute automated session.
+- ✅ Same tripod gait runs in MuJoCo headless; forward speed +6.5 % vs Gazebo (limit ±30 %).
+- ✅ Measured and recorded: Gazebo RTF headless 0.76–0.82, GUI 0.52–0.72; container RAM 245–290 MiB headless, 550–576 MiB GUI.
+- ✅ `colcon test` (10) and `pytest` (gurdy_core 33, sim_mujoco 9) pass in the container.
+
+**Phase 1 done.**
 
 ---
 

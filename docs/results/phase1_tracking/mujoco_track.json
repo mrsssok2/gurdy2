@@ -112,6 +112,6 @@
   "max_tilt_rad": 0.011339076577943353,
   "all_pass": true,
   "sim": "mujoco",
-  "rtf": 35.198000321365775,
+  "rtf": 45.68326705396336,
   "ik_failures": 0
 }
