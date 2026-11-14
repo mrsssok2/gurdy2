@@ -173,7 +173,7 @@ docker compose run --rm rl bash -c 'cd rl && python3 -m pytest -q'
 - **Phase 2 in progress** (plan approved 2026-11-14, steps 2.1–2.10 in ROADMAP.md). Decisions: action
   option A (offsets around stance; B residual only as fallback), 3-frame proprioceptive history, no
   ground truth in obs, asymmetric critic by 2.7 at the latest; reward tracking term
-  exp(−‖e_v‖²/σ_v² − e_ω²/σ_ω²) with σ_v = max(0.03, κ‖v_cmd‖), σ_ω = max(0.1, κ|ω_cmd|), κ 0.8 → 0.5
+  exp(−‖e_v‖²/σ_v² − e_ω²/σ_ω²) with σ_v = max(κ‖v_cmd‖, 0.02), σ_ω = max(κ|ω_cmd|, 0.05), κ 0.8 → 0.5
   (standing cannot farm tracking reward; tests: 50 % speed ≫ standing, tripod ≥ 2–3× standing for
   every move command incl. pure turning); PPO log_std_init ln 0.35, ent_coef ≤ 0.001; MJX spike after CPU.
 - 2.1 done: `docker/rl` image (no ROS; MuJoCo 3.3.0 = sim image), compose profile `rl`,
@@ -184,4 +184,10 @@ docker compose run --rm rl bash -c 'cd rl && python3 -m pytest -q'
   info diagnostics (never in obs). Tests: check_env, obs layout/history, **obs invariant to world
   position/heading/linear velocity** (no privileged inputs), targets within limits, seeding, command
   sampling/resampling, truncation, falls. Note: MuJoCo sensors (gyro) are 1 physics step (2 ms) old.
-- Next: 2.3 (reward + sanity tests). Sigma floors: σ_v ≥ 0.02 m/s, σ_ω ≥ 0.05 rad/s (user decision).
+- 2.3 done: `rl/envs/reward.py` + weights in `rl/configs/flat.yaml`. Tracking uses the body velocity
+  **EMA-filtered (τ 0.2 s)**: tripod strides surge 0.013–0.137 m/s around 0.096; unfiltered, half-speed
+  scored ≈ full speed. Action scale now hip_yaw 0.3 / hip_pitch 0.7 / knee 0.6 rad (tripod needed 0.56
+  on hip_pitch). Sanity: tripod 3.7–4.0× standing for every move command (pure turns 3.9×), half
+  speed 2.5–2.8×, standing wins at zero command. 64 tests in `rl/tests`. `docs/results/phase2_reward.md`.
+- Pushing: push to GitHub after every completed step (user, 2026-11-14).
+- Next: 2.4 (train.py, configs, TensorBoard, checkpoints/resume, flat training run).

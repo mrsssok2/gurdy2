@@ -4,5 +4,26 @@ env:
   command_period_s: 5.0        # command resampled every 5 s
   resample_command: true
   zero_command_prob: 0.15
-  action_scale: {hip_yaw: 0.3, hip_pitch: 0.5, knee: 0.5}   # rad per unit action
+  action_scale: {hip_yaw: 0.3, hip_pitch: 0.7, knee: 0.6}   # rad per unit action (tripod needs 0.47/0.56/0.51)
   init_joint_noise: 0.05       # rad, uniform, at reset
+
+reward:
+  kappa: 0.8                   # tracking sigma = kappa * |command| (annealed to 0.5 in training)
+  sigma_v_floor: 0.02          # m/s   (zero / pure-turn commands)
+  sigma_w_floor: 0.05          # rad/s
+  air_time_target: 0.2         # s
+  track_filter_s: 0.2          # s, EMA of the tracked body velocity (stride surge); 0 = instantaneous
+  weights:
+    track: 1.5                 # dominant: exp(-|e_v|^2/s_v^2 - e_w^2/s_w^2)
+    alive: 0.05                # small on purpose (Gurdy 1.0: standing must never pay)
+    fall: -10.0                # once, at a fall
+    tilt: -1.0                 # |gravity_xy|^2 in body frame
+    vz: -1.0                   # vertical bounce
+    ang_xy: -0.05              # roll/pitch rate
+    energy: -2.0e-3            # sum |tau * qdot| (W)
+    torque: -5.0e-4            # sum tau^2
+    joint_acc: -2.5e-7         # sum qddot^2
+    action_rate: -0.01         # sum (a - a_prev)^2
+    foot_slip: -1.0            # sum over stance feet |v_foot_xy|^2
+    air_time: 0.5              # per touchdown: (air time - target), only when moving
+    stand_still: -0.1          # sum |q - q_stance|, only at zero command

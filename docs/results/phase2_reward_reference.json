@@ -1,0 +1,645 @@
+{
+  "forward": {
+    "stand": {
+      "return": 108.43020665455013,
+      "max_abs_action": 0.0,
+      "fell": false,
+      "terms": {
+        "track": 94.2552,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": 0.0,
+        "foot_slip": -0.0545,
+        "air_time": -0.48,
+        "stand_still": 0.0
+      }
+    },
+    "tripod": {
+      "return": 405.1913018575937,
+      "max_abs_action": 0.7893686947330708,
+      "fell": false,
+      "terms": {
+        "track": 394.9634,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0079,
+        "vz": -0.2387,
+        "ang_xy": -0.0521,
+        "energy": -4.4034,
+        "torque": -0.6948,
+        "joint_acc": -0.3569,
+        "action_rate": -0.1391,
+        "foot_slip": -1.6092,
+        "air_time": 2.73,
+        "stand_still": 0.0
+      }
+    },
+    "half": {
+      "return": 287.4969876265817,
+      "max_abs_action": 0.7760724401752541,
+      "fell": false,
+      "terms": {
+        "track": 276.5479,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0072,
+        "vz": -0.2402,
+        "ang_xy": -0.0382,
+        "energy": -3.8376,
+        "torque": -0.6571,
+        "joint_acc": -0.3266,
+        "action_rate": -0.108,
+        "foot_slip": -1.486,
+        "air_time": 2.65,
+        "stand_still": 0.0
+      }
+    }
+  },
+  "backward": {
+    "stand": {
+      "return": 108.51380660737398,
+      "max_abs_action": 0.0,
+      "fell": false,
+      "terms": {
+        "track": 94.3388,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": 0.0,
+        "foot_slip": -0.0545,
+        "air_time": -0.48,
+        "stand_still": 0.0
+      }
+    },
+    "tripod": {
+      "return": 405.0041326562808,
+      "max_abs_action": 0.7893894011417535,
+      "fell": false,
+      "terms": {
+        "track": 394.7602,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0079,
+        "vz": -0.2385,
+        "ang_xy": -0.052,
+        "energy": -4.4045,
+        "torque": -0.6945,
+        "joint_acc": -0.3568,
+        "action_rate": -0.1391,
+        "foot_slip": -1.5928,
+        "air_time": 2.73,
+        "stand_still": 0.0
+      }
+    },
+    "half": {
+      "return": 287.4689221757527,
+      "max_abs_action": 0.7760850298934977,
+      "fell": false,
+      "terms": {
+        "track": 276.5048,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0072,
+        "vz": -0.2401,
+        "ang_xy": -0.0381,
+        "energy": -3.8371,
+        "torque": -0.6571,
+        "joint_acc": -0.3263,
+        "action_rate": -0.108,
+        "foot_slip": -1.472,
+        "air_time": 2.65,
+        "stand_still": 0.0
+      }
+    }
+  },
+  "strafe_left": {
+    "stand": {
+      "return": 108.84162889806561,
+      "max_abs_action": 0.0,
+      "fell": false,
+      "terms": {
+        "track": 94.6666,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": 0.0,
+        "foot_slip": -0.0545,
+        "air_time": -0.48,
+        "stand_still": 0.0
+      }
+    },
+    "tripod": {
+      "return": 437.1833682100167,
+      "max_abs_action": 0.7987478953630991,
+      "fell": false,
+      "terms": {
+        "track": 427.2476,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0076,
+        "vz": -0.2356,
+        "ang_xy": -0.0761,
+        "energy": -4.218,
+        "torque": -0.6881,
+        "joint_acc": -0.3454,
+        "action_rate": -0.1205,
+        "foot_slip": -1.9429,
+        "air_time": 2.57,
+        "stand_still": 0.0
+      }
+    },
+    "half": {
+      "return": 304.0360450211407,
+      "max_abs_action": 0.779258938311873,
+      "fell": false,
+      "terms": {
+        "track": 292.9404,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0071,
+        "vz": -0.239,
+        "ang_xy": -0.0499,
+        "energy": -3.7929,
+        "torque": -0.6496,
+        "joint_acc": -0.3221,
+        "action_rate": -0.1033,
+        "foot_slip": -1.3705,
+        "air_time": 2.63,
+        "stand_still": 0.0
+      }
+    }
+  },
+  "strafe_right": {
+    "stand": {
+      "return": 108.11951399369111,
+      "max_abs_action": 0.0,
+      "fell": false,
+      "terms": {
+        "track": 93.9445,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": 0.0,
+        "foot_slip": -0.0545,
+        "air_time": -0.48,
+        "stand_still": 0.0
+      }
+    },
+    "tripod": {
+      "return": 434.6760952747714,
+      "max_abs_action": 0.7859032335441651,
+      "fell": false,
+      "terms": {
+        "track": 424.6516,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0078,
+        "vz": -0.2365,
+        "ang_xy": -0.0778,
+        "energy": -4.2225,
+        "torque": -0.689,
+        "joint_acc": -0.3453,
+        "action_rate": -0.1206,
+        "foot_slip": -1.9261,
+        "air_time": 2.65,
+        "stand_still": 0.0
+      }
+    },
+    "half": {
+      "return": 301.2624089973568,
+      "max_abs_action": 0.7721561684607166,
+      "fell": false,
+      "terms": {
+        "track": 290.13,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0072,
+        "vz": -0.2395,
+        "ang_xy": -0.0504,
+        "energy": -3.7967,
+        "torque": -0.6484,
+        "joint_acc": -0.322,
+        "action_rate": -0.1034,
+        "foot_slip": -1.3499,
+        "air_time": 2.65,
+        "stand_still": 0.0
+      }
+    }
+  },
+  "turn_left": {
+    "stand": {
+      "return": 108.68249701869418,
+      "max_abs_action": 0.0,
+      "fell": false,
+      "terms": {
+        "track": 94.5075,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": 0.0,
+        "foot_slip": -0.0545,
+        "air_time": -0.48,
+        "stand_still": 0.0
+      }
+    },
+    "tripod": {
+      "return": 420.491909541773,
+      "max_abs_action": 0.7610923912004022,
+      "fell": false,
+      "terms": {
+        "track": 409.553,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.007,
+        "vz": -0.2383,
+        "ang_xy": -0.0355,
+        "energy": -3.9904,
+        "torque": -0.6736,
+        "joint_acc": -0.331,
+        "action_rate": -0.1277,
+        "foot_slip": -1.2577,
+        "air_time": 2.6,
+        "stand_still": 0.0
+      }
+    },
+    "half": {
+      "return": 268.95103829219664,
+      "max_abs_action": 0.7586388260317151,
+      "fell": false,
+      "terms": {
+        "track": 257.6081,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0069,
+        "vz": -0.2363,
+        "ang_xy": -0.0339,
+        "energy": -3.7203,
+        "torque": -0.6489,
+        "joint_acc": -0.3134,
+        "action_rate": -0.1052,
+        "foot_slip": -1.1021,
+        "air_time": 2.51,
+        "stand_still": 0.0
+      }
+    }
+  },
+  "turn_right": {
+    "stand": {
+      "return": 108.23332177896822,
+      "max_abs_action": 0.0,
+      "fell": false,
+      "terms": {
+        "track": 94.0583,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": 0.0,
+        "foot_slip": -0.0545,
+        "air_time": -0.48,
+        "stand_still": 0.0
+      }
+    },
+    "tripod": {
+      "return": 420.2111541910656,
+      "max_abs_action": 0.7610776576081885,
+      "fell": false,
+      "terms": {
+        "track": 409.2632,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.007,
+        "vz": -0.2383,
+        "ang_xy": -0.0355,
+        "energy": -3.9909,
+        "torque": -0.6736,
+        "joint_acc": -0.3313,
+        "action_rate": -0.1277,
+        "foot_slip": -1.2578,
+        "air_time": 2.61,
+        "stand_still": 0.0
+      }
+    },
+    "half": {
+      "return": 268.6406010441572,
+      "max_abs_action": 0.7586309949770497,
+      "fell": false,
+      "terms": {
+        "track": 257.2791,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0069,
+        "vz": -0.2362,
+        "ang_xy": -0.0337,
+        "energy": -3.7216,
+        "torque": -0.6477,
+        "joint_acc": -0.3134,
+        "action_rate": -0.1052,
+        "foot_slip": -1.0938,
+        "air_time": 2.52,
+        "stand_still": 0.0
+      }
+    }
+  },
+  "combined": {
+    "stand": {
+      "return": 34.04106831149361,
+      "max_abs_action": 0.0,
+      "fell": false,
+      "terms": {
+        "track": 19.866,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": 0.0,
+        "foot_slip": -0.0545,
+        "air_time": -0.48,
+        "stand_still": 0.0
+      }
+    },
+    "tripod": {
+      "return": 406.3734308632054,
+      "max_abs_action": 0.7761952217976359,
+      "fell": false,
+      "terms": {
+        "track": 396.5874,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0079,
+        "vz": -0.2389,
+        "ang_xy": -0.0561,
+        "energy": -4.4154,
+        "torque": -0.6999,
+        "joint_acc": -0.3529,
+        "action_rate": -0.1432,
+        "foot_slip": -1.8898,
+        "air_time": 2.59,
+        "stand_still": 0.0
+      }
+    },
+    "half": {
+      "return": 179.35132303702557,
+      "max_abs_action": 0.7665714577570004,
+      "fell": false,
+      "terms": {
+        "track": 167.9841,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.007,
+        "vz": -0.2379,
+        "ang_xy": -0.0377,
+        "energy": -3.8422,
+        "torque": -0.6542,
+        "joint_acc": -0.3231,
+        "action_rate": -0.109,
+        "foot_slip": -1.1616,
+        "air_time": 2.74,
+        "stand_still": 0.0
+      }
+    }
+  },
+  "slow": {
+    "stand": {
+      "return": 108.38444513508094,
+      "max_abs_action": 0.0,
+      "fell": false,
+      "terms": {
+        "track": 94.2094,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": 0.0,
+        "foot_slip": -0.0545,
+        "air_time": -0.48,
+        "stand_still": 0.0
+      }
+    },
+    "tripod": {
+      "return": 427.1161764300485,
+      "max_abs_action": 0.7760724401752541,
+      "fell": false,
+      "terms": {
+        "track": 416.1671,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0072,
+        "vz": -0.2402,
+        "ang_xy": -0.0382,
+        "energy": -3.8376,
+        "torque": -0.6571,
+        "joint_acc": -0.3266,
+        "action_rate": -0.108,
+        "foot_slip": -1.486,
+        "air_time": 2.65,
+        "stand_still": 0.0
+      }
+    },
+    "half": {
+      "return": 290.56073583248883,
+      "max_abs_action": 0.765932449001647,
+      "fell": false,
+      "terms": {
+        "track": 279.1547,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.007,
+        "vz": -0.2379,
+        "ang_xy": -0.0351,
+        "energy": -3.6864,
+        "torque": -0.6436,
+        "joint_acc": -0.3162,
+        "action_rate": -0.1002,
+        "foot_slip": -1.2277,
+        "air_time": 2.66,
+        "stand_still": 0.0
+      }
+    }
+  },
+  "fast_turn": {
+    "stand": {
+      "return": 108.56837100232818,
+      "max_abs_action": 0.0,
+      "fell": false,
+      "terms": {
+        "track": 94.3933,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": 0.0,
+        "foot_slip": -0.0545,
+        "air_time": -0.48,
+        "stand_still": 0.0
+      }
+    },
+    "tripod": {
+      "return": 414.1661005694256,
+      "max_abs_action": 0.8176114418519252,
+      "fell": false,
+      "terms": {
+        "track": 405.647,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0072,
+        "vz": -0.2517,
+        "ang_xy": -0.0464,
+        "energy": -5.0086,
+        "torque": -0.784,
+        "joint_acc": -0.3908,
+        "action_rate": -0.216,
+        "foot_slip": -2.4762,
+        "air_time": 2.7,
+        "stand_still": 0.0
+      }
+    },
+    "half": {
+      "return": 269.1283503479051,
+      "max_abs_action": 0.7610923912004022,
+      "fell": false,
+      "terms": {
+        "track": 258.1894,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.007,
+        "vz": -0.2383,
+        "ang_xy": -0.0355,
+        "energy": -3.9904,
+        "torque": -0.6736,
+        "joint_acc": -0.331,
+        "action_rate": -0.1277,
+        "foot_slip": -1.2577,
+        "air_time": 2.6,
+        "stand_still": 0.0
+      }
+    }
+  },
+  "zero": {
+    "stand": {
+      "return": 460.3275353560442,
+      "max_abs_action": 0.0,
+      "fell": false,
+      "terms": {
+        "track": 449.6609,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": 0.0,
+        "foot_slip": -0.0545,
+        "air_time": 0.0,
+        "stand_still": -3.9884
+      }
+    },
+    "tripod": {
+      "return": 460.3275353560442,
+      "max_abs_action": 3.3042351923367755e-16,
+      "fell": false,
+      "terms": {
+        "track": 449.6609,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": -0.0,
+        "foot_slip": -0.0545,
+        "air_time": 0.0,
+        "stand_still": -3.9884
+      }
+    },
+    "half": {
+      "return": 460.3275353560442,
+      "max_abs_action": 3.3042351923367755e-16,
+      "fell": false,
+      "terms": {
+        "track": 449.6609,
+        "alive": 15.0,
+        "fall": 0.0,
+        "tilt": -0.0,
+        "vz": -0.1289,
+        "ang_xy": -0.0033,
+        "energy": -0.0157,
+        "torque": -0.126,
+        "joint_acc": -0.0166,
+        "action_rate": -0.0,
+        "foot_slip": -0.0545,
+        "air_time": 0.0,
+        "stand_still": -3.9884
+      }
+    }
+  },
+  "_meta": {
+    "episode_s": 6.0,
+    "kappa": 0.8,
+    "sigma_floors": [
+      0.02,
+      0.05
+    ],
+    "weights": {
+      "track": 1.5,
+      "alive": 0.05,
+      "fall": -10.0,
+      "tilt": -1.0,
+      "vz": -1.0,
+      "ang_xy": -0.05,
+      "energy": -0.002,
+      "torque": -0.0005,
+      "joint_acc": -2.5e-07,
+      "action_rate": -0.01,
+      "foot_slip": -1.0,
+      "air_time": 0.5,
+      "stand_still": -0.1
+    }
+  }
+}

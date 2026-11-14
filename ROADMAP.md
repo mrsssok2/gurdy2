@@ -60,9 +60,10 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
   command sampling — AC: `check_env` passes; tests: obs layout/dims, no privileged inputs, targets
   always within joint limits, deterministic seeding
   — done: 11 env tests + VecEnv equivalence test pass (`rl/tests/`)
-- [ ] **2.3** Reward + sanity tests — AC: every term unit-tested; walking at 50 % of command clearly beats
+- [x] **2.3** Reward + sanity tests — AC: every term unit-tested; walking at 50 % of command clearly beats
   standing; tripod walker ≥ 2–3× standing under every move command (pure turning included);
   standing wins at zero command; tripod reference return recorded
+  — done: tripod 3.7–4.0× standing (combined 11.9×), half speed 2.5–2.8×, zero cmd standing wins (`docs/results/phase2_reward.md`)
 - [ ] **2.4** `train.py` + configs (flat, no DR), TensorBoard, checkpoints + resume — AC: flat tracking
   error < 20 %, fall rate < 5 % over 100 episodes, resume verified, RAM peak + wall time recorded
   (time box ~60M steps, then asymmetric critic, then option B)
