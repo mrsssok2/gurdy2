@@ -25,7 +25,12 @@ def _v(a) -> str:
     return " ".join(f"{float(x):.9g}" for x in a)
 
 
-def build_mjcf(robot: Robot | None = None, fixed_base: bool = False, base_z: float | None = None) -> str:
+def build_mjcf(robot: Robot | None = None, fixed_base: bool = False, base_z: float | None = None,
+               hfield: dict | None = None) -> str:
+    """hfield (step 2.8 terrain): {"n": grid points per side, "half": half size [m],
+    "elevation": height range [m], "z_offset": world z of data value 0}. Adds a heightfield geom
+    "terrain" (same contact class as the floor) next to the floor plane; the env fills
+    model.hfield_data at runtime and switches the two on/off via contype."""
     r = robot or load_robot()
     l1, l2, l3 = r.lengths
     jc, c, sim = r.joint_common, r.control, r.sim
@@ -80,6 +85,13 @@ def build_mjcf(robot: Robot | None = None, fixed_base: bool = False, base_z: flo
     q0 = leg_ik(r, nominal_foot(r))
     home_q = " ".join(_v(q0) for _ in LEG_NAMES)
     free_home = "" if fixed_base else f"0 0 {base_z} 1 0 0 0 "
+    hf_asset = hf_geom = ""
+    if hfield:
+        n, half = int(hfield["n"]), float(hfield["half"])
+        hf_asset = (f'\n  <asset><hfield name="terrain" nrow="{n}" ncol="{n}" '
+                    f'size="{half} {half} {hfield["elevation"]} 0.1"/></asset>')
+        hf_geom = (f'\n    <geom name="terrain" type="hfield" hfield="terrain" pos="0 0 {hfield["z_offset"]}" '
+                   f'contype="1" conaffinity="0" friction="1.0 0.005 0.0001" rgba="0.55 0.6 0.55 1"/>')
     return f"""<mujoco model="{r.name}">
   <!-- GENERATED from robot.yaml by sim_mujoco/mjcf.py — do not edit by hand. -->
   <compiler angle="radian" autolimits="true" inertiafromgeom="false"/>
@@ -91,10 +103,10 @@ def build_mjcf(robot: Robot | None = None, fixed_base: bool = False, base_z: flo
     <!-- robot geoms only touch the floor (contype 0 / conaffinity 1 vs floor 1 / 0) -->
     <default class="collision"><geom group="0" contype="0" conaffinity="1" friction="{mu} 0.005 0.0001" mass="0"/></default>
   </default>
-  <visual><global offwidth="{max(640, cam['width'])}" offheight="{max(480, cam['height'])}"/></visual>
+  <visual><global offwidth="{max(640, cam['width'])}" offheight="{max(480, cam['height'])}"/></visual>{hf_asset}
   <worldbody>
     <light pos="0 0 3" dir="0 0 -1" directional="true"/>
-    <geom name="floor" type="plane" size="5 5 0.05" contype="1" conaffinity="0" friction="1.0 0.005 0.0001" rgba="0.7 0.7 0.7 1"/>
+    <geom name="floor" type="plane" size="5 5 0.05" contype="1" conaffinity="0" friction="1.0 0.005 0.0001" rgba="0.7 0.7 0.7 1"/>{hf_geom}
     <body name="base_link" pos="0 0 {base_z}">
       {'' if fixed_base else '<freejoint name="root"/>'}
       <inertial pos="0 0 0" mass="{r.body_mass}" diaginertia="{_v(r.body_inertia())}"/>

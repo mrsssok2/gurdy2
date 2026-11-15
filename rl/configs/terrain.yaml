@@ -1,0 +1,16 @@
+# Step 2.8: terrain curriculum + small-command dead-zone fix, fine-tuned from the selected flat policy.
+# Start: train.py --config rl/configs/terrain.yaml --name terrain_v1 \
+#          --init-from rl/runs/dr_energy_ft/checkpoints/ppo_6000000_steps.zip
+# Observations unchanged (blind policy, 195 actor values; critic 17 privileged values), so the
+# checkpoint loads as is. DR stays at full scale; energy/smoothness weights stay final.
+_base: dr_energy_ft.yaml
+env:
+  zero_command_prob: 0.10          # was 0.15
+  small_command_prob: 0.15         # 15-40 % of the limits (dead zone was vx/vy +-0.03, wz +-0.10)
+  command_deadband: true           # gurdy_core.rl_command (|v| < 0.015 m/s, |wz| < 0.05 rad/s -> 0)
+  terrain:
+    enabled: true                  # envs/terrain.py DEFAULTS: rough / slopes / steps, 10 levels each
+training:
+  total_timesteps: 60000000
+  checkpoint_every: 2000000
+  critic_warmup_steps: 409600      # 20 iterations, actor frozen: the critic has never seen terrain

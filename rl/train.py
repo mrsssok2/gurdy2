@@ -212,6 +212,7 @@ def main():
                 self.training_env.set_attr(attr, self.extra[attr])
             self.sums, self.n, self.falls, self.ends, self.clipped = {}, 0, 0, 0, 0
             self.track_err, self.t0 = [], time.time()
+            self.tlev, self.tends = {}, {}                           # 2.8 terrain: level sums, (ends, falls)
 
         def _on_step(self):
             for info, done in zip(self.locals["infos"], self.locals["dones"]):
@@ -223,9 +224,17 @@ def main():
                 if cmd is not None and np.any(np.abs(cmd) > 1e-6):
                     tv = info["track_vel"]
                     self.track_err.append(np.linalg.norm(tv - cmd) / np.linalg.norm(cmd))
+                tt = info.get("terrain")
+                if tt is not None:
+                    s_, n_ = self.tlev.get(tt, (0.0, 0))
+                    self.tlev[tt] = (s_ + info["terrain_level"], n_ + 1)
                 if done:
                     self.ends += 1
-                    self.falls += int(not info.get("TimeLimit.truncated", False))
+                    fell = int(not info.get("TimeLimit.truncated", False))
+                    self.falls += fell
+                    if tt is not None:
+                        e_, f_ = self.tends.get(tt, (0, 0))
+                        self.tends[tt] = (e_ + 1, f_ + fell)
             return True
 
         def _on_rollout_end(self):
@@ -239,6 +248,11 @@ def main():
             lg.record("gurdy/penalty_scale", self.pscale)
             for attr, v in self.extra.items():
                 lg.record(f"gurdy/{attr}", v)
+            for tt, (s_, n_) in self.tlev.items():
+                lg.record(f"terrain/level_{tt}", s_ / max(n_, 1))
+                lg.record(f"terrain/share_{tt}", n_ / max(self.n, 1))
+            for tt, (e_, f_) in self.tends.items():
+                lg.record(f"terrain/fall_rate_{tt}", f_ / max(e_, 1))
             lg.record("gurdy/reward_clipped_frac", self.clipped / max(self.n, 1))
             lg.record("gurdy/action_std", effective_std(self.model))
             lg.record("gurdy/ram_mib", tree_rss_mib())

@@ -156,6 +156,7 @@ docker compose run --rm rl bash -c 'cd rl && python3 -m pytest -q'
 docker compose run --rm rl python3 rl/eval.py --run <name> --checkpoints 50000000 latest   # step 2.5 eval
 docker compose run --rm rl python3 rl/tools/make_video.py --run <name> --checkpoint latest
 docker compose run --rm rl python3 rl/eval.py --policies flat_bc_v1:latest dr_energy_v1:40000000 --scenarios all
+docker compose run --rm rl python3 rl/eval.py --policies dr_energy_ft:6000000 terrain_v1:latest --terrain all
 docker compose run --rm rl python3 rl/tools/start_test.py --controllers tripod dr_energy_v1:40000000
 docker compose run --rm rl python3 rl/tools/smoothness.py --run dr_energy_v1 --checkpoint 40000000
 docker compose run --rm rl python3 rl/tools/make_video_v2.py --controllers tripod flat_bc_v1:latest \
@@ -229,5 +230,13 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   `window_error_breakdown.py`, `deadzone_reward.py`. Lesson: evaluation inputs must not depend on the
   training config of the run being evaluated.
 - ROADMAP has Phase 8 (air-ground team, drone + hexapods) and Phase 9 (hybrid walk+fly research), planned.
-- Next: 2.8 terrain curriculum + dead-zone fix; optional 2.6 MJX; C1 overnight run for Experiment B still
-  to be planned.
+- 2.8 in progress (2026-11-15): terrain = one MuJoCo heightfield per env regenerated each reset
+  (`rl/envs/terrain.py`; flat episodes keep the floor plane, falls judged vs ground under the feet),
+  per-env per-type curriculum (fall/err > 0.6 down, err < 0.35 up, top → random level). Dead-zone fix:
+  `gurdy_core/rl_command.apply_deadband` (ROS node must use it too), 15 % small commands, 10 % zero.
+  Eval: `rl/eval.py --policies ... --terrain all` (grid, success = no fall & error < 50 %); start gate now
+  144 starts (large / small from rest / small while walking). Eval forces the standard command
+  distribution and floor plane unless a terrain cell is requested. Terrain training ≈ 2.0k samples/s,
+  1.9 GiB. Run `terrain_v1` (config `rl/configs/terrain.yaml`, init ft-6M) started; evaluate after.
+- Next: evaluate terrain_v1 (flat no-regression vs ft-6M, terrain grid, start gate); optional 2.6 MJX;
+  C1 overnight run for Experiment B still to be planned.

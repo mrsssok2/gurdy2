@@ -12,6 +12,10 @@
 * reset(options={"command": (vx, vy, wz)}) fixes the command (evaluation/tests); with
   config resample_command false it is kept for the whole episode.
 * info: ground-truth diagnostics for logging/reward/eval ONLY (never part of the actor observation).
+* Step 2.8: terrain (envs/terrain.py: heightfield per env, per-env curriculum over rough / slopes /
+  steps; flat episodes use the original plane), small commands (small_command_prob, 15-40 % of the
+  limits) and the shared /cmd_vel deadband (gurdy_core.rl_command) on every sampled command.
+  Falls are judged relative to the ground under the feet.
 * Step 2.7: domain randomisation (envs/randomization.py; ranges scaled by attr dr_scale), action
   latency (previous targets held for k substeps), pushes, sensor noise on the ACTOR's inputs only;
   obs_mode "asym" returns {"policy": 195 actor values, "privileged": 17 clean critic-only values}.
@@ -28,11 +32,13 @@ import numpy as np
 from gurdy_core.experiments import FALL_TILT, FALL_Z
 from gurdy_core.kinematics import leg_ik, nominal_foot
 from gurdy_core.rl_action import ActionMapper
+from gurdy_core.rl_command import apply_deadband
 from gurdy_core.rl_obs import OBS_DIM, ObsHistory, build_frame, gravity_in_body
 from gurdy_core.robot import JOINT_TYPES, LEG_NAMES, load_gait, load_robot
 from sim_mujoco.mjcf import build_mjcf
 
 from . import reward as R
+from . import terrain as T
 from .randomization import PRIVILEGED_DIM, DomainRandomizer
 
 DEFAULTS = {
@@ -42,6 +48,11 @@ DEFAULTS = {
     "axis_aligned_prob": 0.0,       # 2.7b: share of commands that are pure +-vx / +-vy / +-wz (30-100 % of limit)
     "rest_start_prob": 0.0,         # 2.7b: share of command switches preceded by 1-2 s of zero command
     "zero_command_prob": 0.15,
+    "small_command_prob": 0.0,      # 2.8: share of commands at 15-40 % of the limits (half axis-aligned)
+    "small_command_range": [0.15, 0.40],
+    "command_deadband": False,      # 2.8: gurdy_core.rl_command.apply_deadband on every sampled command
+    "terrain": {},                  # 2.8: see envs/terrain.py DEFAULTS (enabled false = floor plane only)
+    "terrain_fixed": None,          # eval: {"type": "rough", "value": 0.02} (no curriculum)
     "action_scale": {"hip_yaw": 0.3, "hip_pitch": 0.7, "knee": 0.6},
     "init_joint_noise": 0.05,
     "action_filter_alpha": 1.0,     # EMA on actions: a_f = alpha*a + (1-alpha)*a_f_prev (1.0 = off)
@@ -74,7 +85,15 @@ class GurdyEnv(gym.Env):
         self.dr_scale = 1.0              # domain-randomisation range scale, set via set_attr
         self.robot = load_robot(robot_yaml)
         r = self.robot
-        self.model = mujoco.MjModel.from_xml_string(build_mjcf(r))
+        self.tcfg = T.merged(self.cfg["terrain"])
+        self.terrain_on = bool(self.tcfg["enabled"] or self.cfg["terrain_fixed"])
+        hf = None
+        if self.terrain_on:
+            self.tgen = T.TerrainGenerator(self.tcfg)
+            self.elev = float(self.tcfg["max_elevation"])
+            hf = {"n": self.tgen.n, "half": self.tgen.half, "elevation": self.elev, "z_offset": -self.elev / 2}
+        self.curriculum = None
+        self.model = mujoco.MjModel.from_xml_string(build_mjcf(r, hfield=hf))
         self.data = mujoco.MjData(self.model)
         m = self.model
         self.policy_dt = 1.0 / r.control["policy_rate_hz"]
@@ -94,6 +113,10 @@ class GurdyEnv(gym.Env):
         self.body_geom = m.geom("body").id
         self.foot_geoms = np.array([m.geom(f"{leg}_foot").id for leg in LEG_NAMES])
         self.floor_geom = m.geom("floor").id
+        self.terrain_geom = m.geom("terrain").id if self.terrain_on else -1
+        self.ground_geom = self.floor_geom             # the geom the robot stands on this episode
+        self.heights = None                            # terrain height map of this episode (None = plane)
+        self.terrain_type, self.terrain_value, self.terrain_level = "flat", 0.0, 0
         self.foot_sites = [m.site(f"{leg}_foot").id for leg in LEG_NAMES]
         self.air_timer = R.FootAirTimer(len(LEG_NAMES), self.policy_dt)
         self._vel6 = np.zeros(6)
@@ -114,9 +137,22 @@ class GurdyEnv(gym.Env):
 
     # ------------------------------------------------------------------ helpers
     def _sample_command(self) -> np.ndarray:
+        c = self._sample_raw_command()
+        return apply_deadband(c) if self.cfg["command_deadband"] else c
+
+    def _sample_raw_command(self) -> np.ndarray:
         rng = self.np_random
         if rng.random() < self.cfg["zero_command_prob"]:
             return np.zeros(3)
+        if self.cfg["small_command_prob"] > 0 and rng.random() < self.cfg["small_command_prob"]:
+            # 2.8 dead-zone fix: largest component at 15-40 % of its limit
+            if rng.random() < 0.5:
+                d = np.zeros(3)
+                d[int(rng.integers(3))] = rng.choice([-1.0, 1.0])
+            else:
+                d = rng.uniform(-1.0, 1.0, 3)
+                d /= max(np.max(np.abs(d)), 1e-9)
+            return d * rng.uniform(*self.cfg["small_command_range"]) * self.cmd_lim
         if self.cfg["axis_aligned_prob"] > 0 and rng.random() < self.cfg["axis_aligned_prob"]:
             c = np.zeros(3)
             ax = int(rng.integers(3))
@@ -178,7 +214,7 @@ class GurdyEnv(gym.Env):
         out = np.zeros(len(LEG_NAMES), dtype=bool)
         if d.ncon:
             g = d.contact.geom[:d.ncon]
-            touching = g[(g == self.floor_geom).any(axis=1)].ravel()
+            touching = g[(g == self.ground_geom).any(axis=1)].ravel()
             out = np.isin(self.foot_geoms, touching)
         return out
 
@@ -190,10 +226,43 @@ class GurdyEnv(gym.Env):
             out[i] = self._vel6[3:5]
         return out
 
+    def _ground_ref(self) -> float:
+        """Ground height under the robot: median terrain height at the 6 feet (0 on the plane)."""
+        if self.heights is None:
+            return 0.0
+        xs = self.data.site_xpos[self.foot_sites]
+        return float(np.median([self.tgen.height_at(self.heights, x, y) for x, y, _ in xs]))
+
+    def _setup_terrain(self):
+        """Choose this episode's terrain (curriculum or fixed), upload the heightfield, switch geoms."""
+        m = self.model
+        if not self.terrain_on:
+            return
+        fixed = self.cfg["terrain_fixed"]
+        if fixed:
+            self.terrain_type, self.terrain_value, self.terrain_level = fixed["type"], float(fixed["value"]), -1
+        else:
+            if self.curriculum is None:
+                self.curriculum = T.TerrainCurriculum(self.tcfg, self.np_random)
+            self.terrain_type = self.curriculum.sample_type(self.np_random)
+            self.terrain_level = self.curriculum.level(self.terrain_type)
+            self.terrain_value = T.difficulty_value(self.tcfg, self.terrain_type, self.terrain_level)
+        on_terrain = self.terrain_type != "flat"
+        m.geom_contype[self.floor_geom] = 0 if on_terrain else 1
+        m.geom_contype[self.terrain_geom] = 1 if on_terrain else 0
+        m.geom_friction[self.terrain_geom] = m.geom_friction[self.floor_geom]   # DR friction
+        self.ground_geom = self.terrain_geom if on_terrain else self.floor_geom
+        if on_terrain:
+            h = self.tgen.generate(self.terrain_type, self.terrain_value, self.np_random)
+            m.hfield_data[:] = np.clip((h + self.elev / 2) / self.elev, 0.0, 1.0).ravel().astype(np.float32)
+            self.heights = h
+        else:
+            self.heights = None
+
     def _fallen(self) -> bool:
         d = self.data
         g = gravity_in_body(d.qpos[3:7])
-        if d.qpos[2] < FALL_Z or np.arccos(np.clip(-g[2], -1, 1)) > FALL_TILT:
+        if d.qpos[2] - self._ground_ref() < FALL_Z or np.arccos(np.clip(-g[2], -1, 1)) > FALL_TILT:
             return True
         if d.ncon:                                     # vectorised: Python loops over contacts were 30 % of step time
             return bool(np.any(d.contact.geom[:d.ncon] == self.body_geom))
@@ -205,7 +274,12 @@ class GurdyEnv(gym.Env):
         m, d = self.model, self.data
         self.dr.sample(self.np_random, self.dr_scale, self.cfg["dr_fixed"])
         self.dr.apply(d)
+        self._setup_terrain()
         mujoco.mj_resetDataKeyframe(m, d, self.key)
+        if self.heights is not None:                   # lift so that the highest foot just touches the ground
+            mujoco.mj_kinematics(m, d)
+            r_f = self.robot.foot_radius + self.tcfg["res"]
+            d.qpos[2] += max(self.tgen.max_near(self.heights, x, y, r_f) for x, y, _ in d.site_xpos[self.foot_sites])
         noise = self.np_random.uniform(-1, 1, len(self.qadr)) * self.cfg["init_joint_noise"]
         d.qpos[self.qadr] = np.clip(self.q_stance + noise, self.q_lo, self.q_hi)
         d.ctrl[:] = self.q_stance
@@ -223,6 +297,8 @@ class GurdyEnv(gym.Env):
         self.fixed_command = fixed is not None
         self.pending_command = None
         self.command = np.asarray(fixed, dtype=float) if self.fixed_command else self._new_command()
+        self.cmd_age = 0                               # steps since the command last changed
+        self.ep_err_sum, self.ep_err_n = 0.0, 0        # episode tracking error (terrain curriculum)
         obs = self.hist.reset(self._frame())
         v0, _ = self._body_velocity()
         return self._obs(obs, v0, self.foot_contacts()), {"command": self.command.copy(),
@@ -277,6 +353,14 @@ class GurdyEnv(gym.Env):
             self.penalty_scale, self.rcfg["only_positive"])
         self.qd_prev = qd
         truncated = self.steps >= self.max_steps
+        if np.any(np.abs(cmd) > 1e-6) and self.cmd_age >= int(1.0 / self.policy_dt):
+            self.ep_err_sum += float(np.linalg.norm((self.track_vel - cmd) / self.cmd_lim)
+                                     / np.linalg.norm(cmd / self.cmd_lim))
+            self.ep_err_n += 1
+        level_change = 0
+        if (terminated or truncated) and self.curriculum is not None:
+            err = self.ep_err_sum / self.ep_err_n if self.ep_err_n else None
+            level_change = self.curriculum.update(self.terrain_type, terminated, err, self.np_random)
         self.prev_action2 = self.prev_action
         self.prev_action = a
         if self.pending_command is not None and self.steps >= self.rest_until:
@@ -284,8 +368,10 @@ class GurdyEnv(gym.Env):
         if (self.cfg["resample_command"] and not self.fixed_command
                 and self.steps % self.cmd_steps == 0):
             self.command = self._new_command()
+        self.cmd_age = 0 if not np.array_equal(self.command, cmd) else self.cmd_age + 1
         obs = self._obs(self.hist.push(self._frame()), v, contact)
-        info = {"command": cmd, "body_vel": v, "yaw_rate": float(wz), "body_z": float(d.qpos[2]),
+        info = {"terrain": self.terrain_type, "terrain_level": self.terrain_level,
+                "terrain_value": self.terrain_value, "terrain_level_change": level_change, "command": cmd, "body_vel": v, "yaw_rate": float(wz), "body_z": float(d.qpos[2]),
                 "foot_contact": contact, "track_vel": self.track_vel.copy(), "reward_terms": terms,
                 "reward_clipped": clipped, "energy_J": energy, "substeps": sub}
         return obs, reward, terminated, truncated, info

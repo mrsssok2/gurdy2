@@ -91,6 +91,11 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
   success rate per level; RL beats tripod on rough terrain. Also fix the small-command dead zone:
   ~15 % small commands (15–40 % of limit), zero commands 15 → 10 %, explicit `/cmd_vel` deadband
   (|v| < 0.015 m/s, |ω| < 0.05 rad/s), start gate extended to small commands (from rest + while walking)
+  — in progress (2026-11-15): built `rl/envs/terrain.py` (heightfield per env, 10-level per-env curriculum,
+  rough 0.2–4 cm / slopes 2–15° / steps 0.5–5 cm + 10 % flat plane), `gurdy_core/rl_command.py` deadband,
+  small commands, `rl/eval.py --terrain` grid + 144-start gate; run `terrain_v1` (init ft-6M, 60M steps)
+  training. Baseline ft-6M vs tripod (12 eps/cell): tripod drops to 67–75 % success on 3–3.5 cm steps,
+  ft-6M tracking degrades on slopes ≥ 8° (27–74 % error); rough ≤ 2.5 cm easy for both
 - [ ] **2.9** ONNX export + `gurdy_rl_policy` ROS node + Gazebo deployment — AC: ONNX == torch (1e-5);
   walks in Gazebo without retraining; no fall in the 2-min protocol; tracking + sim-to-sim gap reported
 - [ ] **2.10** Experiment A (rough terrain, RL vs tripod, MuJoCo + Gazebo) and Experiment B (one leg
