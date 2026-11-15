@@ -81,8 +81,10 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
   0 % falls in all 9 DR scenarios, tracking 10.0–12.2 % (flat_bc_v1: 99 % under sensor noise), CoT 7.70
   (tripod 7.35, flat 18.3). Known issues: user target tracking < 10 % narrowly missed (10.9 %); after
   ~45M the policy stops starting left strafes from rest (start_test) → 2.7b (`docs/results/phase2_dr.md`)
-- [ ] **2.7b** (proposed) Command distribution with axis-aligned + start-from-rest commands; `start_test`
+- [x] **2.7b** Command distribution with axis-aligned + start-from-rest commands; `start_test`
   as a regression gate in eval; short fine-tune from 40M — AC: 0/48 failed starts, tracking < 10 %, CoT ≤ 11
+  — done (2026-11-15): `dr_energy_ft` 10M (10M steps, 0.96 h): start gate 0/48, CoT 6.93, 0 % falls in all 9
+  scenarios, tracking 10.9 ± 1.0 % — **tracking < 10 % not met** (open item for 2.8)
 - [ ] **2.8** Terrain curriculum (heightfield: rough 0.5–2 cm, slopes 5–12°, steps 1.5–3 cm) — AC:
   success rate per level; RL beats tripod on rough terrain
 - [ ] **2.9** ONNX export + `gurdy_rl_policy` ROS node + Gazebo deployment — AC: ONNX == torch (1e-5);

@@ -38,21 +38,22 @@ def record(spec, cfg):
                obs_mode=ctl.obs_mode)
     obs, _ = env.reset(seed=0, options={"command": (0, 0, 0)})
     ctl.reset(env)
-    qd, tau, acts, t = [], [], [], 0.0
+    qd, tau, acts, contacts, t = [], [], [], [], 0.0
     while t < total - 1e-9:
         env.command = np.array(cmd_at(changes, t), float)
         obs, _, term, _, info = env.step(ctl.act(obs, env))
         acts.append(env.mapper.a_filt.copy())
+        contacts.append(info["foot_contact"].copy())
         for v, f, *_ in info["substeps"]:
             qd.append(v)
             tau.append(f)
         t = env.steps * env.policy_dt
         if term:
             break
-    return np.array(qd), np.array(tau), np.array(acts), 1.0 / env.model.opt.timestep, changes, total
+    return np.array(qd), np.array(tau), np.array(acts), 1.0 / env.model.opt.timestep, changes, total, np.array(contacts)
 
 
-def analyse(qd, tau, acts, fs, changes, total):
+def analyse(qd, tau, acts, fs, changes, total, contacts):
     # analyse moving segments only (skip stops and the random tail): forward..combined
     segs = [(t0, t0 + 12.0) for t0, c in changes if any(abs(x) > 0 for x in c)][:7]
     out = {"bands_pct": {}, "per_joint_type_hf_pct": {}}
@@ -75,13 +76,12 @@ def analyse(qd, tau, acts, fs, changes, total):
         out["bands_pct"][f"{lo}-{hi} Hz"] = float(100 * P[b] / P.sum())
     for j, t in enumerate(JOINT_TYPES):
         out["per_joint_type_hf_pct"][t] = float(100 * Pj[j, 0] / Pj[j, 1])
-    # dominant stepping frequency (hip_pitch velocity, 0.3-5 Hz) and stride amplitude, forward segment
+    # stride frequency = touchdowns per leg per second (foot contact False -> True), forward segment.
+    # (The earlier spectral-peak estimate jumped between the stride fundamental and its 2nd harmonic.)
     t0 = segs[0][0]
-    v = qd[int((t0 + 2) * fs):int((t0 + 12) * fs), 1::3]
-    V = (np.abs(np.fft.rfft(v - v.mean(0), axis=0)) ** 2).sum(1)
-    fr = np.fft.rfftfreq(len(v), 1 / fs)
-    m = (fr > 0.3) & (fr < 5)
-    out["step_freq_hz_forward"] = float(fr[m][np.argmax(V[m])])
+    c = contacts[int((t0 + 2) / 0.02):int((t0 + 12) / 0.02)]
+    touchdowns = np.sum(c[1:] & ~c[:-1], axis=0)
+    out["step_freq_hz_forward"] = float(touchdowns.mean() / 10.0)
     out["joint_speed_rms_by_type"] = {t: float(np.sqrt(np.mean(qd[:, j::3] ** 2))) for j, t in enumerate(JOINT_TYPES)}
     out["energy_J_moving"] = float(E)
     out["jitter_energy_share_pct"] = float(100 * (1 - Es / E))
@@ -111,7 +111,7 @@ def main():
         print(f"| joint-velocity power {k} | " + " | ".join(f"{res[n]['bands_pct'][k]:.1f} %" for n in names) + " |")
     for k in res[names[0]]["per_joint_type_hf_pct"]:
         print(f"| {k}: power above 5 Hz | " + " | ".join(f"{res[n]['per_joint_type_hf_pct'][k]:.1f} %" for n in names) + " |")
-    print("| stepping frequency, forward (Hz) | " + " | ".join(f"{res[n]['step_freq_hz_forward']:.2f}" for n in names) + " |")
+    print("| stride frequency, forward (touchdowns/leg/s) | " + " | ".join(f"{res[n]['step_freq_hz_forward']:.2f}" for n in names) + " |")
     for t in ("hip_yaw", "hip_pitch", "knee"):
         print(f"| {t} speed RMS (rad/s) | " + " | ".join(f"{res[n]['joint_speed_rms_by_type'][t]:.2f}" for n in names) + " |")
     for k, lab in (("energy_J_moving", "energy, moving segments (J)"), ("jitter_energy_share_pct", "energy NOT explained by < 5 Hz motion"),

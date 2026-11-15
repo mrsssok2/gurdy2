@@ -214,5 +214,10 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   left strafes from rest → always run `rl/tools/start_test.py` before selecting a checkpoint.
   Eval: `rl/eval.py --policies run:ckpt ... --scenarios all`; video: `rl/tools/make_video_v2.py`.
   `docs/results/phase2_dr.md`, video `docs/videos/phase2_3way_tripod_flat_dr.mp4`.
-- Next: 2.7b (fix start-from-rest; proposed), then 2.8 terrain; optional 2.6 MJX; C1 overnight run
-  for Experiment B still to be planned.
+- 2.7b done (2026-11-15): **current best policy `dr_energy_ft` 10M**
+  (`rl/runs/dr_energy_ft/checkpoints/ppo_10000000_steps.zip`), fine-tuned from dr_energy_v1 40M with 25 %
+  axis-aligned + 25 % rest-start commands. Start gate 0/48 (now in every `rl/eval.py` run — never select a
+  checkpoint that fails it), CoT 6.93, 0 % falls in all 9 DR scenarios, tracking 10.9 ± 1.0 % (target
+  < 10 % NOT met; SE now reported). Stride frequency is measured by touchdown counting (the spectral peak
+  was ambiguous). Pushing: the user pushes from their own terminal (git has no credentials here).
+- Next: 2.8 terrain curriculum; optional 2.6 MJX; C1 overnight run for Experiment B still to be planned.

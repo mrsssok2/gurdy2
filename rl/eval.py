@@ -169,8 +169,12 @@ def run_episodes(args):
 def summarize_episodes(ep):
     errs = np.concatenate([e["window_errors"] for e in ep]) if ep else np.array([np.nan])
     secs = sum(e["steps"] for e in ep) * 0.02
+    per_ep = np.array([np.mean(e["window_errors"]) for e in ep if e["window_errors"]])
     return {"n": len(ep), "fall_rate": float(np.mean([e["fell"] for e in ep])),
-            "window_error_mean": float(errs.mean()), "window_error_median": float(np.median(errs)),
+            "window_error_mean": float(errs.mean()),
+            # standard error across episodes (windows within an episode are correlated)
+            "window_error_se": float(per_ep.std(ddof=1) / np.sqrt(len(per_ep))) if len(per_ep) > 1 else float("nan"),
+            "window_error_median": float(np.median(errs)),
             "window_error_p90": float(np.percentile(errs, 90)),
             "windows_below_20pct": float(np.mean(errs < 0.2)), "n_windows": int(len(errs)),
             "mean_power_W": float(sum(e["energy_J"] for e in ep) / max(secs, 1e-9))}
@@ -222,13 +226,13 @@ def main_scenarios(a):
         print(f"| {name} | " + " | ".join(f"{x['main_axis_error_pct']:+.1f} %" for x in p["segments"])
               + f" | {int(p['fell'])} | {p['energy_J']:.0f} | {p['cost_of_transport']:.2f} | {p['mean_power_W']:.1f}"
               + f" | {'PASS' if g['pass'] else 'FAIL'} {g['failed_starts']}/{g['n_starts']} |")
-    print("\nScenarios (fall rate / window error mean / mean power):\n")
+    print("\nScenarios (fall rate / window error mean ± SE across episodes / mean power):\n")
     print("| scenario | " + " | ".join(summary) + " |\n|---" + "|---" * len(summary) + "|")
     for sc in scen:
         row = []
         for name in summary:
             e = summary[name]["scenarios"][sc]
-            row.append(f"{100 * e['fall_rate']:.0f} % / {100 * e['window_error_mean']:.1f} % / {e['mean_power_W']:.1f} W")
+            row.append(f"{100 * e['fall_rate']:.0f} % / {100 * e['window_error_mean']:.1f} ± {100 * e['window_error_se']:.1f} % / {e['mean_power_W']:.1f} W")
         print(f"| {sc} (n={summary[next(iter(summary))]['scenarios'][sc]['n']}) | " + " | ".join(row) + " |")
 
 

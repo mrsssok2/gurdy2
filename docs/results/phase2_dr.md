@@ -6,7 +6,7 @@ randomisation (DR), an asymmetric critic and an energy/smoothness curriculum. Mu
 `phase2_dr_smoothness.json`. Video (tripod | flat_bc_v1 | dr_energy_v1 40M):
 [`docs/videos/phase2_3way_tripod_flat_dr.mp4`](../videos/phase2_3way_tripod_flat_dr.mp4).
 
-**Selected checkpoint: 40M steps** (not the final one — see "late-training degeneration" below).
+**Selected in 2.7: 40M steps** (not the final one — see "late-training degeneration" below). **Superseded by 2.7b: `dr_energy_ft` 10M** (fine-tuned from 40M; see the 2.7b section at the end).
 
 ## Setup (`rl/configs/dr_energy.yaml`)
 * Start: `flat_bc_v1` 60M, transferred into an asymmetric actor-critic (actor copied exactly; critic copied
@@ -119,11 +119,16 @@ friction 0.04, latency 10 ms, sensor noise, pushes).
 | action rate Σ(Δa)² | 0.035 | 0.113 | 0.046 |
 | action 2nd difference | 0.0026 | 0.0225 | 0.0047 |
 | joint speed RMS | 1.30 rad/s | 2.19 rad/s | 1.40 rad/s |
-| stepping frequency (forward) | 2.50 Hz | 2.80 Hz | 2.10 Hz |
+| stride frequency, forward (touchdowns/leg/s)¹ | 1.23 | 1.40 | 1.08 |
 
 flat_bc_v1's extra energy came mostly from larger/faster gait motion, with hip_yaw jitter on top; the
 curriculum removed most of both: **2.6× less energy than flat_bc_v1, CoT within 5 % of the tripod**.
-The DR policy now steps slower than the tripod (2.1 vs 2.5 Hz); some hip_yaw jitter remains (6.4 %).
+The DR policy strides slower than the tripod (1.08 vs 1.23 touchdowns/leg/s); some hip_yaw jitter
+remains (6.4 %).
+
+¹ Corrected 2026-11-15: earlier versions reported the strongest hip_pitch-velocity spectral peak
+(2.50 / 2.80 / 2.10 Hz), which picks the stride's 2nd harmonic for some gaits and the fundamental for
+others; touchdown counting from foot contacts is unambiguous (ratios between policies were unchanged).
 
 ## Summary vs step 2.7 targets
 | target | result (40M) |
@@ -134,3 +139,92 @@ The DR policy now steps slower than the tripod (2.1 vs 2.5 Hz); some hip_yaw jit
 | mean tracking error < 10 % | **narrowly missed: 10.9 %** (flat_bc_v1 4.9 %, tripod 15.9 %) |
 | jitter check | done: jitter was a minor energy share; hip_yaw HF 14.9 → 6.4 % |
 | start-from-rest (added) | 40M: 0/48 failures; 50M/60M fail left-strafe starts |
+| stride frequency | 1.08 touchdowns/leg/s (tripod 1.23) |
+
+---
+
+# Step 2.7b — start-from-rest gate + fine-tune (`dr_energy_ft`)
+
+**Selected policy: `dr_energy_ft` 10M** — fine-tuned from `dr_energy_v1` 40M (BC-initialised from the
+tripod gait). Raw data: `phase2_dr_ft_checkpoints.json`, `phase2_dr_ft_scenarios.json`,
+`phase2_dr_ft_smoothness.json`.
+
+**Changes.**
+* Training commands (`rl/configs/dr_energy_ft.yaml`): 25 % axis-aligned commands (pure ±vx/±vy/±wz,
+  30–100 % of the limit) and 25 % of command switches preceded by 1–2 s of zero command (start from rest).
+  Energy/smoothness weights fixed at their final values, DR at full scale, no critic warm-up.
+  10,014,720 steps in **0.96 h** (2.7–3.0k samples/s), 1.6 GiB, no falls.
+* **Start gate** (now in every `rl/eval.py` run): ±vx 0.10, ±vy 0.08, ±wz 0.3 from rest at 8 gait-clock
+  phases (48 starts); fail if < 20 % of the commanded speed; a checkpoint qualifies only at 0/48.
+* `rl/eval.py` reports the standard error of the tracking error across episodes.
+
+## Checkpoint selection (nominal, deterministic, same eval run)
+
+| controller | forward | backward | strafe_left | strafe_right | turn_left | turn_right | combined | falls | energy J | CoT | mean power W | start gate |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| tripod | -1.5 % | -1.5 % | +4.3 % | +4.1 % | -8.6 % | -8.5 % | -8.5 % | 0 | 1614 | 7.35 | 13.1 | PASS 0/48 |
+| dr_energy_v1:40000000 | +3.0 % | +4.1 % | +9.2 % | +5.0 % | -1.7 % | -2.5 % | +5.2 % | 0 | 1963 | 7.70 | 16.0 | PASS 0/48 |
+| dr_energy_ft:2000000 | +6.7 % | +4.2 % | +13.5 % | +6.1 % | -1.0 % | -5.1 % | +2.4 % | 0 | 1962 | 7.48 | 16.0 | PASS 0/48 |
+| dr_energy_ft:4000000 | +8.5 % | +4.6 % | +8.9 % | +0.5 % | +0.3 % | -3.5 % | +3.8 % | 0 | 1903 | 7.34 | 15.5 | PASS 0/48 |
+| dr_energy_ft:6000000 | +9.1 % | +6.8 % | +8.0 % | +2.4 % | +2.4 % | +4.7 % | +7.2 % | 0 | 1909 | 7.34 | 15.5 | PASS 0/48 |
+| dr_energy_ft:8000000 | +4.4 % | +4.5 % | +8.0 % | +6.6 % | +2.1 % | -2.3 % | +5.8 % | 0 | 1835 | 7.13 | 14.9 | PASS 0/48 |
+| dr_energy_ft:10000000 | +2.4 % | +3.5 % | +10.6 % | -0.1 % | +1.8 % | +0.1 % | +6.0 % | 0 | 1776 | 6.93 | 14.4 | PASS 0/48 |
+
+
+| checkpoint | window tracking error ± SE (100 episodes) | mean power |
+|---|---|---|
+| tripod | 15.9 ± 0.8 % | 13.2 W |
+| dr_energy_v1 40M | 10.9 ± 1.0 % | 17.3 W |
+| dr_energy_ft 6M | 10.2 ± 1.2 % | 15.9 W |
+| dr_energy_ft 8M | 11.0 ± 1.3 % | 15.5 W |
+| **dr_energy_ft 10M** | **10.9 ± 1.0 %** | **15.2 W** |
+
+Every fine-tune checkpoint passes the gate (0/48; mean start speed 0.97–1.09 of the command). Tracking is
+statistically the same for all (SE ±1.0–1.3 points), so **10M is selected for the lowest energy**
+(CoT 6.93). **The < 10 % tracking target is not met** (10.9 ± 1.0 %; best point estimate 10.2 % at 6M).
+
+## DR scenarios (fall rate / window error ± SE / mean power) with start gate
+
+| controller | forward | backward | strafe_left | strafe_right | turn_left | turn_right | combined | falls | energy J | CoT | mean power W | start gate |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| tripod | -1.5 % | -1.5 % | +4.3 % | +4.1 % | -8.6 % | -8.5 % | -8.5 % | 0 | 1614 | 7.35 | 13.1 | PASS 0/48 |
+| flat_bc_v1:latest | +2.9 % | +1.7 % | +1.9 % | +8.8 % | +4.4 % | +3.2 % | +8.0 % | 0 | 4602 | 18.29 | 37.4 | PASS 0/48 |
+| dr_energy_v1:40000000 | +3.0 % | +4.1 % | +9.2 % | +5.0 % | -1.7 % | -2.5 % | +5.2 % | 0 | 1963 | 7.70 | 16.0 | PASS 0/48 |
+| dr_energy_ft:10000000 | +2.4 % | +3.5 % | +10.6 % | -0.1 % | +1.8 % | +0.1 % | +6.0 % | 0 | 1776 | 6.93 | 14.4 | PASS 0/48 |
+
+
+| scenario | tripod | flat_bc_v1:latest | dr_energy_v1:40000000 | dr_energy_ft:10000000 |
+|---|---|---|---|---|
+| nominal (n=100) | 0 % / 15.9 ± 0.8 % / 13.2 W | 0 % / 4.9 ± 0.2 % / 39.2 W | 0 % / 10.9 ± 1.0 % / 17.3 W | 0 % / 10.9 ± 1.0 % / 15.2 W |
+| friction_low (n=50) | 0 % / 14.4 ± 1.2 % / 13.6 W | 0 % / 9.6 ± 0.5 % / 40.0 W | 0 % / 11.1 ± 1.5 % / 17.5 W | 0 % / 10.7 ± 1.6 % / 15.2 W |
+| friction_high (n=50) | 0 % / 16.7 ± 1.2 % / 13.6 W | 0 % / 4.9 ± 0.2 % / 40.0 W | 0 % / 11.3 ± 1.5 % / 17.8 W | 0 % / 12.0 ± 1.5 % / 15.5 W |
+| heavy (n=50) | 0 % / 15.4 ± 1.2 % / 13.7 W | 0 % / 4.9 ± 0.2 % / 40.2 W | 0 % / 10.6 ± 1.5 % / 17.8 W | 0 % / 10.0 ± 1.3 % / 15.6 W |
+| weak_motors (n=50) | 0 % / 14.8 ± 1.2 % / 13.1 W | 0 % / 5.5 ± 0.2 % / 34.6 W | 0 % / 11.1 ± 1.5 % / 16.6 W | 0 % / 11.6 ± 1.4 % / 14.5 W |
+| latency_10ms (n=50) | 0 % / 12.2 ± 1.0 % / 13.6 W | 0 % / 8.8 ± 0.3 % / 38.4 W | 0 % / 10.0 ± 1.1 % / 17.1 W | 0 % / 10.5 ± 1.3 % / 14.7 W |
+| sensor_noise (n=50) | 0 % / 16.2 ± 1.1 % / 13.6 W | 0 % / 99.2 ± 3.2 % / 34.6 W | 0 % / 11.1 ± 1.0 % / 17.8 W | 0 % / 11.3 ± 1.5 % / 14.8 W |
+| pushes (n=50) | 0 % / 16.1 ± 1.1 % / 14.1 W | 0 % / 5.3 ± 0.3 % / 42.2 W | 0 % / 11.7 ± 1.3 % / 18.8 W | 0 % / 10.3 ± 1.1 % / 14.9 W |
+| all_extremes (n=50) | 0 % / 13.8 ± 0.9 % / 14.9 W | 0 % / 35.1 ± 0.6 % / 33.3 W | 0 % / 12.2 ± 0.9 % / 17.3 W | 0 % / 11.8 ± 0.8 % / 15.2 W |
+
+## Smoothness vs 40M (nominal protocol, 500 Hz)
+
+| metric | tripod | dr_energy_v1 40M | **dr_energy_ft 10M** |
+|---|---|---|---|
+| protocol energy / CoT | 1614 J / 7.35 | 1963 J / 7.70 | **1776 J / 6.93** |
+| energy, moving segments | 1020 J | 1250 J | 1110 J |
+| energy NOT explained by < 5 Hz motion | 5.6 % | 6.7 % | 6.6 % |
+| hip_yaw velocity power above 5 Hz | 1.9 % | 6.4 % | 6.2 % |
+| action rate / 2nd difference | 0.035 / 0.0026 | 0.046 / 0.0047 | 0.043 / 0.0043 |
+| joint speed RMS | 1.30 rad/s | 1.40 rad/s | 1.33 rad/s |
+| stride frequency (touchdowns/leg/s) | 1.23 | 1.08 | 1.23 |
+
+## Result vs 2.7b targets
+| target | dr_energy_ft 10M |
+|---|---|
+| start gate 0/48 (all directions incl. strafe and turns) | **met** (also met by every fine-tune checkpoint) |
+| tracking < 10 % | **not met: 10.9 ± 1.0 %** (same as 40M within noise) |
+| CoT ≤ 11 | **met: 6.93** (below the tripod's 7.35) |
+| falls < 5 % in all 9 DR scenarios | **met: 0 %** in all |
+| smoothness vs 40M | equal or slightly better on every metric; stride frequency now equals the tripod's |
+
+The comparison video was not re-rendered: the selected policy's gait is visually the same as 40M's (same
+smoothness numbers within a few %, 9 % less energy, 14 % higher stride frequency).
