@@ -44,7 +44,7 @@ DEFAULTS = {
     "init_joint_noise": 0.05,
     "action_filter_alpha": 1.0,     # EMA on actions: a_f = alpha*a + (1-alpha)*a_f_prev (1.0 = off)
     "measure_energy": False,        # eval: integrate sum|tau*qdot| over every 2 ms substep (slower)
-    "record_substeps": False,       # eval: info["substeps"] = (qdot, tau) at every 2 ms substep
+    "record_substeps": False,       # eval: info["substeps"] = (qdot, tau, qpos) at every 2 ms substep
     "obs_mode": "flat",             # "flat": Box(195) | "asym": Dict(policy 195, privileged 17)
     "domain_randomization": {},     # see envs/randomization.py DEFAULTS (enabled false = nominal)
     "dr_fixed": None,               # eval scenario: fixed DR values (e.g. {"friction": 0.5})
@@ -223,7 +223,7 @@ class GurdyEnv(gym.Env):
                 mujoco.mj_step(self.model, d)
                 energy += float(np.sum(np.abs(d.actuator_force * d.qvel[self.vadr]))) * dt
                 if self.cfg["record_substeps"]:
-                    sub.append((d.qvel[self.vadr].copy(), d.actuator_force.copy()))
+                    sub.append((d.qvel[self.vadr].copy(), d.actuator_force.copy(), d.qpos.copy()))
         else:
             if lat:
                 mujoco.mj_step(self.model, d, nstep=lat)

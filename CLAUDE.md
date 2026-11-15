@@ -155,6 +155,11 @@ docker compose run --rm rl python3 rl/bench.py   # throughput / RAM benchmark
 docker compose run --rm rl bash -c 'cd rl && python3 -m pytest -q'
 docker compose run --rm rl python3 rl/eval.py --run <name> --checkpoints 50000000 latest   # step 2.5 eval
 docker compose run --rm rl python3 rl/tools/make_video.py --run <name> --checkpoint latest
+docker compose run --rm rl python3 rl/eval.py --policies flat_bc_v1:latest dr_energy_v1:40000000 --scenarios all
+docker compose run --rm rl python3 rl/tools/start_test.py --controllers tripod dr_energy_v1:40000000
+docker compose run --rm rl python3 rl/tools/smoothness.py --run dr_energy_v1 --checkpoint 40000000
+docker compose run --rm rl python3 rl/tools/make_video_v2.py --controllers tripod flat_bc_v1:latest \
+  dr_energy_v1:40000000 --out rl/runs/dr_energy_v1/eval/compare_3way.mp4
 ```
 Training start/monitor/stop/resume commands: README.md ("RL training").
 
@@ -201,4 +206,13 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   `gurdy_core.rl_action` (the ROS node must use it). KL/clip fraction stay high (0.03–0.04 / 0.36–0.40)
   at std 0.04. Best from-scratch config C1 kept for Experiment B (overnight run to be planned).
   `docs/results/phase2_flat.md`, video `docs/videos/phase2_flat_tripod_vs_policy.mp4`.
-- Next: 2.6 (optional MJX spike) or 2.7 (DR + asymmetric critic + energy); plan the C1 overnight run.
+- 2.7 done (2026-11-15): `dr_energy_v1` = flat_bc_v1 transferred into an asymmetric actor-critic
+  (`rl/policies.py`; critic + 17 privileged values), DR (`rl/envs/randomization.py`), energy/smoothness
+  curriculum (energy −0.02/W, action rate −0.5, action 2nd diff −2.0 at 20M). **Selected checkpoint 40M**
+  (`rl/runs/dr_energy_v1/checkpoints/ppo_40000000_steps.zip`): 0 % falls in all DR scenarios, tracking
+  10.0–12.2 %, CoT 7.70 vs tripod 7.35, smoothness near tripod. Late checkpoints (50M+) stop starting
+  left strafes from rest → always run `rl/tools/start_test.py` before selecting a checkpoint.
+  Eval: `rl/eval.py --policies run:ckpt ... --scenarios all`; video: `rl/tools/make_video_v2.py`.
+  `docs/results/phase2_dr.md`, video `docs/videos/phase2_3way_tripod_flat_dr.mp4`.
+- Next: 2.7b (fix start-from-rest; proposed), then 2.8 terrain; optional 2.6 MJX; C1 overnight run
+  for Experiment B still to be planned.

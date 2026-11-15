@@ -6,7 +6,7 @@ FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
       python3 python3-venv python3-pip \
-      libgl1 libegl1 libgl1-mesa-dri libglfw3 libosmesa6 ffmpeg \
+      libgl1 libegl1 libgl1-mesa-dri libglfw3 libosmesa6 ffmpeg fonts-dejavu-core \
       procps less nano \
     && rm -rf /var/lib/apt/lists/*
 
@@ -17,7 +17,7 @@ RUN python3 -m venv $VIRTUAL_ENV \
       numpy==1.26.4 pyyaml==6.0.2 scipy==1.14.1 \
       mujoco==3.3.0 gymnasium==1.0.0 stable-baselines3==2.4.1 \
       tensorboard==2.18.0 onnx==1.17.0 onnxruntime==1.20.1 \
-      psutil==6.1.0 imageio==2.36.1 imageio-ffmpeg==0.5.1 pytest==8.3.4
+      psutil==6.1.0 imageio==2.36.1 imageio-ffmpeg==0.5.1 pillow==11.0.0 pytest==8.3.4
 
 USER ubuntu
 WORKDIR /home/ubuntu/gurdy2

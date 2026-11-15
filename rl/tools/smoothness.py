@@ -16,8 +16,7 @@ import yaml
 
 HERE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 sys.path.insert(0, HERE)
-from eval import Controller            # noqa: E402
-from envs.gurdy_env import GurdyEnv    # noqa: E402
+from eval import Controller, _env      # noqa: E402
 from gurdy_core.experiments import cmd_at, tracking_protocol   # noqa: E402
 from gurdy_core.robot import JOINT_TYPES                       # noqa: E402
 
@@ -33,9 +32,10 @@ def lowpass(x, fs, fc):
 
 def record(spec, cfg):
     changes, _, total = tracking_protocol()
-    env = GurdyEnv({**cfg["env"], "episode_s": total + 1, "resample_command": False, "record_substeps": True},
-                   reward_config=cfg["reward"])
     ctl = Controller(spec)
+    # nominal physics (DR off) and the controller's own observation format, as in eval.py
+    env = _env({**cfg, "env": {**cfg["env"], "record_substeps": True}}, total + 1, fixed=True,
+               obs_mode=ctl.obs_mode)
     obs, _ = env.reset(seed=0, options={"command": (0, 0, 0)})
     ctl.reset(env)
     qd, tau, acts, t = [], [], [], 0.0
@@ -43,7 +43,7 @@ def record(spec, cfg):
         env.command = np.array(cmd_at(changes, t), float)
         obs, _, term, _, info = env.step(ctl.act(obs, env))
         acts.append(env.mapper.a_filt.copy())
-        for v, f in info["substeps"]:
+        for v, f, *_ in info["substeps"]:
             qd.append(v)
             tau.append(f)
         t = env.steps * env.policy_dt

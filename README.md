@@ -28,10 +28,18 @@ docker compose --profile '*' down     # stop everything
 | Joint step-response parity Gazebo ↔ MuJoCo | rise time within 4 ms |
 | Chatter (60 s standing) | worst joint RMS velocity 4.5e-6 rad/s (limit 1e-2) |
 
-**Phase 2 (in progress) — flat-ground RL policy** (BC-initialised from the tripod gait + PPO, MuJoCo):
-command-window tracking error 5.7 % vs tripod 16.1 %, 0 falls in 100 episodes, but 2.9× the energy
-(CoT 18.3 vs 7.35) — [results](docs/results/phase2_flat.md),
-[video](docs/videos/phase2_flat_tripod_vs_policy.mp4).
+**Phase 2 (in progress) — RL locomotion in MuJoCo** (policies BC-initialised from the tripod gait + PPO):
+
+| | tripod gait | flat policy | DR + energy policy (40M) |
+|---|---|---|---|
+| tracking error, nominal | 15.9 % | 4.9 % | 10.9 % |
+| tracking error, all DR extremes | 13.8 % | 35.1 % | 12.2 % |
+| tracking error, sensor noise | 16.2 % | 99.2 % | 11.1 % |
+| falls (all scenarios) | 0 % | 0 % | 0 % |
+| cost of transport | 7.35 | 18.3 | 7.70 |
+
+[flat results](docs/results/phase2_flat.md) · [DR results](docs/results/phase2_dr.md) ·
+[3-way video](docs/videos/phase2_3way_tripod_flat_dr.mp4)
 
 Details: [parity + chatter](docs/results/phase1_parity.md) ·
 [velocity tracking](docs/results/phase1_tracking.md). Design notes and rules: [CLAUDE.md](CLAUDE.md).

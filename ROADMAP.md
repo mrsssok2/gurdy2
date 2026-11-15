@@ -75,8 +75,14 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
   — done: policy 5.7 % vs tripod 16.1 % window error, both 0 falls; policy CoT 18.3 vs tripod 7.35 (2.9× energy)
 - [ ] **2.6** (optional, time-boxed) MJX + JAX spike on the RTX 4050 — AC: go/no-go from measured
   throughput (≥ 10× end-to-end) and stand/step parity vs CPU MuJoCo
-- [ ] **2.7** Domain randomization (friction, masses, motor strength, damping, latency, sensor noise,
+- [x] **2.7** Domain randomization (friction, masses, motor strength, damping, latency, sensor noise,
   pushes, leg failure) + asymmetric critic + energy efficiency (policy CoT 18.3 vs tripod 7.35) — AC: flat AC still met with DR; fall rate < 5 % at DR extremes
+  — done (2026-11-15): `dr_energy_v1` (BC-init via flat_bc_v1), 60M steps / 5.03 h; **selected 40M**:
+  0 % falls in all 9 DR scenarios, tracking 10.0–12.2 % (flat_bc_v1: 99 % under sensor noise), CoT 7.70
+  (tripod 7.35, flat 18.3). Known issues: user target tracking < 10 % narrowly missed (10.9 %); after
+  ~45M the policy stops starting left strafes from rest (start_test) → 2.7b (`docs/results/phase2_dr.md`)
+- [ ] **2.7b** (proposed) Command distribution with axis-aligned + start-from-rest commands; `start_test`
+  as a regression gate in eval; short fine-tune from 40M — AC: 0/48 failed starts, tracking < 10 %, CoT ≤ 11
 - [ ] **2.8** Terrain curriculum (heightfield: rough 0.5–2 cm, slopes 5–12°, steps 1.5–3 cm) — AC:
   success rate per level; RL beats tripod on rough terrain
 - [ ] **2.9** ONNX export + `gurdy_rl_policy` ROS node + Gazebo deployment — AC: ONNX == torch (1e-5);
