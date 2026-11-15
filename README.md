@@ -32,12 +32,13 @@ docker compose --profile '*' down     # stop everything
 
 | | tripod gait | flat policy | DR + energy policy (`dr_energy_ft`) |
 |---|---|---|---|
-| tracking error, nominal | 15.9 % | 4.9 % | 10.9 % |
-| tracking error, all DR extremes | 13.8 % | 35.1 % | 11.8 % |
-| tracking error, sensor noise | 16.2 % | 99.2 % | 11.3 % |
+| tracking error, nominal | 15.9 % | 4.9 % | 9.6 % |
+| tracking error, all DR extremes | 13.8 % | 35.1 % | 11.5 % |
+| tracking error, sensor noise | 16.2 % | 99.2 % | 10.4 % |
 | falls (all 9 scenarios) | 0 % | 0 % | 0 % |
 | starts from rest (48) | 48/48 | 48/48 | 48/48 |
 | cost of transport | 7.35 | 18.3 | 6.93 |
+| moves on tiny commands (vx 0.03, vy 0.03, wz 0.1) | yes | mostly | **no (dead zone, fix planned)** |
 
 [flat results](docs/results/phase2_flat.md) · [DR results](docs/results/phase2_dr.md) ·
 [3-way video](docs/videos/phase2_3way_tripod_flat_dr.mp4) (DR panel: 40M checkpoint)

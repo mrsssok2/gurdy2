@@ -84,9 +84,13 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - [x] **2.7b** Command distribution with axis-aligned + start-from-rest commands; `start_test`
   as a regression gate in eval; short fine-tune from 40M — AC: 0/48 failed starts, tracking < 10 %, CoT ≤ 11
   — done (2026-11-15): `dr_energy_ft` 10M (10M steps, 0.96 h): start gate 0/48, CoT 6.93, 0 % falls in all 9
-  scenarios, tracking 10.9 ± 1.0 % — **tracking < 10 % not met** (open item for 2.8)
+  scenarios; tracking first reported 10.9 % (eval bug: graded on its own command mix) → **corrected 9.6 ± 0.4 %
+  (met nominally)**; ft-6M 9.2 ± 0.6 % is better in all 9 scenarios (selection 6M vs 10M open).
+  Found: dead zone — stands still on vx/vy ±0.03, wz ±0.10 (not reward-optimal; sampling) → fix in 2.8
 - [ ] **2.8** Terrain curriculum (heightfield: rough 0.5–2 cm, slopes 5–12°, steps 1.5–3 cm) — AC:
-  success rate per level; RL beats tripod on rough terrain
+  success rate per level; RL beats tripod on rough terrain. Also fix the small-command dead zone:
+  ~15 % small commands (15–40 % of limit), zero commands 15 → 10 %, explicit `/cmd_vel` deadband
+  (|v| < 0.015 m/s, |ω| < 0.05 rad/s), start gate extended to small commands (from rest + while walking)
 - [ ] **2.9** ONNX export + `gurdy_rl_policy` ROS node + Gazebo deployment — AC: ONNX == torch (1e-5);
   walks in Gazebo without retraining; no fall in the 2-min protocol; tracking + sim-to-sim gap reported
 - [ ] **2.10** Experiment A (rough terrain, RL vs tripod, MuJoCo + Gazebo) and Experiment B (one leg
@@ -173,3 +177,62 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 **AC**
 - Fresh clone → each phase's demo starts with one documented command.
 - CI green on `main`.
+
+---
+
+## Phase 8 — Air-ground team (planned, not started)
+A simulated drone scouts from above, maps, detects objects and sends goals to one or more hexapods;
+the LLM brain commands the whole team through tools. Builds on Phases 3–7 (map, Nav2, YOLO, Brain,
+Incident Graph, mission control).
+
+- [ ] **8.1** Drone in Gazebo Harmonic: multicopter model (gz `MulticopterMotorModel` + IMU/baro/GPS),
+  PX4 SITL (or a PX4-style ROS 2 flight controller if PX4 doesn't fit the RAM budget) via the
+  uXRCE-DDS bridge; downward RGB-D camera ≤ 320×240. Measure RAM/RTF of drone alone and drone +
+  1 hexapod before going further (RAM rule: 8 GB WSL, one heavy workload — may require headless).
+- [ ] **8.2** Offboard control from ROS 2: take-off, hold, waypoint, land; `scan_area(polygon, altitude)`
+  lawn-mower coverage pattern
+- [ ] **8.3** Aerial mapping: top-down occupancy/elevation map from the drone camera, fused with (or
+  seeding) the hexapod's slam_toolbox map; shared `map` frame between robots (ground-truth alignment
+  first, then marker/feature-based)
+- [ ] **8.4** Aerial detection: Phase 4 YOLO on the drone camera → object positions in the map frame
+- [ ] **8.5** Team interfaces: namespaced robots (`/drone`, `/hexapod_1`, …), `go_to` / `inspect` actions,
+  team state topic; hexapods keep speaking only `/cmd_vel` + Nav2 below
+- [ ] **8.6** LLM brain tools for the team: `scan_area`, `go_to(robot, target)`, `inspect(object)`,
+  `report`; the Phase 5 agent plans multi-robot missions ("drone, find the red box; nearest hexapod,
+  inspect it")
+- [ ] **8.7** Multiple hexapods + 1 drone: task allocation (greedy/auction baseline, then optional
+  LLM-assisted), collision-free goal assignment
+- [ ] **8.8** Telemetry from all robots into the Incident Graph; mission control shows the team
+- [ ] **8.9** Worlds: rubble field and farm (rows, crops, obstacles), procedurally generated
+
+**AC**
+- Measured RAM/RTF for drone + 1 and + N hexapods (within the 8 GB WSL budget, reported).
+- Drone covers a 20 × 20 m area and finds each target object (precision/recall reported); the assigned
+  hexapod reaches each found object (success rate over ≥ 10 missions).
+- A spoken/typed multi-step team mission is executed end-to-end in sim.
+- 2+ hexapods + 1 drone: allocation completes all tasks without collisions in ≥ 8/10 runs.
+- Injected faults on drone and hexapods appear as separate incidents with correct root causes.
+
+---
+
+## Phase 9 — Research experiment: hybrid walk + fly robot (planned, not started)
+Can one robot both walk and hop/fly? Key constraint: **thrust-to-weight ≥ 2** (hover at ≤ 50 % thrust).
+
+- [ ] **9.1** Design study (in `robot.yaml` style, single source of truth): (a) lighter legs with fewer DOF
+  (e.g. 2-DOF legs) + separate rotors, or (b) legs that double as rotor arms (rotor at the hip/femur,
+  legs fold for flight). Mass budget incl. motors, props, battery; thrust-to-weight, flight time and
+  hover power estimated from component data, then **measured in sim**
+- [ ] **9.2** Thrust model in MuJoCo (rotor force/torque on sites, motor lag, yaw torque) and in Gazebo
+  (`MulticopterMotorModel`); parity test between the two like Phase 1 (hover thrust, step response)
+- [ ] **9.3** RL skills: take-off from legs, stable hover, landing on legs (touchdown velocity limit),
+  flight "hops" over obstacles that walking cannot cross; reuse the Phase 2 pipeline (DR, asymmetric critic)
+- [ ] **9.4** Mode-switch policy: when to fly vs walk (energy/time cost model: walking CoT vs flight
+  power), obstacle-triggered hops; compare against a rule-based switch
+- [ ] **9.5** Experiment write-up: energy per metre walking vs flying, success rate over obstacle courses,
+  failure modes
+
+**AC**
+- Design meets thrust-to-weight ≥ 2 in sim (measured), with mass and power budget documented.
+- Take-off → hop over an obstacle taller than leg clearance → landing on legs: success rate over ≥ 50
+  sim trials, landing touchdown speed reported.
+- Mode-switch policy beats walk-only and fly-only on an obstacle course in time or energy (numbers).

@@ -89,7 +89,11 @@ class Controller:
 
 def _env(cfg, episode_s, fixed, obs_mode="flat", scenario=None):
     from envs.gurdy_env import GurdyEnv
+    # Evaluation command distribution is FIXED (the original training distribution), whatever the run's
+    # training config used: 2.7b's axis-aligned / rest-start sampling must not change the eval (bug found
+    # 2026-11-15: dr_energy_ft was graded on its own harder command mix).
     env_cfg = {**cfg["env"], "episode_s": episode_s, "measure_energy": True, "obs_mode": obs_mode,
+               "axis_aligned_prob": 0.0, "rest_start_prob": 0.0,
                "domain_randomization": {**cfg["env"].get("domain_randomization", {}), "enabled": False},
                "dr_fixed": SCENARIOS.get(scenario) if scenario else None}
     if fixed:
@@ -153,7 +157,7 @@ def run_episodes(args):
             energy += info["energy_J"]
             done = term or trunc
         vels, cmds = np.array(vels), np.array(cmds)
-        errs = []
+        errs, wcmds = [], []
         w = env.cmd_steps
         for k in range(0, len(cmds) - w + 1, w):
             c = cmds[k]
@@ -161,7 +165,9 @@ def run_episodes(args):
                 continue
             v = vels[k + int(1.0 / env.policy_dt):k + w].mean(axis=0)
             errs.append(float(np.linalg.norm((v - c) / lim) / np.linalg.norm(c / lim)))
+            wcmds.append(c.tolist())
         out.append({"seed": seed, "fell": bool(term), "steps": len(cmds), "window_errors": errs,
+                    "window_commands": wcmds,
                     "energy_J": energy})
     return out
 

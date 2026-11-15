@@ -220,4 +220,15 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   checkpoint that fails it), CoT 6.93, 0 % falls in all 9 DR scenarios, tracking 10.9 ± 1.0 % (target
   < 10 % NOT met; SE now reported). Stride frequency is measured by touchdown counting (the spectral peak
   was ambiguous). Pushing: the user pushes from their own terminal (git has no credentials here).
-- Next: 2.8 terrain curriculum; optional 2.6 MJX; C1 overnight run for Experiment B still to be planned.
+- 2.7b correction (2026-11-15): eval bug — `rl/eval.py` used each run's training command mix; now always
+  the standard distribution (`axis_aligned_prob = rest_start_prob = 0`). Corrected: ft-10M 9.6 ± 0.4 %
+  (target < 10 % met nominally), ft-6M 9.2 ± 0.6 % and better in all 9 DR scenarios — **choice 6M vs 10M
+  open (user)**. Reward and eval velocities are identical (EMA vs mean ≤ 0.0014); protocol uses a heading
+  frame (differs ≤ 0.024 rad/s, valid). No general overshoot. **Dead zone**: DR policies stand still on
+  vx/vy ±0.03 m/s and wz ±0.10 rad/s (from rest and while walking); standing is NOT reward-optimal there
+  (0.2 vs ~1.3/step) → sampling/learned optimum; fix planned in 2.8. Tools: `tracking_bias.py`,
+  `window_error_breakdown.py`, `deadzone_reward.py`. Lesson: evaluation inputs must not depend on the
+  training config of the run being evaluated.
+- ROADMAP has Phase 8 (air-ground team, drone + hexapods) and Phase 9 (hybrid walk+fly research), planned.
+- Next: 2.8 terrain curriculum + dead-zone fix; optional 2.6 MJX; C1 overnight run for Experiment B still
+  to be planned.
