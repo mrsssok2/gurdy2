@@ -152,3 +152,34 @@ def test_standing_still_all_feet_down(env):
     assert not term
     assert info["foot_contact"].all() and len(info["foot_contact"]) == len(LEG_NAMES)
     assert abs(info["body_z"] - env.robot.stance["body_height"]) < 0.01
+
+
+def test_axis_aligned_and_rest_start_commands():
+    e = GurdyEnv({**load_config("configs/flat.yaml")["env"], "axis_aligned_prob": 0.25, "rest_start_prob": 0.25})
+    e.reset(seed=3)
+    cmds = np.array([e._sample_command() for _ in range(8000)])
+    moving = cmds[np.any(cmds != 0, axis=1)]
+    pure = np.sum(moving != 0, axis=1) == 1
+    assert 0.2 < pure.mean() < 0.32                      # ~25 % (+ rare chance single-axis from uniform)
+    assert np.all(np.abs(cmds) <= e.cmd_lim + 1e-12)
+    # rest starts: a zero command that is later replaced by the pending command without resampling
+    rests, starts = 0, 0
+    for ep in range(40):
+        e.reset(seed=100 + ep)
+        for _ in range(e.max_steps):
+            before = e.command.copy()
+            _, _, term, trunc, _ = e.step(np.zeros(18))
+            if not np.any(before) and np.any(e.command) and e.steps % e.cmd_steps != 0:
+                starts += 1                              # pending command released after a rest
+            if term or trunc:
+                break
+        rests += 1
+    assert starts > 20
+
+
+def test_new_options_off_keep_old_sampling():
+    cfg = load_config("configs/flat.yaml")["env"]
+    a, b = GurdyEnv(cfg), GurdyEnv({**cfg, "axis_aligned_prob": 0.0, "rest_start_prob": 0.0})
+    a.reset(seed=4)
+    b.reset(seed=4)
+    assert np.array_equal([a._sample_command() for _ in range(50)], [b._sample_command() for _ in range(50)])

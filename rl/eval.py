@@ -17,6 +17,10 @@ asymmetric Dict - the critic-only part is ignored by the actor). Results: JSON +
 
 Step 2.7 --scenarios (protocol 2 under fixed domain-randomisation extremes, everything else nominal):
 nominal, friction_low/high, heavy, weak_motors, latency_10ms, sensor_noise, pushes, all_extremes.
+
+START GATE (2.7b, always run): from rest (zero command for 2 s + 0-0.7 s, i.e. 8 gait-clock phases),
+apply each pure command (+-vx 0.10, +-vy 0.08, +-wz 0.3) for 8 s; a start fails if the main-axis speed
+over the last 5 s is < 20 % of the command. A checkpoint qualifies only with 0/48 failed starts.
 """
 import argparse
 import json
@@ -199,22 +203,25 @@ def main_scenarios(a):
                     jobs.append((path, cfg, [int(x) for x in ch], sc))
                     keys.append((name, sc))
         res = pool.map(run_episodes, jobs)
+        starts = pool.map(run_start, start_gate_jobs([(path, cfg) for _, path, cfg in ctrls]))
     table = {}
     for (name, sc), lst in zip(keys, res):
         table.setdefault(name, {}).setdefault(sc, []).extend(lst)
-    summary = {name: {"protocol": p, "scenarios": {sc: summarize_episodes(v) for sc, v in table[name].items()}}
-               for (name, _, _), (p, _) in zip(ctrls, prot)}
+    summary = {name: {"protocol": p, "scenarios": {sc: summarize_episodes(v) for sc, v in table[name].items()},
+                      "start_gate": start_gate_summary(starts, path)}
+               for (name, path, _), (p, _) in zip(ctrls, prot)}
     with open(os.path.join(out_dir, "eval_scenarios.json"), "w") as f:
         json.dump(summary, f, indent=2)
     print(f"evaluated {len(ctrls)} controllers x {len(scen)} scenarios in {time.time() - t0:.0f} s\n")
     print("Nominal tracking protocol (123 s):\n")
     seg_names = [s["segment"] for s in prot[0][0]["segments"]]
-    print("| controller | " + " | ".join(seg_names) + " | falls | energy J | CoT | mean power W |")
-    print("|---" * (len(seg_names) + 5) + "|")
+    print("| controller | " + " | ".join(seg_names) + " | falls | energy J | CoT | mean power W | start gate |")
+    print("|---" * (len(seg_names) + 6) + "|")
     for name, s in summary.items():
-        p = s["protocol"]
+        p, g = s["protocol"], s["start_gate"]
         print(f"| {name} | " + " | ".join(f"{x['main_axis_error_pct']:+.1f} %" for x in p["segments"])
-              + f" | {int(p['fell'])} | {p['energy_J']:.0f} | {p['cost_of_transport']:.2f} | {p['mean_power_W']:.1f} |")
+              + f" | {int(p['fell'])} | {p['energy_J']:.0f} | {p['cost_of_transport']:.2f} | {p['mean_power_W']:.1f}"
+              + f" | {'PASS' if g['pass'] else 'FAIL'} {g['failed_starts']}/{g['n_starts']} |")
     print("\nScenarios (fall rate / window error mean / mean power):\n")
     print("| scenario | " + " | ".join(summary) + " |\n|---" + "|---" * len(summary) + "|")
     for sc in scen:
@@ -223,6 +230,48 @@ def main_scenarios(a):
             e = summary[name]["scenarios"][sc]
             row.append(f"{100 * e['fall_rate']:.0f} % / {100 * e['window_error_mean']:.1f} % / {e['mean_power_W']:.1f} W")
         print(f"| {sc} (n={summary[next(iter(summary))]['scenarios'][sc]['n']}) | " + " | ".join(row) + " |")
+
+
+START_CMDS = {"+vx": (0.10, 0, 0), "-vx": (-0.10, 0, 0), "+vy": (0, 0.08, 0), "-vy": (0, -0.08, 0),
+              "+wz": (0, 0, 0.3), "-wz": (0, 0, -0.3)}
+START_DELAYS = np.arange(0.0, 0.71, 0.1)
+
+
+def run_start(args):
+    """Start-from-rest test for one controller and one pure command: speed ratio per start phase."""
+    spec, cfg, name = args
+    cmd = np.array(START_CMDS[name], float)
+    axis = int(np.argmax(np.abs(cmd)))
+    ctl = Controller(spec)
+    ratios = []
+    for d in START_DELAYS:
+        env = _env(cfg, 12.0, fixed=True, obs_mode=ctl.obs_mode)
+        obs, _ = env.reset(seed=0, options={"command": (0, 0, 0)})
+        ctl.reset(env)
+        vel = []
+        while env.steps * env.policy_dt < 2.0 + d + 8.0 - 1e-9:
+            t = env.steps * env.policy_dt
+            env.command = cmd if t >= 2.0 + d - 1e-9 else np.zeros(3)
+            obs, _, term, _, info = env.step(ctl.act(obs, env))
+            if t >= 2.0 + d + 3.0:
+                vel.append([*info["body_vel"][:2], info["yaw_rate"]][axis])
+            if term:
+                break
+        ratios.append(float(np.mean(vel) / cmd[axis]) if vel else 0.0)
+    return spec, name, ratios
+
+
+def start_gate_jobs(specs_cfgs):
+    return [(path, cfg, k) for path, cfg in specs_cfgs for k in START_CMDS]
+
+
+def start_gate_summary(results, path):
+    per = {n: r for s, n, r in results if s == path}
+    failed = {n: int(sum(v < 0.2 for v in r)) for n, r in per.items()}
+    total = sum(failed.values())
+    return {"failed_starts": total, "n_starts": len(START_CMDS) * len(START_DELAYS),
+            "pass": total == 0, "per_command_failed": failed,
+            "per_command_speed_ratio": {n: float(np.mean(r)) for n, r in per.items()}}
 
 
 def main():
@@ -256,6 +305,7 @@ def main():
         chunks = np.array_split(np.arange(a.episodes), a.workers)
         jobs = [(s, cfg, [int(x) for x in ch]) for s in specs for ch in chunks if len(ch)]
         eps = pool.map(run_episodes, jobs)
+        starts = pool.map(run_start, start_gate_jobs([(s, cfg) for s in specs]))
     for s, (p, _) in zip(specs, prot):
         ep = [e for (spec, _, _), lst in zip(jobs, eps) if spec == s for e in lst]
         errs = np.concatenate([e["window_errors"] for e in ep])
@@ -266,20 +316,22 @@ def main():
                          "window_error_mean": float(errs.mean()), "window_error_median": float(np.median(errs)),
                          "window_error_p90": float(np.percentile(errs, 90)),
                          "windows_below_20pct": float(np.mean(errs < 0.2)), "n_windows": int(len(errs))},
+            "start_gate": start_gate_summary(starts, s),
         }
     with open(os.path.join(out_dir, "eval.json"), "w") as f:
         json.dump(results, f, indent=2)
 
     print(f"evaluated {len(specs)} controllers in {time.time() - t0:.0f} s\n")
     seg_names = [s["segment"] for s in next(iter(results.values()))["protocol"]["segments"]]
-    print("| controller | " + " | ".join(seg_names) + " | falls (protocol) | energy J | CoT | 100-ep fall rate | window err mean / median / p90 | windows < 20 % |")
-    print("|---" * (len(seg_names) + 7) + "|")
+    print("| controller | " + " | ".join(seg_names) + " | falls (protocol) | energy J | CoT | 100-ep fall rate | window err mean / median / p90 | windows < 20 % | start gate |")
+    print("|---" * (len(seg_names) + 8) + "|")
     for name, r in results.items():
         p, e = r["protocol"], r["episodes"]
         segs = " | ".join(f"{s['main_axis_error_pct']:+.1f} %" for s in p["segments"])
         print(f"| {name} | {segs} | {int(p['fell'])} | {p['energy_J']:.0f} | {p['cost_of_transport']:.2f} | "
               f"{100 * e['fall_rate']:.0f} % | {100 * e['window_error_mean']:.1f} / {100 * e['window_error_median']:.1f} / "
-              f"{100 * e['window_error_p90']:.1f} % | {100 * e['windows_below_20pct']:.0f} % |")
+              f"{100 * e['window_error_p90']:.1f} % | {100 * e['windows_below_20pct']:.0f} % | "
+              f"{'PASS' if r['start_gate']['pass'] else 'FAIL'} {r['start_gate']['failed_starts']}/{r['start_gate']['n_starts']} |")
 
 
 if __name__ == "__main__":

@@ -39,6 +39,8 @@ DEFAULTS = {
     "episode_s": 20.0,
     "command_period_s": 5.0,
     "resample_command": True,
+    "axis_aligned_prob": 0.0,       # 2.7b: share of commands that are pure +-vx / +-vy / +-wz (30-100 % of limit)
+    "rest_start_prob": 0.0,         # 2.7b: share of command switches preceded by 1-2 s of zero command
     "zero_command_prob": 0.15,
     "action_scale": {"hip_yaw": 0.3, "hip_pitch": 0.7, "knee": 0.6},
     "init_joint_noise": 0.05,
@@ -112,9 +114,27 @@ class GurdyEnv(gym.Env):
 
     # ------------------------------------------------------------------ helpers
     def _sample_command(self) -> np.ndarray:
-        if self.np_random.random() < self.cfg["zero_command_prob"]:
+        rng = self.np_random
+        if rng.random() < self.cfg["zero_command_prob"]:
             return np.zeros(3)
-        return self.np_random.uniform(-1.0, 1.0, 3) * self.cmd_lim
+        if self.cfg["axis_aligned_prob"] > 0 and rng.random() < self.cfg["axis_aligned_prob"]:
+            c = np.zeros(3)
+            ax = int(rng.integers(3))
+            c[ax] = rng.choice([-1.0, 1.0]) * rng.uniform(0.3, 1.0) * self.cmd_lim[ax]
+            return c
+        return rng.uniform(-1.0, 1.0, 3) * self.cmd_lim
+
+    def _new_command(self) -> np.ndarray:
+        """Sample a command; with rest_start_prob it is delayed by 1-2 s of zero command, so the
+        robot must start it from rest (2.7b: trains out the 'don't start' trap)."""
+        c = self._sample_command()
+        self.pending_command = None
+        p = self.cfg["rest_start_prob"]
+        if p > 0 and np.any(c != 0) and self.np_random.random() < p:
+            self.pending_command = c
+            self.rest_until = self.steps + int(self.np_random.uniform(1.0, 2.0) / self.policy_dt)
+            return np.zeros(3)
+        return c
 
     def _frame(self) -> np.ndarray:
         """Actor observation frame; sensor noise (DR) applied here only — the critic stays clean."""
@@ -201,7 +221,8 @@ class GurdyEnv(gym.Env):
         self.track_vel = np.zeros(3)                   # filtered (vx, vy, wz), robot starts at rest
         fixed = (options or {}).get("command")
         self.fixed_command = fixed is not None
-        self.command = np.asarray(fixed, dtype=float) if self.fixed_command else self._sample_command()
+        self.pending_command = None
+        self.command = np.asarray(fixed, dtype=float) if self.fixed_command else self._new_command()
         obs = self.hist.reset(self._frame())
         v0, _ = self._body_velocity()
         return self._obs(obs, v0, self.foot_contacts()), {"command": self.command.copy(),
@@ -258,9 +279,11 @@ class GurdyEnv(gym.Env):
         truncated = self.steps >= self.max_steps
         self.prev_action2 = self.prev_action
         self.prev_action = a
+        if self.pending_command is not None and self.steps >= self.rest_until:
+            self.command, self.pending_command = self.pending_command, None
         if (self.cfg["resample_command"] and not self.fixed_command
                 and self.steps % self.cmd_steps == 0):
-            self.command = self._sample_command()
+            self.command = self._new_command()
         obs = self._obs(self.hist.push(self._frame()), v, contact)
         info = {"command": cmd, "body_vel": v, "yaw_rate": float(wz), "body_z": float(d.qpos[2]),
                 "foot_contact": contact, "track_vel": self.track_vel.copy(), "reward_terms": terms,

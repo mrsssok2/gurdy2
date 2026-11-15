@@ -1,0 +1,12 @@
+# Step 2.7b: fine-tune dr_energy_v1 @40M so it starts every command from rest.
+# Start: train.py --init-from rl/runs/dr_energy_v1/checkpoints/ppo_40000000_steps.zip
+_base: dr_energy.yaml
+env:
+  axis_aligned_prob: 0.25      # pure +-vx / +-vy / +-wz commands
+  rest_start_prob: 0.25        # 1-2 s of zero command before the new command (start from rest)
+training:
+  total_timesteps: 10000000
+  critic_warmup_steps: 0       # actor and critic continue from 40M
+  schedules:                   # energy/smoothness weights final, DR full scale — no further ramps
+    eff_progress: {start: 1.0, end: 1.0, from_step: 0, to_step: 1}
+    dr_scale: {start: 1.0, end: 1.0, from_step: 0, to_step: 1}
