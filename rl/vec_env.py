@@ -14,6 +14,12 @@ from stable_baselines3.common.vec_env.base_vec_env import VecEnv
 from vec_worker import worker
 
 
+def _concat(parts):
+    if isinstance(parts[0], dict):
+        return {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
+    return np.concatenate(parts)
+
+
 class BatchedSubprocVecEnv(VecEnv):
     def __init__(self, env_fn, n_workers: int, envs_per_worker: int, start_method: str = "forkserver"):
         self.n_workers, self.k = n_workers, envs_per_worker
@@ -46,7 +52,7 @@ class BatchedSubprocVecEnv(VecEnv):
     def step_wait(self):
         res = [r.recv() for r in self.remotes]
         self.waiting = False
-        obs = np.concatenate([o for o, _, _, _ in res])
+        obs = _concat([o for o, _, _, _ in res])
         rews = np.concatenate([x for _, x, _, _ in res]).astype(np.float32)
         dones = np.concatenate([d for _, _, d, _ in res])
         infos = [i for _, _, _, inf in res for i in inf]
@@ -60,7 +66,7 @@ class BatchedSubprocVecEnv(VecEnv):
         self.reset_infos = [i for _, inf in res for i in inf]
         self._reset_seeds()
         self._reset_options()
-        return np.concatenate([o for o, _ in res])
+        return _concat([o for o, _ in res])
 
     def close(self):
         if self.closed:

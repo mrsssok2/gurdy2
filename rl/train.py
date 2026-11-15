@@ -102,7 +102,11 @@ def vecnorm_for(ckpt):
 def make_model(cfg, venv, run, seed):
     from stable_baselines3 import PPO
     pc = cfg["ppo"]
-    return PPO("MlpPolicy", venv, n_steps=pc["n_steps"], batch_size=pc["batch_size"],
+    policy = "MlpPolicy"
+    if pc.get("policy") == "asymmetric":
+        from policies import AsymmetricActorCriticPolicy
+        policy = AsymmetricActorCriticPolicy
+    return PPO(policy, venv, n_steps=pc["n_steps"], batch_size=pc["batch_size"],
                n_epochs=pc["n_epochs"], learning_rate=pc["learning_rate"], gamma=pc["gamma"],
                gae_lambda=pc["gae_lambda"], clip_range=pc["clip_range"], ent_coef=pc["ent_coef"],
                vf_coef=pc["vf_coef"], max_grad_norm=pc["max_grad_norm"], target_kl=pc["target_kl"],
@@ -135,6 +139,8 @@ def main():
     ap.add_argument("--timesteps", type=int, help="total timesteps (overrides config)")
     ap.add_argument("--resume", help="checkpoint .zip, or 'latest'")
     ap.add_argument("--init-from", help="start a NEW run from these weights (e.g. BC checkpoint ppo_bc.zip)")
+    ap.add_argument("--transfer-from", help="start a NEW asymmetric run from a FLAT checkpoint "
+                                            "(actor + critic + VecNormalize['policy'] copied)")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
 
@@ -159,7 +165,22 @@ def main():
     n_envs = venv.num_envs
     warmup = 0
 
-    if a.init_from:
+    if a.transfer_from:
+        import pickle
+        from policies import transfer_from_flat
+        flat = PPO.load(a.transfer_from, device="cpu")
+        with open(vecnorm_for(a.transfer_from), "rb") as f:
+            flat_vn = pickle.load(f)
+        venv = VecNormalize(venv, norm_obs=pc["normalize_obs"], norm_reward=pc["normalize_reward"],
+                            clip_obs=10.0, gamma=pc["gamma"])
+        venv.obs_rms["policy"] = flat_vn.obs_rms          # actor sees identically normalised inputs
+        venv.ret_rms = flat_vn.ret_rms
+        model = make_model(cfg, venv, run, a.seed)
+        transfer_from_flat(model.policy, flat.policy)
+        warmup = int(tc.get("critic_warmup_steps", 0))
+        print(f"[train] new asymmetric run transferred from {a.transfer_from}; critic warm-up {warmup} steps",
+              flush=True)
+    elif a.init_from:
         venv = VecNormalize.load(vecnorm_for(a.init_from), venv)
         venv.training = True
         model = PPO.load(a.init_from, env=venv, device="cpu", tensorboard_log=os.path.join(run, "tb"))
@@ -185,6 +206,10 @@ def main():
             self.pscale = schedule(self.num_timesteps, tc["penalty_curriculum"])
             self.training_env.set_attr("kappa", self.kappa)
             self.training_env.set_attr("penalty_scale", self.pscale)
+            self.extra = {}
+            for attr, sched in tc.get("schedules", {}).items():      # e.g. eff_progress, dr_scale
+                self.extra[attr] = schedule(self.num_timesteps, sched)
+                self.training_env.set_attr(attr, self.extra[attr])
             self.sums, self.n, self.falls, self.ends, self.clipped = {}, 0, 0, 0, 0
             self.track_err, self.t0 = [], time.time()
 
@@ -212,6 +237,8 @@ def main():
             lg.record("gurdy/track_rel_error", float(np.mean(self.track_err)) if self.track_err else 0.0)
             lg.record("gurdy/kappa", self.kappa)
             lg.record("gurdy/penalty_scale", self.pscale)
+            for attr, v in self.extra.items():
+                lg.record(f"gurdy/{attr}", v)
             lg.record("gurdy/reward_clipped_frac", self.clipped / max(self.n, 1))
             lg.record("gurdy/action_std", effective_std(self.model))
             lg.record("gurdy/ram_mib", tree_rss_mib())
@@ -220,11 +247,18 @@ def main():
     def effective_std(m, n=1024):
         """Mean action std of the policy distribution on recent rollout observations (works for
         plain Gaussian and gSDE, where log_std is a features x actions matrix)."""
-        obs = m.rollout_buffer.observations.reshape(-1, m.rollout_buffer.obs_shape[0])
-        idx = np.random.default_rng(0).choice(len(obs), size=min(n, len(obs)), replace=False)
+        buf = m.rollout_buffer.observations
+        if isinstance(buf, dict):
+            flat = {k: v.reshape(-1, v.shape[-1]) for k, v in buf.items()}
+            size = len(next(iter(flat.values())))
+            idx = np.random.default_rng(0).choice(size, size=min(n, size), replace=False)
+            obs = {k: torch.as_tensor(v[idx], dtype=torch.float32) for k, v in flat.items()}
+        else:
+            flat = buf.reshape(-1, buf.shape[-1])
+            idx = np.random.default_rng(0).choice(len(flat), size=min(n, len(flat)), replace=False)
+            obs = torch.as_tensor(flat[idx], dtype=torch.float32)
         with torch.no_grad():
-            dist = m.policy.get_distribution(torch.as_tensor(obs[idx], dtype=torch.float32))
-            return float(dist.distribution.stddev.mean())
+            return float(m.policy.get_distribution(obs).distribution.stddev.mean())
 
     ckpt_cb = CheckpointCallback(save_freq=max(1, tc["checkpoint_every"] // n_envs), save_path=ckpt_dir,
                                  name_prefix="ppo", save_vecnormalize=True)

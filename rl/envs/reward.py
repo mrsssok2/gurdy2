@@ -31,6 +31,9 @@ DEFAULTS = {
     "track_filter_s": 0.2,     # s; EMA time constant of the tracked velocity (0 = instantaneous)
     "only_positive": True,     # clip the per-step sum (except the fall term) at >= 0
     "penalty_scale": 1.0,      # multiplier on PENALTY_TERMS (training curriculum sets it)
+    # Efficiency curriculum (step 2.7): weights below are FINAL values; each listed term starts at
+    # weight * start_fraction and reaches its weight when eff_progress (0 -> 1, set by training) = 1.
+    "curriculum_start_fraction": {},
     "weights": {
         "track": 1.5,
         "alive": 0.05,
@@ -42,6 +45,7 @@ DEFAULTS = {
         "torque": -5e-4,
         "joint_acc": -2.5e-7,
         "action_rate": -0.01,
+        "action_2nd": 0.0,     # sum (a_t - 2 a_{t-1} + a_{t-2})^2 (jerk proxy), off unless configured
         "foot_slip": -1.0,
         "air_time": 0.5,
         "stand_still": -0.1,
@@ -49,7 +53,7 @@ DEFAULTS = {
 }
 
 _ZERO = 1e-6
-PENALTY_TERMS = ("tilt", "vz", "ang_xy", "energy", "torque", "joint_acc", "action_rate", "foot_slip")
+PENALTY_TERMS = ("tilt", "vz", "ang_xy", "energy", "torque", "joint_acc", "action_rate", "action_2nd", "foot_slip")
 
 
 def is_moving(command) -> bool:
@@ -95,7 +99,7 @@ class FootAirTimer:
 
 def terms(*, v_body, w_body, track_vel, gravity_body, command, kappa, cfg, joint_vel, joint_vel_prev, dt,
           torque, action, action_prev, foot_contact, foot_vel_xy, air_bonus, q, q_stance,
-          fallen) -> dict:
+          fallen, action_prev2=None) -> dict:
     """Unweighted term values for one policy step."""
     moving = is_moving(command)
     return {
@@ -109,14 +113,24 @@ def terms(*, v_body, w_body, track_vel, gravity_body, command, kappa, cfg, joint
         "torque": float(np.sum(torque ** 2)),
         "joint_acc": float(np.sum(((joint_vel - joint_vel_prev) / dt) ** 2)),
         "action_rate": float(np.sum((action - action_prev) ** 2)),
+        "action_2nd": 0.0 if action_prev2 is None else float(np.sum((action - 2 * action_prev + action_prev2) ** 2)),
         "foot_slip": float(np.sum(np.sum(np.asarray(foot_vel_xy) ** 2, axis=1)[np.asarray(foot_contact, bool)])),
         "air_time": float(air_bonus) if moving else 0.0,
         "stand_still": 0.0 if moving else float(np.sum(np.abs(q - q_stance))),
     }
 
 
-def weighted(term_values: dict, weights: dict) -> dict:
-    return {k: weights[k] * v for k, v in term_values.items()}
+def weighted(term_values: dict, weights: dict, start_fraction: dict | None = None,
+             progress: float = 1.0) -> dict:
+    """weight * value; terms in start_fraction ramp from weight*f0 (progress 0) to weight (progress 1)."""
+    out = {}
+    for k, v in term_values.items():
+        w = weights[k]
+        if start_fraction and k in start_fraction:
+            f0 = start_fraction[k]
+            w = w * (f0 + (1.0 - f0) * min(max(progress, 0.0), 1.0))
+        out[k] = w * v
+    return out
 
 
 def combine(weighted_terms: dict, penalty_scale: float, only_positive: bool):

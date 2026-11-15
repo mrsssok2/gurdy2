@@ -44,7 +44,7 @@ stats; `ppo_latest.*` is written on stop). Training runs detached, so it survive
 ```bash
 # start (example: long flat run, BC-initialised from the tripod gait)
 mkdir -p rl/runs/flat_bc_v1
-docker compose run -d --name gurdy_train rl bash -c 'exec python3 rl/train.py \
+docker compose run -d --rm --name gurdy_train rl bash -c 'exec python3 rl/train.py \
   --config rl/configs/flat_bc_long.yaml --name flat_bc_v1 \
   --init-from rl/runs/c2_bc/checkpoints/ppo_bc.zip > rl/runs/flat_bc_v1/train.log 2>&1'
 
@@ -60,7 +60,7 @@ docker compose run -d --name gurdy_tb --service-ports rl tensorboard --logdir rl
 docker stop gurdy_train && docker rm gurdy_train
 
 # resume from the newest checkpoint (or --resume rl/runs/<name>/checkpoints/ppo_<N>_steps.zip)
-docker compose run -d --name gurdy_train rl bash -c 'exec python3 rl/train.py \
+docker compose run -d --rm --name gurdy_train rl bash -c 'exec python3 rl/train.py \
   --config rl/configs/flat_bc_long.yaml --name flat_bc_v1 --resume latest >> rl/runs/flat_bc_v1/train.log 2>&1'
 ```
 Never run training together with Gazebo (RAM rule); training uses ~1.6 GiB and ~7 CPU threads.

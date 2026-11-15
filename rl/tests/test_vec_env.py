@@ -38,3 +38,31 @@ def test_matches_dummy_vec_env():
     finally:
         bat.close()
         ref.close()
+
+
+def _asym_env():
+    return GurdyEnv({"episode_s": 0.5, "obs_mode": "asym", "domain_randomization": {"enabled": True}})
+
+
+def test_dict_observations_match_dummy_vec_env():
+    ref = make_vec_env(_asym_env, n_envs=4, seed=5, vec_env_cls=DummyVecEnv)
+    bat = BatchedSubprocVecEnv(_asym_env, n_workers=2, envs_per_worker=2)
+    bat.seed(5)
+    try:
+        o1, o2 = ref.reset(), bat.reset()
+        assert set(o1) == set(o2) == {"policy", "privileged"}
+        for k in o1:
+            assert np.allclose(o1[k], o2[k])
+        rng = np.random.default_rng(1)
+        for _ in range(40):
+            a = rng.uniform(-1, 1, (4, 18)).astype(np.float32)
+            (p1, r1, d1, _), (p2, r2, d2, i2) = ref.step(a), bat.step(a)
+            for k in p1:
+                assert np.allclose(p1[k], p2[k])
+            assert np.allclose(r1, r2) and np.array_equal(d1, d2)
+            for info in i2:
+                if "terminal_observation" in info:
+                    assert set(info["terminal_observation"]) == {"policy", "privileged"}
+    finally:
+        bat.close()
+        ref.close()

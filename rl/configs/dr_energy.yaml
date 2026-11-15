@@ -1,0 +1,35 @@
+# Step 2.7: domain randomisation + asymmetric critic + energy/smoothness curriculum.
+# Start: train.py --transfer-from rl/runs/flat_bc_v1/checkpoints/ppo_latest.zip
+# (policy BC-initialised from the tripod gait, then PPO on flat ground).
+_base: flat_bc_long.yaml
+
+env:
+  obs_mode: asym                      # actor: 195 proprioceptive values; critic: + 17 privileged
+  domain_randomization:
+    enabled: true                     # ranges: envs/randomization.py DEFAULTS, widened by dr_scale
+    leg_failure_prob: 0.0             # off in 2.7 (Experiment B)
+
+reward:
+  kappa: 0.5
+  weights:                            # FINAL values (curriculum_start_fraction ramps them in)
+    energy: -2.0e-2                   # 10x flat_bc_v1 (policy at 37 W -> -0.74/step; tripod 13 W -> -0.26)
+    torque: -2.5e-3                   # 5x
+    action_rate: -0.5                 # 50x (policy 0.113 -> -0.057/step; tripod 0.035 -> -0.018)
+    action_2nd: -2.0                  # new (policy 0.0225 -> -0.045/step; tripod 0.0026 -> -0.005)
+  curriculum_start_fraction:          # = flat_bc_v1's weights at progress 0
+    energy: 0.1
+    torque: 0.2
+    action_rate: 0.02
+    action_2nd: 0.0
+
+ppo:
+  policy: asymmetric
+
+training:
+  total_timesteps: 60000000
+  critic_warmup_steps: 409600         # 20 iterations, actor frozen (new privileged inputs + DR)
+  kappa_anneal: {start: 0.5, end: 0.5, from_step: 0, to_step: 1}
+  penalty_curriculum: {start: 1.0, end: 1.0, from_step: 0, to_step: 1}
+  schedules:
+    eff_progress: {start: 0.0, end: 1.0, from_step: 0, to_step: 20000000}   # energy/smoothness weights
+    dr_scale: {start: 0.0, end: 1.0, from_step: 0, to_step: 10000000}       # DR ranges 0 -> full

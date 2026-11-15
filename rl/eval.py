@@ -1,6 +1,7 @@
 """Step 2.5: deterministic evaluation of policies vs the tripod gait (MuJoCo, flat ground).
 
-    python3 rl/eval.py --run flat_bc_v1 --checkpoints 10000000 30000000 latest [--video]
+    python3 rl/eval.py --run flat_bc_v1 --checkpoints 10000000 30000000 latest
+    python3 rl/eval.py --policies flat_bc_v1:latest dr_energy_v1:latest --scenarios all --episodes 50
 
 Two protocols, identical for every controller:
  1. Phase 1 tracking protocol (gurdy_core.experiments.tracking_protocol, 123 s, commands at 20 Hz,
@@ -11,7 +12,11 @@ Two protocols, identical for every controller:
     per-command-window tracking error: mean body velocity over seconds 1-5 of each 5 s window vs
     the command, error = ||(v - c)/lim|| / ||c/lim|| (lim = command limits, mixes m/s and rad/s).
 Policies act deterministically (mean action); observations normalised with the checkpoint's
-VecNormalize statistics. Results: rl/runs/<run>/eval/*.json and a markdown table on stdout.
+VecNormalize statistics; each policy gets the observation format it was trained with (flat Box or
+asymmetric Dict - the critic-only part is ignored by the actor). Results: JSON + markdown on stdout.
+
+Step 2.7 --scenarios (protocol 2 under fixed domain-randomisation extremes, everything else nominal):
+nominal, friction_low/high, heavy, weak_motors, latency_10ms, sensor_noise, pushes, all_extremes.
 """
 import argparse
 import json
@@ -27,11 +32,29 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 
+SCENARIOS = {
+    "nominal": None,
+    "friction_low": {"friction": 0.5},
+    "friction_high": {"friction": 1.25},
+    "heavy": {"body_mass_scale": 1.15, "payload_kg": 0.3, "payload_offset": [0.02, 0.02],
+              "link_mass_scale": [1.1] * 18},
+    "weak_motors": {"effort_scale": 0.85, "kp_scale": 0.9},
+    "latency_10ms": {"latency_substeps": 5},
+    "sensor_noise": {"noise_scale": 1.0},
+    "pushes": {"push": True},
+    "all_extremes": {"friction": 0.5, "body_mass_scale": 1.15, "payload_kg": 0.3, "payload_offset": [0.02, 0.02],
+                     "link_mass_scale": [1.1] * 18, "effort_scale": 0.85, "kp_scale": 0.9,
+                     "damping_scale": 1.2, "joint_friction": 0.04, "latency_substeps": 5,
+                     "noise_scale": 1.0, "push": True},
+}
+
+
 class Controller:
     """'tripod' or a policy checkpoint; .act(obs, env) -> action."""
 
     def __init__(self, spec):
         self.spec = spec
+        self.obs_mode = "flat"
         if spec != "tripod":
             import torch
             from stable_baselines3 import PPO
@@ -40,6 +63,9 @@ class Controller:
             self.model = PPO.load(spec, device="cpu")
             with open(vecnorm_for(spec), "rb") as f:
                 self.vn = pickle.load(f)
+            import gymnasium as gym
+            if isinstance(self.model.observation_space, gym.spaces.Dict):
+                self.obs_mode = "asym"
 
     def reset(self, env):
         if self.spec == "tripod":
@@ -49,13 +75,19 @@ class Controller:
     def act(self, obs, env):
         if self.spec == "tripod":
             return (self.gait.step(env.command) - env.q_stance) / env.scale
-        o = self.vn.normalize_obs(obs[None].astype(np.float64)).astype(np.float32)
+        if isinstance(obs, dict):
+            o = self.vn.normalize_obs({k: v[None].astype(np.float64) for k, v in obs.items()})
+            o = {k: v.astype(np.float32) for k, v in o.items()}
+        else:
+            o = self.vn.normalize_obs(obs[None].astype(np.float64)).astype(np.float32)
         return self.model.policy.predict(o, deterministic=True)[0][0]
 
 
-def _env(cfg, episode_s, fixed):
+def _env(cfg, episode_s, fixed, obs_mode="flat", scenario=None):
     from envs.gurdy_env import GurdyEnv
-    env_cfg = {**cfg["env"], "episode_s": episode_s, "measure_energy": True}
+    env_cfg = {**cfg["env"], "episode_s": episode_s, "measure_energy": True, "obs_mode": obs_mode,
+               "domain_randomization": {**cfg["env"].get("domain_randomization", {}), "enabled": False},
+               "dr_fixed": SCENARIOS.get(scenario) if scenario else None}
     if fixed:
         env_cfg["resample_command"] = False
     env = GurdyEnv(env_cfg, reward_config=cfg["reward"])
@@ -69,8 +101,8 @@ def run_protocol(args):
     spec, cfg, record = args
     from gurdy_core.experiments import analyze_tracking, cmd_at, quat_to_rpy, tracking_protocol
     changes, _, total = tracking_protocol()
-    env = _env(cfg, total + 1.0, fixed=True)
     ctl = Controller(spec)
+    env = _env(cfg, total + 1.0, fixed=True, obs_mode=ctl.obs_mode)
     obs, _ = env.reset(seed=0, options={"command": (0.0, 0.0, 0.0)})
     ctl.reset(env)
     rows, energy, path, prev_xy, frames = [], 0.0, 0.0, env.data.qpos[:2].copy(), []
@@ -100,9 +132,9 @@ def run_protocol(args):
 
 def run_episodes(args):
     """Training-distribution episodes (seeds) for one controller."""
-    spec, cfg, seeds = args
-    env = _env(cfg, cfg["env"]["episode_s"], fixed=False)
+    spec, cfg, seeds, scenario = (args + (None,))[:4]
     ctl = Controller(spec)
+    env = _env(cfg, cfg["env"]["episode_s"], fixed=False, obs_mode=ctl.obs_mode, scenario=scenario)
     lim = env.cmd_lim
     out = []
     for seed in seeds:
@@ -130,15 +162,82 @@ def run_episodes(args):
     return out
 
 
+def summarize_episodes(ep):
+    errs = np.concatenate([e["window_errors"] for e in ep]) if ep else np.array([np.nan])
+    secs = sum(e["steps"] for e in ep) * 0.02
+    return {"n": len(ep), "fall_rate": float(np.mean([e["fell"] for e in ep])),
+            "window_error_mean": float(errs.mean()), "window_error_median": float(np.median(errs)),
+            "window_error_p90": float(np.percentile(errs, 90)),
+            "windows_below_20pct": float(np.mean(errs < 0.2)), "n_windows": int(len(errs)),
+            "mean_power_W": float(sum(e["energy_J"] for e in ep) / max(secs, 1e-9))}
+
+
+def resolve(spec):
+    """'run:checkpoint' -> (label, checkpoint path, run config)."""
+    import yaml
+    run, ck = spec.split(":")
+    rdir = os.path.join(HERE, "runs", run)
+    path = os.path.join(rdir, "checkpoints", "ppo_latest.zip" if ck == "latest" else f"ppo_{ck}_steps.zip")
+    return f"{run}:{ck}", path, yaml.safe_load(open(os.path.join(rdir, "config.yaml")))
+
+
+def main_scenarios(a):
+    """Compare tripod + policies across DR scenarios (protocol 2) and the nominal tracking protocol."""
+    pols = [resolve(p) for p in a.policies]
+    ctrls = [("tripod", "tripod", pols[0][2])] + pols
+    scen = list(SCENARIOS) if a.scenarios == ["all"] else a.scenarios
+    out_dir = os.path.join(HERE, "runs", a.policies[-1].split(":")[0], "eval")
+    os.makedirs(out_dir, exist_ok=True)
+    t0 = time.time()
+    with mp.get_context("forkserver").Pool(a.workers) as pool:
+        prot = pool.map(run_protocol, [(path, cfg, False) for _, path, cfg in ctrls])
+        jobs, keys = [], []
+        for name, path, cfg in ctrls:
+            for sc in scen:
+                n = a.episodes if sc != "nominal" else max(a.episodes, 100)
+                for ch in np.array_split(np.arange(n), max(1, a.workers // 2)):
+                    jobs.append((path, cfg, [int(x) for x in ch], sc))
+                    keys.append((name, sc))
+        res = pool.map(run_episodes, jobs)
+    table = {}
+    for (name, sc), lst in zip(keys, res):
+        table.setdefault(name, {}).setdefault(sc, []).extend(lst)
+    summary = {name: {"protocol": p, "scenarios": {sc: summarize_episodes(v) for sc, v in table[name].items()}}
+               for (name, _, _), (p, _) in zip(ctrls, prot)}
+    with open(os.path.join(out_dir, "eval_scenarios.json"), "w") as f:
+        json.dump(summary, f, indent=2)
+    print(f"evaluated {len(ctrls)} controllers x {len(scen)} scenarios in {time.time() - t0:.0f} s\n")
+    print("Nominal tracking protocol (123 s):\n")
+    seg_names = [s["segment"] for s in prot[0][0]["segments"]]
+    print("| controller | " + " | ".join(seg_names) + " | falls | energy J | CoT | mean power W |")
+    print("|---" * (len(seg_names) + 5) + "|")
+    for name, s in summary.items():
+        p = s["protocol"]
+        print(f"| {name} | " + " | ".join(f"{x['main_axis_error_pct']:+.1f} %" for x in p["segments"])
+              + f" | {int(p['fell'])} | {p['energy_J']:.0f} | {p['cost_of_transport']:.2f} | {p['mean_power_W']:.1f} |")
+    print("\nScenarios (fall rate / window error mean / mean power):\n")
+    print("| scenario | " + " | ".join(summary) + " |\n|---" + "|---" * len(summary) + "|")
+    for sc in scen:
+        row = []
+        for name in summary:
+            e = summary[name]["scenarios"][sc]
+            row.append(f"{100 * e['fall_rate']:.0f} % / {100 * e['window_error_mean']:.1f} % / {e['mean_power_W']:.1f} W")
+        print(f"| {sc} (n={summary[next(iter(summary))]['scenarios'][sc]['n']}) | " + " | ".join(row) + " |")
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--run", required=True)
+    ap.add_argument("--policies", nargs="+", help="run:checkpoint ... (scenario mode)")
+    ap.add_argument("--scenarios", nargs="+", default=["all"])
+    ap.add_argument("--run")
     ap.add_argument("--checkpoints", nargs="+", default=["latest"])
     ap.add_argument("--config", default=None, help="defaults to the run's config.yaml")
     ap.add_argument("--episodes", type=int, default=100)
     ap.add_argument("--workers", type=int, default=10)
     ap.add_argument("--no-tripod", action="store_true")
     a = ap.parse_args()
+    if a.policies:
+        return main_scenarios(a)
 
     import yaml
     run = os.path.join(HERE, "runs", a.run)

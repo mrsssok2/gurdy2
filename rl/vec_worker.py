@@ -6,6 +6,13 @@ import cloudpickle
 import numpy as np
 
 
+def stack(obs_list):
+    """Stack per-env observations; Dict observations are stacked per key."""
+    if isinstance(obs_list[0], dict):
+        return {k: np.stack([o[k] for o in obs_list]) for k in obs_list[0]}
+    return np.stack(obs_list)
+
+
 def worker(remote, parent_remote, env_fns_bytes):
     parent_remote.close()
     envs = [fn() for fn in cloudpickle.loads(env_fns_bytes)]
@@ -33,12 +40,12 @@ def worker(remote, parent_remote, env_fns_bytes):
                     obs.append(o)
                     rews[i], dones[i] = r, done
                     infos.append(info)
-                remote.send((np.stack(obs), rews, dones, infos))
+                remote.send((stack(obs), rews, dones, infos))
             elif cmd == "reset":
                 seeds, options = data
                 out = [env.reset(seed=s, options=options) for env, s in zip(envs, seeds)]
                 ep_ret[:], ep_len[:] = 0.0, 0
-                remote.send((np.stack([o for o, _ in out]), [i for _, i in out]))
+                remote.send((stack([o for o, _ in out]), [i for _, i in out]))
             elif cmd == "get_attr":
                 remote.send([getattr(env.unwrapped, data) for env in envs])
             elif cmd == "set_attr":

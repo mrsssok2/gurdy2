@@ -11,7 +11,10 @@
   (body below FALL_Z, tilt above FALL_TILT, or body box touching the ground).
 * reset(options={"command": (vx, vy, wz)}) fixes the command (evaluation/tests); with
   config resample_command false it is kept for the whole episode.
-* info: ground-truth diagnostics for logging/reward/eval ONLY (never part of the observation).
+* info: ground-truth diagnostics for logging/reward/eval ONLY (never part of the actor observation).
+* Step 2.7: domain randomisation (envs/randomization.py; ranges scaled by attr dr_scale), action
+  latency (previous targets held for k substeps), pushes, sensor noise on the ACTOR's inputs only;
+  obs_mode "asym" returns {"policy": 195 actor values, "privileged": 17 clean critic-only values}.
 
 Config: rl/configs/*.yaml, sections `env` and `reward` (defaults below and in envs/reward.py).
 Reward: envs/reward.py; info["reward_terms"] has every weighted term (for TensorBoard).
@@ -30,6 +33,7 @@ from gurdy_core.robot import JOINT_TYPES, LEG_NAMES, load_gait, load_robot
 from sim_mujoco.mjcf import build_mjcf
 
 from . import reward as R
+from .randomization import PRIVILEGED_DIM, DomainRandomizer
 
 DEFAULTS = {
     "episode_s": 20.0,
@@ -40,6 +44,10 @@ DEFAULTS = {
     "init_joint_noise": 0.05,
     "action_filter_alpha": 1.0,     # EMA on actions: a_f = alpha*a + (1-alpha)*a_f_prev (1.0 = off)
     "measure_energy": False,        # eval: integrate sum|tau*qdot| over every 2 ms substep (slower)
+    "record_substeps": False,       # eval: info["substeps"] = (qdot, tau) at every 2 ms substep
+    "obs_mode": "flat",             # "flat": Box(195) | "asym": Dict(policy 195, privileged 17)
+    "domain_randomization": {},     # see envs/randomization.py DEFAULTS (enabled false = nominal)
+    "dr_fixed": None,               # eval scenario: fixed DR values (e.g. {"friction": 0.5})
 }
 
 
@@ -60,6 +68,8 @@ class GurdyEnv(gym.Env):
         self.rcfg = {**R.DEFAULTS, **rc, "weights": {**R.DEFAULTS["weights"], **rc.get("weights", {})}}
         self.kappa = float(self.rcfg["kappa"])        # annealed by the training callback via set_attr
         self.penalty_scale = float(self.rcfg["penalty_scale"])   # curriculum, set via set_attr
+        self.eff_progress = 1.0          # efficiency-weight curriculum progress, set via set_attr
+        self.dr_scale = 1.0              # domain-randomisation range scale, set via set_attr
         self.robot = load_robot(robot_yaml)
         r = self.robot
         self.model = mujoco.MjModel.from_xml_string(build_mjcf(r))
@@ -88,8 +98,17 @@ class GurdyEnv(gym.Env):
         self.key = m.key("stance").id
 
         self.action_space = gym.spaces.Box(-1.0, 1.0, (len(r.joint_names),), np.float32)
-        self.observation_space = gym.spaces.Box(-np.inf, np.inf, (OBS_DIM,), np.float32)
+        box = gym.spaces.Box(-np.inf, np.inf, (OBS_DIM,), np.float32)
+        if self.cfg["obs_mode"] == "asym":
+            self.observation_space = gym.spaces.Dict({
+                "policy": box, "privileged": gym.spaces.Box(-np.inf, np.inf, (PRIVILEGED_DIM,), np.float32)})
+        else:
+            self.observation_space = box
         self.hist = ObsHistory()
+        legs = [m.body(f"{leg}_{s}").id for leg in LEG_NAMES for s in ("coxa", "femur", "tibia")]
+        self.dr = DomainRandomizer(m, self.cfg["domain_randomization"], self.foot_geoms, self.floor_geom,
+                                   m.body("base_link").id, legs, self.vadr,
+                                   nominal_joint_friction=float(r.joint_common["friction"]))
 
     # ------------------------------------------------------------------ helpers
     def _sample_command(self) -> np.ndarray:
@@ -98,13 +117,34 @@ class GurdyEnv(gym.Env):
         return self.np_random.uniform(-1.0, 1.0, 3) * self.cmd_lim
 
     def _frame(self) -> np.ndarray:
+        """Actor observation frame; sensor noise (DR) applied here only — the critic stays clean."""
         d = self.data
-        return build_frame(
-            gravity=gravity_in_body(d.qpos[3:7]),
-            gyro=d.sensordata[self.gyro_adr:self.gyro_adr + 3],
-            joint_pos=d.qpos[self.qadr], joint_vel=d.qvel[self.vadr], q_stance=self.q_stance,
-            prev_action=self.prev_action, command=self.command,
-            phase=(self.steps * self.policy_dt / self.clock_period) % 1.0)
+        g = gravity_in_body(d.qpos[3:7])
+        gyro = d.sensordata[self.gyro_adr:self.gyro_adr + 3].copy()
+        qp, qv = d.qpos[self.qadr].copy(), d.qvel[self.vadr].copy()
+        ns = self.dr.params["noise_scale"]
+        if ns > 0:
+            n, rng = self.dr.cfg["noise"], self.np_random
+            g = g + rng.normal(0, n["gravity"] * ns, 3)
+            gyro += rng.normal(0, n["gyro"] * ns, 3)
+            qp += rng.normal(0, n["joint_pos"] * ns, len(qp))
+            qv += rng.normal(0, n["joint_vel"] * ns, len(qv))
+        return build_frame(gravity=g, gyro=gyro, joint_pos=qp, joint_vel=qv, q_stance=self.q_stance,
+                           prev_action=self.prev_action, command=self.command,
+                           phase=(self.steps * self.policy_dt / self.clock_period) % 1.0)
+
+    def _privileged(self, v_body, contact) -> np.ndarray:
+        return np.concatenate([v_body, self.data.qvel[3:6], contact.astype(float), self.dr.privileged()])
+
+    def _obs(self, policy_obs, v_body, contact):
+        if self.cfg["obs_mode"] != "asym":
+            return policy_obs.astype(np.float32)
+        return {"policy": policy_obs.astype(np.float32),
+                "privileged": self._privileged(v_body, contact).astype(np.float32)}
+
+    def _schedule_push(self):
+        lo, hi = self.dr.cfg["push"]["interval_s"]
+        self.next_push = self.steps + int(self.np_random.uniform(lo, hi) / self.policy_dt)
 
     def _body_velocity(self):
         """Linear velocity in the body frame (free-joint qvel[0:3] is world frame) and yaw rate."""
@@ -143,6 +183,8 @@ class GurdyEnv(gym.Env):
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
         m, d = self.model, self.data
+        self.dr.sample(self.np_random, self.dr_scale, self.cfg["dr_fixed"])
+        self.dr.apply(d)
         mujoco.mj_resetDataKeyframe(m, d, self.key)
         noise = self.np_random.uniform(-1, 1, len(self.qadr)) * self.cfg["init_joint_noise"]
         d.qpos[self.qadr] = np.clip(self.q_stance + noise, self.q_lo, self.q_hi)
@@ -150,7 +192,9 @@ class GurdyEnv(gym.Env):
         mujoco.mj_forward(m, d)
         self.steps = 0
         self.prev_action = np.zeros(self.action_space.shape[0])
+        self.prev_action2 = np.zeros(self.action_space.shape[0])
         self.mapper.reset()
+        self._schedule_push()
         self.q_ref = self.q_stance.copy()
         self.qd_prev = d.qvel[self.vadr].copy()
         self.air_timer.reset()
@@ -159,23 +203,39 @@ class GurdyEnv(gym.Env):
         self.fixed_command = fixed is not None
         self.command = np.asarray(fixed, dtype=float) if self.fixed_command else self._sample_command()
         obs = self.hist.reset(self._frame())
-        return obs.astype(np.float32), {"command": self.command.copy()}
+        v0, _ = self._body_velocity()
+        return self._obs(obs, v0, self.foot_contacts()), {"command": self.command.copy(),
+                                                           "dr": dict(self.dr.params)}
 
     def step(self, action):
         d = self.data
         self.q_ref = self.mapper(action)               # clip, EMA filter (gurdy_core), joint targets
         a = self.mapper.a_filt                         # filtered action = what the policy observes next
-        d.ctrl[:] = self.q_ref
         cmd = self.command.copy()                      # command this step was taken under
+        lat = int(self.dr.params["latency_substeps"])  # previous targets held for `lat` substeps
         energy = 0.0
-        if self.cfg["measure_energy"]:
+        sub = []
+        if self.cfg["measure_energy"] or self.cfg["record_substeps"]:
             dt = self.model.opt.timestep
-            for _ in range(self.n_sub):
+            for k in range(self.n_sub):
+                if k == lat:
+                    d.ctrl[:] = self.q_ref
                 mujoco.mj_step(self.model, d)
                 energy += float(np.sum(np.abs(d.actuator_force * d.qvel[self.vadr]))) * dt
+                if self.cfg["record_substeps"]:
+                    sub.append((d.qvel[self.vadr].copy(), d.actuator_force.copy()))
         else:
-            mujoco.mj_step(self.model, d, nstep=self.n_sub)
+            if lat:
+                mujoco.mj_step(self.model, d, nstep=lat)
+            d.ctrl[:] = self.q_ref
+            mujoco.mj_step(self.model, d, nstep=self.n_sub - lat)
         self.steps += 1
+        if self.dr.params["push"] and self.steps >= self.next_push:   # random push (velocity kick)
+            ang = self.np_random.uniform(0, 2 * np.pi)
+            lo, hi = self.dr.cfg["push"]["speed"]
+            sp = self.np_random.uniform(lo, hi) * self.dr.params["push_scale"]
+            d.qvel[0:2] += sp * np.array([np.cos(ang), np.sin(ang)])
+            self._schedule_push()
 
         v, wz = self._body_velocity()
         w_body = d.qvel[3:6].copy()
@@ -190,17 +250,19 @@ class GurdyEnv(gym.Env):
             dt=self.policy_dt, torque=d.actuator_force, action=a, action_prev=self.prev_action,
             foot_contact=contact, foot_vel_xy=self.foot_velocities_xy(),
             air_bonus=self.air_timer.update(contact, self.rcfg["air_time_target"]),
-            q=d.qpos[self.qadr], q_stance=self.q_stance, fallen=terminated)
-        reward, terms, clipped = R.combine(R.weighted(raw, self.rcfg["weights"]), self.penalty_scale,
-                                           self.rcfg["only_positive"])
+            q=d.qpos[self.qadr], q_stance=self.q_stance, fallen=terminated, action_prev2=self.prev_action2)
+        reward, terms, clipped = R.combine(
+            R.weighted(raw, self.rcfg["weights"], self.rcfg["curriculum_start_fraction"], self.eff_progress),
+            self.penalty_scale, self.rcfg["only_positive"])
         self.qd_prev = qd
         truncated = self.steps >= self.max_steps
+        self.prev_action2 = self.prev_action
         self.prev_action = a
         if (self.cfg["resample_command"] and not self.fixed_command
                 and self.steps % self.cmd_steps == 0):
             self.command = self._sample_command()
-        obs = self.hist.push(self._frame())
+        obs = self._obs(self.hist.push(self._frame()), v, contact)
         info = {"command": cmd, "body_vel": v, "yaw_rate": float(wz), "body_z": float(d.qpos[2]),
                 "foot_contact": contact, "track_vel": self.track_vel.copy(), "reward_terms": terms,
-                "reward_clipped": clipped, "energy_J": energy}
-        return obs.astype(np.float32), reward, terminated, truncated, info
+                "reward_clipped": clipped, "energy_J": energy, "substeps": sub}
+        return obs, reward, terminated, truncated, info
