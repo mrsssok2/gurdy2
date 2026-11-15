@@ -64,15 +64,19 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
   standing; tripod walker ≥ 2–3× standing under every move command (pure turning included);
   standing wins at zero command; tripod reference return recorded
   — done: tripod 3.7–4.0× standing (combined 11.9×), half speed 2.5–2.8×, zero cmd standing wins (`docs/results/phase2_reward.md`)
-- [ ] **2.4** `train.py` + configs (flat, no DR), TensorBoard, checkpoints + resume — AC: flat tracking
+- [x] **2.4** `train.py` + configs (flat, no DR), TensorBoard, checkpoints + resume — AC: flat tracking
   error < 20 %, fall rate < 5 % over 100 episodes, resume verified, RAM peak + wall time recorded
   (time box ~60M steps, then asymmetric critic, then option B)
-- [ ] **2.5** `eval.py`: same protocol for policy and tripod; tracking, falls, energy, cost of transport,
+  — done (2026-11-15): from-scratch runs stayed below standing within 2M steps (best: C1, action EMA);
+  chosen policy **BC-initialised from the tripod gait** + PPO, 60M steps in 3.84 h, 1.64 GiB:
+  tracking error 5.7 % (100 eps), 0 % falls, resume verified (`docs/results/phase2_flat.md`)
+- [x] **2.5** `eval.py`: same protocol for policy and tripod; tracking, falls, energy, cost of transport,
   videos — AC: `docs/results/phase2_flat.md`
+  — done: policy 5.7 % vs tripod 16.1 % window error, both 0 falls; policy CoT 18.3 vs tripod 7.35 (2.9× energy)
 - [ ] **2.6** (optional, time-boxed) MJX + JAX spike on the RTX 4050 — AC: go/no-go from measured
   throughput (≥ 10× end-to-end) and stand/step parity vs CPU MuJoCo
 - [ ] **2.7** Domain randomization (friction, masses, motor strength, damping, latency, sensor noise,
-  pushes, leg failure) + asymmetric critic — AC: flat AC still met with DR; fall rate < 5 % at DR extremes
+  pushes, leg failure) + asymmetric critic + energy efficiency (policy CoT 18.3 vs tripod 7.35) — AC: flat AC still met with DR; fall rate < 5 % at DR extremes
 - [ ] **2.8** Terrain curriculum (heightfield: rough 0.5–2 cm, slopes 5–12°, steps 1.5–3 cm) — AC:
   success rate per level; RL beats tripod on rough terrain
 - [ ] **2.9** ONNX export + `gurdy_rl_policy` ROS node + Gazebo deployment — AC: ONNX == torch (1e-5);

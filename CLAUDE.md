@@ -153,7 +153,10 @@ python3 scripts/measure_rtf.py                   # (in container, sim running) R
 docker compose build rl                          # RL image (no ROS), ~2.9 GB
 docker compose run --rm rl python3 rl/bench.py   # throughput / RAM benchmark
 docker compose run --rm rl bash -c 'cd rl && python3 -m pytest -q'
+docker compose run --rm rl python3 rl/eval.py --run <name> --checkpoints 50000000 latest   # step 2.5 eval
+docker compose run --rm rl python3 rl/tools/make_video.py --run <name> --checkpoint latest
 ```
+Training start/monitor/stop/resume commands: README.md ("RL training").
 
 ## Current status
 - **Phase 0 and Phase 1 done (2026-11-14), pushed to github.com/mrsssok2/gurdy2.** All Phase 1 AC
@@ -190,4 +193,12 @@ docker compose run --rm rl bash -c 'cd rl && python3 -m pytest -q'
   on hip_pitch). Sanity: tripod 3.7–4.0× standing for every move command (pure turns 3.9×), half
   speed 2.5–2.8×, standing wins at zero command. 64 tests in `rl/tests`. `docs/results/phase2_reward.md`.
 - Pushing: push to GitHub after every completed step (user, 2026-11-14).
-- Next: 2.4 (train.py, configs, TensorBoard, checkpoints/resume, flat training run).
+- 2.4–2.5 done (2026-11-15): from scratch (gSDE, std 0.1, + action EMA α 0.5 = C1) all stayed below
+  standing in 2M steps; final flat policy `flat_bc_v1` is **BC-initialised from the tripod gait** +
+  PPO 60M steps (3.84 h, 1.64 GiB). Eval (`rl/eval.py`): window tracking error 5.7 % vs tripod 16.1 %,
+  0 falls, but **CoT 18.3 vs tripod 7.35 (2.9× energy)** — fix in 2.7. Reward: per-step clip ≥ 0 +
+  separate fall term; penalty curriculum 0.02→1 (15M); action EMA α 0.5 lives in
+  `gurdy_core.rl_action` (the ROS node must use it). KL/clip fraction stay high (0.03–0.04 / 0.36–0.40)
+  at std 0.04. Best from-scratch config C1 kept for Experiment B (overnight run to be planned).
+  `docs/results/phase2_flat.md`, video `docs/videos/phase2_flat_tripod_vs_policy.mp4`.
+- Next: 2.6 (optional MJX spike) or 2.7 (DR + asymmetric critic + energy); plan the C1 overnight run.

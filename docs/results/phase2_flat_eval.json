@@ -1,0 +1,912 @@
+{
+  "tripod": {
+    "protocol": {
+      "segments": [
+        {
+          "segment": "forward",
+          "cmd": [
+            0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            0.09846783731328464,
+            2.915155889183389e-05,
+            0.00026764598822708133
+          ],
+          "main_axis_error_pct": -1.5321626867153686,
+          "pass": true
+        },
+        {
+          "segment": "backward",
+          "cmd": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            -0.09846747107002976,
+            2.7387362378685348e-05,
+            -0.000257522759959635
+          ],
+          "main_axis_error_pct": -1.532528929970245,
+          "pass": true
+        },
+        {
+          "segment": "strafe_left",
+          "cmd": [
+            0.0,
+            0.08,
+            0.0
+          ],
+          "measured": [
+            7.85352626490357e-07,
+            0.0834528172400314,
+            4.306348434410831e-06
+          ],
+          "main_axis_error_pct": 4.316021550039243,
+          "pass": true
+        },
+        {
+          "segment": "strafe_right",
+          "cmd": [
+            0.0,
+            -0.08,
+            0.0
+          ],
+          "measured": [
+            3.0932852118116485e-06,
+            -0.0833045296793033,
+            -7.250530036948563e-06
+          ],
+          "main_axis_error_pct": 4.130662099129118,
+          "pass": true
+        },
+        {
+          "segment": "turn_left",
+          "cmd": [
+            0.0,
+            0.0,
+            0.3
+          ],
+          "measured": [
+            5.140546571949895e-05,
+            7.150741768228262e-05,
+            0.274288151893843
+          ],
+          "main_axis_error_pct": -8.570616035385669,
+          "pass": true
+        },
+        {
+          "segment": "turn_right",
+          "cmd": [
+            0.0,
+            0.0,
+            -0.3
+          ],
+          "measured": [
+            -4.9459330600130525e-05,
+            7.24988597812322e-05,
+            -0.27440097827268467
+          ],
+          "main_axis_error_pct": -8.53300724243844,
+          "pass": true
+        },
+        {
+          "segment": "combined",
+          "cmd": [
+            0.08,
+            0.04,
+            0.2
+          ],
+          "measured": [
+            0.07851809421363365,
+            0.042518571760592476,
+            0.18294747188601673
+          ],
+          "main_axis_error_pct": -8.52626405699164,
+          "pass": true
+        }
+      ],
+      "fell": false,
+      "duration_s": 122.98,
+      "min_body_z": 0.10364521250746851,
+      "max_tilt_rad": 0.010898024022228614,
+      "all_pass": true,
+      "controller": "tripod",
+      "energy_J": 1613.709347552015,
+      "path_m": 7.270105660311035,
+      "cost_of_transport": 7.346235864807551,
+      "mean_power_W": 13.119588191479798
+    },
+    "episodes": {
+      "n": 100,
+      "fall_rate": 0.0,
+      "window_error_mean": 0.16110282804625042,
+      "window_error_median": 0.11116528403394273,
+      "window_error_p90": 0.3662906355753126,
+      "windows_below_20pct": 0.6539589442815249,
+      "n_windows": 341
+    }
+  },
+  "ppo_10000000_steps": {
+    "protocol": {
+      "segments": [
+        {
+          "segment": "forward",
+          "cmd": [
+            0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            0.11510157898334668,
+            0.003864099249253134,
+            -0.007439766265904887
+          ],
+          "main_axis_error_pct": 15.101578983346672,
+          "pass": true
+        },
+        {
+          "segment": "backward",
+          "cmd": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            -0.10734413506884075,
+            -0.0025850461348970893,
+            2.4144470775985806e-05
+          ],
+          "main_axis_error_pct": 7.344135068840741,
+          "pass": true
+        },
+        {
+          "segment": "strafe_left",
+          "cmd": [
+            0.0,
+            0.08,
+            0.0
+          ],
+          "measured": [
+            0.004019626117656198,
+            0.09510593319999194,
+            -0.014563687291325534
+          ],
+          "main_axis_error_pct": 18.882416499989926,
+          "pass": true
+        },
+        {
+          "segment": "strafe_right",
+          "cmd": [
+            0.0,
+            -0.08,
+            0.0
+          ],
+          "measured": [
+            0.006702690115864929,
+            -0.08860182084700305,
+            -0.005394858178779094
+          ],
+          "main_axis_error_pct": 10.752276058753809,
+          "pass": true
+        },
+        {
+          "segment": "turn_left",
+          "cmd": [
+            0.0,
+            0.0,
+            0.3
+          ],
+          "measured": [
+            0.0012212158409732868,
+            0.0038185846301234823,
+            0.3294673171051813
+          ],
+          "main_axis_error_pct": 9.822439035060434,
+          "pass": true
+        },
+        {
+          "segment": "turn_right",
+          "cmd": [
+            0.0,
+            0.0,
+            -0.3
+          ],
+          "measured": [
+            0.0025790341211131816,
+            -0.0015717814336580112,
+            -0.32538779573570503
+          ],
+          "main_axis_error_pct": 8.462598578568347,
+          "pass": true
+        },
+        {
+          "segment": "combined",
+          "cmd": [
+            0.08,
+            0.04,
+            0.2
+          ],
+          "measured": [
+            0.09510809597862277,
+            0.050178395190578276,
+            0.2194727926870453
+          ],
+          "main_axis_error_pct": 9.73639634352265,
+          "pass": true
+        }
+      ],
+      "fell": false,
+      "duration_s": 122.98,
+      "min_body_z": 0.10425732132925075,
+      "max_tilt_rad": 0.05332092805399341,
+      "all_pass": true,
+      "controller": "/home/ubuntu/gurdy2/rl/runs/flat_bc_v1/checkpoints/ppo_10000000_steps.zip",
+      "energy_J": 3894.7214249734398,
+      "path_m": 9.043920092159997,
+      "cost_of_transport": 14.252792395168363,
+      "mean_power_W": 31.664401829052355
+    },
+    "episodes": {
+      "n": 100,
+      "fall_rate": 0.0,
+      "window_error_mean": 0.13064998404656972,
+      "window_error_median": 0.10296119297671502,
+      "window_error_p90": 0.1936585217812375,
+      "windows_below_20pct": 0.9149560117302052,
+      "n_windows": 341
+    }
+  },
+  "ppo_20000000_steps": {
+    "protocol": {
+      "segments": [
+        {
+          "segment": "forward",
+          "cmd": [
+            0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            0.10383198858951044,
+            0.001408066453397468,
+            -0.0055838432202411515
+          ],
+          "main_axis_error_pct": 3.831988589510435,
+          "pass": true
+        },
+        {
+          "segment": "backward",
+          "cmd": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            -0.10826094613283865,
+            -0.003119111358534801,
+            -6.723311170852563e-05
+          ],
+          "main_axis_error_pct": 8.260946132838647,
+          "pass": true
+        },
+        {
+          "segment": "strafe_left",
+          "cmd": [
+            0.0,
+            0.08,
+            0.0
+          ],
+          "measured": [
+            0.00016932337250585345,
+            0.09323573497243853,
+            -0.007584650930643859
+          ],
+          "main_axis_error_pct": 16.544668715548163,
+          "pass": true
+        },
+        {
+          "segment": "strafe_right",
+          "cmd": [
+            0.0,
+            -0.08,
+            0.0
+          ],
+          "measured": [
+            -0.006356532532491993,
+            -0.09131514564678617,
+            0.00413317750330012
+          ],
+          "main_axis_error_pct": 14.143932058482706,
+          "pass": true
+        },
+        {
+          "segment": "turn_left",
+          "cmd": [
+            0.0,
+            0.0,
+            0.3
+          ],
+          "measured": [
+            -0.0021898832806787317,
+            0.0031808347832169024,
+            0.3228481261636759
+          ],
+          "main_axis_error_pct": 7.616042054558644,
+          "pass": true
+        },
+        {
+          "segment": "turn_right",
+          "cmd": [
+            0.0,
+            0.0,
+            -0.3
+          ],
+          "measured": [
+            -0.003094262305906006,
+            0.001896656607915671,
+            -0.3322750963251207
+          ],
+          "main_axis_error_pct": 10.758365441706905,
+          "pass": true
+        },
+        {
+          "segment": "combined",
+          "cmd": [
+            0.08,
+            0.04,
+            0.2
+          ],
+          "measured": [
+            0.0839478668212842,
+            0.04499092183455525,
+            0.2167864741631854
+          ],
+          "main_axis_error_pct": 8.393237081592689,
+          "pass": true
+        }
+      ],
+      "fell": false,
+      "duration_s": 122.98,
+      "min_body_z": 0.10390338910882871,
+      "max_tilt_rad": 0.05583359313044798,
+      "all_pass": true,
+      "controller": "/home/ubuntu/gurdy2/rl/runs/flat_bc_v1/checkpoints/ppo_20000000_steps.zip",
+      "energy_J": 4581.983391257975,
+      "path_m": 8.94046526098383,
+      "cost_of_transport": 16.961867515045753,
+      "mean_power_W": 37.251897489902234
+    },
+    "episodes": {
+      "n": 100,
+      "fall_rate": 0.0,
+      "window_error_mean": 0.10478178868456385,
+      "window_error_median": 0.08914861753498303,
+      "window_error_p90": 0.1643188939109479,
+      "windows_below_20pct": 0.9560117302052786,
+      "n_windows": 341
+    }
+  },
+  "ppo_30000000_steps": {
+    "protocol": {
+      "segments": [
+        {
+          "segment": "forward",
+          "cmd": [
+            0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            0.10743035766857911,
+            -0.0011596050483420005,
+            0.002738537746471815
+          ],
+          "main_axis_error_pct": 7.4303576685791075,
+          "pass": true
+        },
+        {
+          "segment": "backward",
+          "cmd": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            -0.10490837621415469,
+            -0.0004959063295647498,
+            0.007452733949735742
+          ],
+          "main_axis_error_pct": 4.908376214154686,
+          "pass": true
+        },
+        {
+          "segment": "strafe_left",
+          "cmd": [
+            0.0,
+            0.08,
+            0.0
+          ],
+          "measured": [
+            0.00026842086732741844,
+            0.08888240308327512,
+            0.00547059315370062
+          ],
+          "main_axis_error_pct": 11.1030038540939,
+          "pass": true
+        },
+        {
+          "segment": "strafe_right",
+          "cmd": [
+            0.0,
+            -0.08,
+            0.0
+          ],
+          "measured": [
+            -0.00022002819035247715,
+            -0.0875010127283858,
+            0.002639207132517629
+          ],
+          "main_axis_error_pct": 9.376265910482246,
+          "pass": true
+        },
+        {
+          "segment": "turn_left",
+          "cmd": [
+            0.0,
+            0.0,
+            0.3
+          ],
+          "measured": [
+            0.0028059042771745877,
+            0.0016086737713561928,
+            0.3172411312550036
+          ],
+          "main_axis_error_pct": 5.747043751667865,
+          "pass": true
+        },
+        {
+          "segment": "turn_right",
+          "cmd": [
+            0.0,
+            0.0,
+            -0.3
+          ],
+          "measured": [
+            0.0020653544538394826,
+            0.0013414662035455616,
+            -0.3278306801711576
+          ],
+          "main_axis_error_pct": 9.276893390385862,
+          "pass": true
+        },
+        {
+          "segment": "combined",
+          "cmd": [
+            0.08,
+            0.04,
+            0.2
+          ],
+          "measured": [
+            0.0842610586370994,
+            0.042629856558464116,
+            0.22259250259775237
+          ],
+          "main_axis_error_pct": 11.29625129887618,
+          "pass": true
+        }
+      ],
+      "fell": false,
+      "duration_s": 122.98,
+      "min_body_z": 0.10237364562780597,
+      "max_tilt_rad": 0.05542514309184059,
+      "all_pass": true,
+      "controller": "/home/ubuntu/gurdy2/rl/runs/flat_bc_v1/checkpoints/ppo_30000000_steps.zip",
+      "energy_J": 4743.622907480218,
+      "path_m": 8.564586625562907,
+      "cost_of_transport": 18.33091009613764,
+      "mean_power_W": 38.566039898213155
+    },
+    "episodes": {
+      "n": 100,
+      "fall_rate": 0.0,
+      "window_error_mean": 0.08033073283571836,
+      "window_error_median": 0.0594455948426337,
+      "window_error_p90": 0.12743573008664055,
+      "windows_below_20pct": 0.9824046920821115,
+      "n_windows": 341
+    }
+  },
+  "ppo_40000000_steps": {
+    "protocol": {
+      "segments": [
+        {
+          "segment": "forward",
+          "cmd": [
+            0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            0.10518699561341074,
+            0.0026650708785618798,
+            0.003880903628183613
+          ],
+          "main_axis_error_pct": 5.186995613410739,
+          "pass": true
+        },
+        {
+          "segment": "backward",
+          "cmd": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            -0.10341166726351059,
+            0.0034711317679945084,
+            -0.006349539632904399
+          ],
+          "main_axis_error_pct": 3.411667263510582,
+          "pass": true
+        },
+        {
+          "segment": "strafe_left",
+          "cmd": [
+            0.0,
+            0.08,
+            0.0
+          ],
+          "measured": [
+            -0.001958604516830265,
+            0.08316960772733843,
+            -0.0033718168429918314
+          ],
+          "main_axis_error_pct": 3.962009659173038,
+          "pass": true
+        },
+        {
+          "segment": "strafe_right",
+          "cmd": [
+            0.0,
+            -0.08,
+            0.0
+          ],
+          "measured": [
+            -0.00012750438008293715,
+            -0.08418798144361478,
+            0.0003028852394713247
+          ],
+          "main_axis_error_pct": 5.234976804518472,
+          "pass": true
+        },
+        {
+          "segment": "turn_left",
+          "cmd": [
+            0.0,
+            0.0,
+            0.3
+          ],
+          "measured": [
+            0.00020054841719429462,
+            0.0027357564766423473,
+            0.32080975118158794
+          ],
+          "main_axis_error_pct": 6.936583727195986,
+          "pass": true
+        },
+        {
+          "segment": "turn_right",
+          "cmd": [
+            0.0,
+            0.0,
+            -0.3
+          ],
+          "measured": [
+            -0.0008560432433389663,
+            0.002293906543992745,
+            -0.3188995788373271
+          ],
+          "main_axis_error_pct": 6.299859612442376,
+          "pass": true
+        },
+        {
+          "segment": "combined",
+          "cmd": [
+            0.08,
+            0.04,
+            0.2
+          ],
+          "measured": [
+            0.08450359346485506,
+            0.04640389983657561,
+            0.21992035406817764
+          ],
+          "main_axis_error_pct": 9.960177034088815,
+          "pass": true
+        }
+      ],
+      "fell": false,
+      "duration_s": 122.98,
+      "min_body_z": 0.10277840700154724,
+      "max_tilt_rad": 0.05569564977419692,
+      "all_pass": true,
+      "controller": "/home/ubuntu/gurdy2/rl/runs/flat_bc_v1/checkpoints/ppo_40000000_steps.zip",
+      "energy_J": 4756.58628221068,
+      "path_m": 8.547473190631964,
+      "cost_of_transport": 18.417806583695008,
+      "mean_power_W": 38.67143318870472
+    },
+    "episodes": {
+      "n": 100,
+      "fall_rate": 0.0,
+      "window_error_mean": 0.06577764123375543,
+      "window_error_median": 0.04577499395133936,
+      "window_error_p90": 0.09941549452972723,
+      "windows_below_20pct": 0.9853372434017595,
+      "n_windows": 341
+    }
+  },
+  "ppo_50000000_steps": {
+    "protocol": {
+      "segments": [
+        {
+          "segment": "forward",
+          "cmd": [
+            0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            0.10276153399166973,
+            -0.0009080087079911834,
+            -0.0006859235020488544
+          ],
+          "main_axis_error_pct": 2.761533991669729,
+          "pass": true
+        },
+        {
+          "segment": "backward",
+          "cmd": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            -0.10762538901375032,
+            -0.002096544140424492,
+            0.00305952940362046
+          ],
+          "main_axis_error_pct": 7.625389013750317,
+          "pass": true
+        },
+        {
+          "segment": "strafe_left",
+          "cmd": [
+            0.0,
+            0.08,
+            0.0
+          ],
+          "measured": [
+            -0.0001477866716341471,
+            0.08406320343513178,
+            0.006200151514304282
+          ],
+          "main_axis_error_pct": 5.079004293914724,
+          "pass": true
+        },
+        {
+          "segment": "strafe_right",
+          "cmd": [
+            0.0,
+            -0.08,
+            0.0
+          ],
+          "measured": [
+            0.0005712024887766463,
+            -0.0851598803199364,
+            -0.0008286774686761006
+          ],
+          "main_axis_error_pct": 6.449850399920503,
+          "pass": true
+        },
+        {
+          "segment": "turn_left",
+          "cmd": [
+            0.0,
+            0.0,
+            0.3
+          ],
+          "measured": [
+            -0.00014354213058779134,
+            0.0012447579358425248,
+            0.3217533464469744
+          ],
+          "main_axis_error_pct": 7.251115482324804,
+          "pass": true
+        },
+        {
+          "segment": "turn_right",
+          "cmd": [
+            0.0,
+            0.0,
+            -0.3
+          ],
+          "measured": [
+            0.0007390433917616578,
+            -0.000753433763224401,
+            -0.30142448536358424
+          ],
+          "main_axis_error_pct": 0.4748284545280831,
+          "pass": true
+        },
+        {
+          "segment": "combined",
+          "cmd": [
+            0.08,
+            0.04,
+            0.2
+          ],
+          "measured": [
+            0.08337674321596136,
+            0.04275516773056833,
+            0.20861033063871304
+          ],
+          "main_axis_error_pct": 4.305165319356513,
+          "pass": true
+        }
+      ],
+      "fell": false,
+      "duration_s": 122.98,
+      "min_body_z": 0.10087376548096291,
+      "max_tilt_rad": 0.05660332413833092,
+      "all_pass": true,
+      "controller": "/home/ubuntu/gurdy2/rl/runs/flat_bc_v1/checkpoints/ppo_50000000_steps.zip",
+      "energy_J": 4812.998612442514,
+      "path_m": 8.467621881231096,
+      "cost_of_transport": 18.811982067532952,
+      "mean_power_W": 39.13007001985784
+    },
+    "episodes": {
+      "n": 100,
+      "fall_rate": 0.0,
+      "window_error_mean": 0.056273201193709425,
+      "window_error_median": 0.045917346982889,
+      "window_error_p90": 0.08824988815962143,
+      "windows_below_20pct": 0.9941348973607038,
+      "n_windows": 341
+    }
+  },
+  "ppo_latest": {
+    "protocol": {
+      "segments": [
+        {
+          "segment": "forward",
+          "cmd": [
+            0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            0.10292589712089115,
+            -0.0019304496269626395,
+            0.0006955710779514167
+          ],
+          "main_axis_error_pct": 2.925897120891141,
+          "pass": true
+        },
+        {
+          "segment": "backward",
+          "cmd": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "measured": [
+            -0.10171795059428179,
+            0.004655308331147884,
+            -0.002014070885212496
+          ],
+          "main_axis_error_pct": 1.7179505942817863,
+          "pass": true
+        },
+        {
+          "segment": "strafe_left",
+          "cmd": [
+            0.0,
+            0.08,
+            0.0
+          ],
+          "measured": [
+            0.0016481887627823825,
+            0.08149801274537968,
+            0.006111785769321966
+          ],
+          "main_axis_error_pct": 1.8725159317246018,
+          "pass": true
+        },
+        {
+          "segment": "strafe_right",
+          "cmd": [
+            0.0,
+            -0.08,
+            0.0
+          ],
+          "measured": [
+            -0.0006918052590166414,
+            -0.08707937273785542,
+            -0.0018454182276894638
+          ],
+          "main_axis_error_pct": 8.84921592231927,
+          "pass": true
+        },
+        {
+          "segment": "turn_left",
+          "cmd": [
+            0.0,
+            0.0,
+            0.3
+          ],
+          "measured": [
+            0.0023094556462238485,
+            -0.003243869769036464,
+            0.3130918500418401
+          ],
+          "main_axis_error_pct": 4.363950013946702,
+          "pass": true
+        },
+        {
+          "segment": "turn_right",
+          "cmd": [
+            0.0,
+            0.0,
+            -0.3
+          ],
+          "measured": [
+            -0.0011531866845584326,
+            0.0016237970847123428,
+            -0.3096260707798294
+          ],
+          "main_axis_error_pct": 3.2086902599431366,
+          "pass": true
+        },
+        {
+          "segment": "combined",
+          "cmd": [
+            0.08,
+            0.04,
+            0.2
+          ],
+          "measured": [
+            0.0843381342838534,
+            0.03837301112654841,
+            0.21600470196213672
+          ],
+          "main_axis_error_pct": 8.002350981068357,
+          "pass": true
+        }
+      ],
+      "fell": false,
+      "duration_s": 122.98,
+      "min_body_z": 0.09896174879672062,
+      "max_tilt_rad": 0.049185107396761935,
+      "all_pass": true,
+      "controller": "/home/ubuntu/gurdy2/rl/runs/flat_bc_v1/checkpoints/ppo_latest.zip",
+      "energy_J": 4601.834697364219,
+      "path_m": 8.32716454814749,
+      "cost_of_transport": 18.290018461788662,
+      "mean_power_W": 37.41329022247333
+    },
+    "episodes": {
+      "n": 100,
+      "fall_rate": 0.0,
+      "window_error_mean": 0.05721404187293995,
+      "window_error_median": 0.04730216207224733,
+      "window_error_p90": 0.08786950509035961,
+      "windows_below_20pct": 0.9941348973607038,
+      "n_windows": 341
+    }
+  }
+}

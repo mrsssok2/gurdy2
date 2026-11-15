@@ -39,6 +39,7 @@ DEFAULTS = {
     "action_scale": {"hip_yaw": 0.3, "hip_pitch": 0.7, "knee": 0.6},
     "init_joint_noise": 0.05,
     "action_filter_alpha": 1.0,     # EMA on actions: a_f = alpha*a + (1-alpha)*a_f_prev (1.0 = off)
+    "measure_energy": False,        # eval: integrate sum|tau*qdot| over every 2 ms substep (slower)
 }
 
 
@@ -166,7 +167,14 @@ class GurdyEnv(gym.Env):
         a = self.mapper.a_filt                         # filtered action = what the policy observes next
         d.ctrl[:] = self.q_ref
         cmd = self.command.copy()                      # command this step was taken under
-        mujoco.mj_step(self.model, d, nstep=self.n_sub)
+        energy = 0.0
+        if self.cfg["measure_energy"]:
+            dt = self.model.opt.timestep
+            for _ in range(self.n_sub):
+                mujoco.mj_step(self.model, d)
+                energy += float(np.sum(np.abs(d.actuator_force * d.qvel[self.vadr]))) * dt
+        else:
+            mujoco.mj_step(self.model, d, nstep=self.n_sub)
         self.steps += 1
 
         v, wz = self._body_velocity()
@@ -194,5 +202,5 @@ class GurdyEnv(gym.Env):
         obs = self.hist.push(self._frame())
         info = {"command": cmd, "body_vel": v, "yaw_rate": float(wz), "body_z": float(d.qpos[2]),
                 "foot_contact": contact, "track_vel": self.track_vel.copy(), "reward_terms": terms,
-                "reward_clipped": clipped}
+                "reward_clipped": clipped, "energy_J": energy}
         return obs.astype(np.float32), reward, terminated, truncated, info
