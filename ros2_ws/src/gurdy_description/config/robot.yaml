@@ -77,6 +77,16 @@ sensors:
     rate_hz: 15
     hfov: 1.047
     range: [0.10, 5.0]
+  # 2D lidar for SLAM/Nav2 (Phase 3). Only simulated when sim.launch lidar:=true (nav profile).
+  # Mounted on top of the body (~0.16 m above ground): one horizontal layer, so a walking robot's
+  # pitch/roll of a few degrees can make it hit the ground beyond ~3-5 m (see docs/phase3_navigation.md).
+  lidar:
+    pos: [0.0, 0.0, 0.05]
+    rays: 360
+    rate_hz: 10
+    fov: 6.283185        # full circle
+    range: [0.15, 8.0]
+    noise: 0.01          # m, gaussian stddev
 
 sim:
   gravity: 9.81

@@ -51,6 +51,7 @@ def _setup(context):
     gui = LaunchConfiguration("gui").perform(context).lower() == "true"
     fixed = LaunchConfiguration("fixed_base").perform(context).lower() == "true"
     sensors = LaunchConfiguration("sensors").perform(context).lower() == "true"
+    lidar = LaunchConfiguration("lidar").perform(context).lower() == "true"
     world = LaunchConfiguration("world").perform(context)
 
     desc_share = get_package_share_directory("gurdy_description")
@@ -69,7 +70,7 @@ def _setup(context):
         mappings={"sim_gazebo": "true", "controllers_yaml": ctrl_yaml, "robot_yaml": robot_yaml,
                   "initial_q": " ".join(f"{v:.6f}" for v in q0),
                   "fixed_base": str(fixed).lower(), "base_z": str(base_z),
-                  "sensors": str(sensors).lower()},
+                  "sensors": str(sensors).lower(), "lidar": str(lidar).lower()},
     ).toxml()
 
     if not world.endswith(".sdf"):
@@ -108,6 +109,7 @@ def generate_launch_description():
         DeclareLaunchArgument("fixed_base", default_value="false"),
         DeclareLaunchArgument("world", default_value="empty"),
         DeclareLaunchArgument("sensors", default_value="true", description="IMU, RGB-D camera, GT odom"),
+        DeclareLaunchArgument("lidar", default_value="false", description="2D lidar on /scan (nav profile)"),
         DeclareLaunchArgument("js_rate", default_value="100", description="/joint_states rate (Hz)"),
         DeclareLaunchArgument("robot_yaml", default_value="",
                               description="alternative robot.yaml (experiments / fault injection)"),

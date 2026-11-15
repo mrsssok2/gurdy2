@@ -56,6 +56,39 @@
   <xacro:foot_friction leg="rr"/>
 
   <!-- ============================ sensors (values from robot.yaml) ============================ -->
+  <!-- gpu_lidar needs the Sensors system (ogre2) too, even with sensors:=false -->
+  <xacro:if value="${'$(arg lidar)' == 'true' and '$(arg sensors)' != 'true'}">
+    <gazebo>
+      <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+        <render_engine>ogre2</render_engine>
+      </plugin>
+    </gazebo>
+  </xacro:if>
+  <xacro:if value="$(arg lidar)">
+    <xacro:property name="ld" value="${cfg['sensors']['lidar']}"/>
+    <gazebo reference="lidar_link">
+      <sensor name="lidar" type="gpu_lidar">
+        <gz_frame_id>lidar_link</gz_frame_id>
+        <topic>/scan</topic>
+        <update_rate>${ld['rate_hz']}</update_rate>
+        <always_on>true</always_on>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>${ld['rays']}</samples>
+              <resolution>1</resolution>
+              <min_angle>${-ld['fov'] / 2}</min_angle>
+              <max_angle>${ld['fov'] / 2}</max_angle>
+            </horizontal>
+            <vertical><samples>1</samples><min_angle>0</min_angle><max_angle>0</max_angle></vertical>
+          </scan>
+          <range><min>${ld['range'][0]}</min><max>${ld['range'][1]}</max><resolution>0.01</resolution></range>
+          <noise><type>gaussian</type><mean>0</mean><stddev>${ld['noise']}</stddev></noise>
+        </lidar>
+      </sensor>
+    </gazebo>
+  </xacro:if>
+
   <xacro:if value="$(arg sensors)">
     <!-- Sensor systems are loaded with the robot, so sensors:=false means no rendering at all
          (the render engine in the world file cost ~60 % RTF even without cameras). -->

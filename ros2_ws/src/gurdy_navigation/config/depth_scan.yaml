@@ -1,0 +1,9 @@
+# Alternative scan source: RGB-D camera depth -> LaserScan (scan_source:=depth).
+# Narrower (60 deg), shorter (5 m) and looking slightly down (0.17 rad): worse than the lidar for
+# SLAM, kept as a comparison / for a real robot without a lidar. Output frame is the camera frame.
+depthimage_to_laserscan:
+  ros__parameters:
+    output_frame: camera_link
+    range_min: 0.20
+    range_max: 4.5
+    scan_height: 20        # pixel rows (around the optical centre) collapsed into one scan

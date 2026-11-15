@@ -246,3 +246,9 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   `docs/results/phase2_deploy_gazebo_test.md`.
 - Next: evaluate terrain_v1 (flat no-regression vs ft-6M, terrain grid, start gate); optional 2.6 MJX;
   C1 overnight run for Experiment B still to be planned.
+- Phase 3 code written (2026-11-15, nothing run in Gazebo; terrain_v1 was training): lidar in robot.yaml/URDF
+  (`lidar:=true`, nav profile only), `flat_lab` world (`scripts/gen_world_flat_lab.py`), ROS package
+  `gurdy_navigation` (odom_tf_node from ground-truth odom, slam_toolbox + Nav2 MPPI-Omni params, footprint/limits
+  patched from robot.yaml, depth→scan option, EKF planned), `gurdy_bringup sim.launch.py nav:=slam|localization`,
+  `scripts/map_tools.sh`, `scripts/nav_goal.sh`, maps in `maps/`. ROS image rebuilt with Nav2/slam packages.
+  Plan + exact commands: `docs/results/phase3_test_plan.md`; design/risks: `docs/phase3_navigation.md`.

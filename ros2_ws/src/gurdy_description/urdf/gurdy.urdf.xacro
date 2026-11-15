@@ -11,6 +11,7 @@
   <xacro:arg name="initial_q" default=""/>       <!-- "hip_yaw hip_pitch knee" for all legs -->
   <xacro:arg name="fixed_base" default="false"/>
   <xacro:arg name="base_z" default="0.3"/>
+  <xacro:arg name="lidar" default="false"/>      <!-- 2D lidar sensor (nav profile); the lidar_link frame always exists -->
   <xacro:arg name="sensors" default="true"/>     <!-- IMU, RGB-D camera, ground-truth odometry -->
   <xacro:property name="cfg" value="${xacro.load_yaml('$(arg robot_yaml)')}"/>
 
@@ -188,6 +189,19 @@
     <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
   </joint>
   <link name="camera_optical_frame"/>
+
+  <xacro:property name="lidar" value="${cfg['sensors']['lidar']}"/>
+  <joint name="lidar_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_link"/>
+    <origin xyz="${lidar['pos'][0]} ${lidar['pos'][1]} ${lidar['pos'][2]}"/>
+  </joint>
+  <link name="lidar_link">
+    <visual>
+      <geometry><cylinder radius="0.025" length="0.03"/></geometry>
+      <material name="foot_black"/>
+    </visual>
+  </link>
 
   <xacro:if value="$(arg sim_gazebo)">
     <xacro:include filename="gurdy.gazebo.xacro"/>

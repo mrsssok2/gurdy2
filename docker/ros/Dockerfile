@@ -30,6 +30,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # that ROS Python packages depend on. (Ubuntu 24.04 needs the PEP 668 override.)
 RUN pip3 install --no-cache-dir --break-system-packages mujoco==3.3.0 onnxruntime==1.20.1
 
+# Phase 3 (mapping + navigation): separate layer so the layers above stay cached.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ros-jazzy-slam-toolbox \
+      ros-jazzy-navigation2 \
+      ros-jazzy-nav2-bringup \
+      ros-jazzy-nav2-map-server \
+      ros-jazzy-depthimage-to-laserscan \
+      ros-jazzy-robot-localization \
+      ros-jazzy-tf2-ros \
+      ros-jazzy-tf2-tools \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
