@@ -116,3 +116,55 @@ def test_launch_files_parse():
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         assert isinstance(mod.generate_launch_description(), launch.LaunchDescription)
+
+
+# ---------------------------------------------------------------- leg odometry + EKF (Phase 3 step 2)
+def test_ekf_config_is_consistent():
+    ekf = yaml.safe_load((PKG / "config/ekf.yaml").read_text())["ekf_filter_node"]["ros__parameters"]
+    assert ekf["two_d_mode"] and ekf["publish_tf"] and ekf["world_frame"] == "odom" == ekf["odom_frame"]
+    assert len(ekf["process_noise_covariance"]) == 225
+    assert ekf["odom0"] == "/odom/legs" and ekf["imu0"] == "/imu/ekf"
+    names = "x y z roll pitch yaw vx vy vz vroll vpitch vyaw ax ay az".split()
+    on = lambda cfg: {n for n, f in zip(names, cfg) if f}                     # noqa: E731
+    assert on(ekf["odom0_config"]) == {"vx", "vy", "vyaw"}
+    assert on(ekf["imu0_config"]) == {"yaw", "vyaw"}                          # no accelerations (gait vibration)
+
+
+def test_nav2_odom_topic_patch(nav2, robot):
+    p = fp.patch_nav2_params(nav2, robot, odom_topic="/odometry/filtered")
+    assert p["bt_navigator"]["ros__parameters"]["odom_topic"] == "/odometry/filtered"
+    assert p["velocity_smoother"]["ros__parameters"]["odom_topic"] == "/odometry/filtered"
+    assert fp.patch_nav2_params(nav2, robot) == fp.patch_nav2_params(nav2, robot, odom_topic=None)
+
+
+def test_leg_odometry_message_helpers():
+    pytest.importorskip("rclpy")
+    from sensor_msgs.msg import Imu
+    from gurdy_core.leg_odometry import LegOdomEstimate
+    from gurdy_navigation.leg_odometry_node import BIG, fill_imu_covariance, odometry_message
+    est = LegOdomEstimate(True, np.array([0.1, -0.02]), 0.3, np.diag([1e-4, 2e-4, 3e-4]), ("lf", "rm", "lr"))
+    m = odometry_message(Imu().header.stamp, "odom", "base_link", 1.0, 2.0, 0.5, est)
+    assert (m.header.frame_id, m.child_frame_id) == ("odom", "base_link")
+    assert m.twist.twist.linear.x == pytest.approx(0.1) and m.twist.twist.angular.z == pytest.approx(0.3)
+    assert (m.twist.covariance[0], m.twist.covariance[7], m.twist.covariance[35]) == pytest.approx((1e-4, 2e-4, 3e-4))
+    assert m.pose.pose.orientation.z == pytest.approx(np.sin(0.25))
+    bad = odometry_message(Imu().header.stamp, "odom", "base_link", 0, 0, 0, LegOdomEstimate(False))
+    assert bad.twist.covariance[0] == bad.twist.covariance[35] == BIG          # no stance feet -> "do not believe"
+    imu = fill_imu_covariance(Imu(), 0.01, 2.5e-5, 4e-4)
+    assert imu.angular_velocity_covariance[8] == 2.5e-5 and imu.orientation_covariance[0] == 0.01
+    keep = Imu()
+    keep.angular_velocity_covariance[0] = 1e-3
+    assert fill_imu_covariance(keep, 0.01, 2.5e-5, 4e-4).angular_velocity_covariance[0] == 1e-3
+
+
+def test_odometry_launch_actions():
+    pytest.importorskip("launch_ros")
+    pytest.importorskip("ament_index_python")
+    spec = importlib.util.spec_from_file_location("nav_launch_t", PKG / "launch/nav.launch.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert len(mod.odometry_actions("ground_truth", "", "/x")) == 1
+    assert len(mod.odometry_actions("ekf", "", "/x")) == 2
+    with pytest.raises(ValueError):
+        mod.odometry_actions("magic", "", "/x")
+    assert mod.ODOM_TOPIC["ekf"] == "/odometry/filtered"

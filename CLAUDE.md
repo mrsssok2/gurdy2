@@ -252,3 +252,10 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   patched from robot.yaml, depth→scan option, EKF planned), `gurdy_bringup sim.launch.py nav:=slam|localization`,
   `scripts/map_tools.sh`, `scripts/nav_goal.sh`, maps in `maps/`. ROS image rebuilt with Nav2/slam packages.
   Plan + exact commands: `docs/results/phase3_test_plan.md`; design/risks: `docs/phase3_navigation.md`.
+- Phase 3 leg odometry + EKF code (2026-11-15, no Gazebo run): `gurdy_core/leg_odometry.py` (stance-foot FK/Jacobian,
+  rolling-contact correction, tilt-aware stance detection, covariance model), `leg_odometry_node` (`/odom/legs`,
+  `/imu/ekf`), `config/ekf.yaml` (robot_localization: leg vx/vy/wz + IMU yaw/yaw rate), launch arg
+  `odom_source:=ground_truth|ekf` (default ground_truth; ekf points Nav2 at `/odometry/filtered`), `scripts/map_quality.py`.
+  Offline MuJoCo drift (tripod, ~1 m segments): legs+gyro 0.7–1.7 % of path, heading ≤ 1.3°; legs-only heading
+  13–29° off → heading must come from the IMU (`docs/results/phase3_leg_odometry.md`). Gazebo GT-vs-EKF map
+  comparison = test plan step 6 (not run).

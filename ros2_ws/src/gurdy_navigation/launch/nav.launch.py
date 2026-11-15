@@ -8,6 +8,7 @@ policy node). Can also be used alone against a running simulator / robot:
 
     mode            slam | localization | none (odom TF + scan only)
     navigation      true: also start Nav2 (planner, MPPI controller, costmaps, collision monitor); /cmd_vel out
+    odom_source     ground_truth (Gazebo pose, perfect: upper bound) | ekf (leg odometry + IMU through robot_localization)
     scan_source     lidar (/scan straight from the Gazebo bridge) | depth (depthimage_to_laserscan from the RGB-D camera)
     map             localization only: path to map yaml, or a bare name -> <repo>/maps/<name>.yaml
     rviz            RViz with the navigation layout
@@ -38,7 +39,10 @@ def resolve_map(name: str) -> str:
     return os.path.join(REPO_MAPS, name + ".yaml")
 
 
-def nav2_params_file(robot_yaml: str) -> str:
+ODOM_TOPIC = {"ground_truth": "/odom", "ekf": "/odometry/filtered"}
+
+
+def nav2_params_file(robot_yaml: str, odom_topic: str | None = None) -> str:
     share = get_package_share_directory("gurdy_navigation")
     with open(os.path.join(share, "config", "nav2_params.yaml")) as f:
         params = yaml.safe_load(f)
@@ -46,16 +50,31 @@ def nav2_params_file(robot_yaml: str) -> str:
         get_package_share_directory("gurdy_description"), "config", "robot.yaml"))
     fd, path = tempfile.mkstemp(prefix="gurdy_nav2_", suffix=".yaml")
     with os.fdopen(fd, "w") as f:
-        yaml.safe_dump(patch_nav2_params(params, robot), f)
+        yaml.safe_dump(patch_nav2_params(params, robot, odom_topic=odom_topic), f)
     return path
+
+
+def odometry_actions(odom_source: str, robot_yaml: str, share: str) -> list:
+    """ground_truth: Gazebo pose -> /odom + TF (odom_tf_node).
+    ekf: leg_odometry_node (/odom/legs, /imu/ekf) -> robot_localization ekf_node -> /odometry/filtered + TF."""
+    if odom_source == "ground_truth":
+        return [Node(package="gurdy_navigation", executable="odom_tf_node", output="screen")]
+    if odom_source != "ekf":
+        raise ValueError(f"odom_source must be ground_truth or ekf, not {odom_source!r}")
+    return [
+        Node(package="gurdy_navigation", executable="leg_odometry_node", output="screen",
+             parameters=[{"robot_yaml": robot_yaml}]),
+        Node(package="robot_localization", executable="ekf_node", name="ekf_filter_node", output="screen",
+             parameters=[os.path.join(share, "config", "ekf.yaml"), {"use_sim_time": True}]),
+    ]
 
 
 def _setup(context):
     cfg = {k: context.launch_configurations.get(k, "") for k in
-           ("mode", "navigation", "scan_source", "map", "robot_yaml", "rviz")}
+           ("mode", "navigation", "scan_source", "map", "robot_yaml", "rviz", "odom_source")}
     share = get_package_share_directory("gurdy_navigation")
     nav2_share = get_package_share_directory("nav2_bringup")
-    actions = [Node(package="gurdy_navigation", executable="odom_tf_node", output="screen")]
+    actions = odometry_actions(cfg["odom_source"], cfg["robot_yaml"], share)
 
     if cfg["scan_source"] == "depth":
         actions.append(Node(
@@ -64,7 +83,7 @@ def _setup(context):
             remappings=[("depth", "/camera/depth_image"), ("depth_camera_info", "/camera/camera_info"),
                         ("scan", "/scan")]))
 
-    nav2_params = nav2_params_file(cfg["robot_yaml"])
+    nav2_params = nav2_params_file(cfg["robot_yaml"], ODOM_TOPIC[cfg["odom_source"]])
     if cfg["mode"] == "slam":
         actions.append(IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(
@@ -92,6 +111,7 @@ def generate_launch_description():
         DeclareLaunchArgument("mode", default_value="slam", description="slam | localization | none"),
         DeclareLaunchArgument("navigation", default_value="true", description="start Nav2"),
         DeclareLaunchArgument("scan_source", default_value="lidar", description="lidar | depth"),
+        DeclareLaunchArgument("odom_source", default_value="ground_truth", description="ground_truth | ekf"),
         DeclareLaunchArgument("map", default_value="", description="localization: map yaml or name in maps/"),
         DeclareLaunchArgument("robot_yaml", default_value=""),
         DeclareLaunchArgument("rviz", default_value="false"),

@@ -64,8 +64,9 @@ def velocity_limits(robot) -> dict:
     return {"vx": float(c["vx"]), "vy": float(c["vy"]), "wz": float(c["wz"])}
 
 
-def patch_nav2_params(params: dict, robot, margin: float = 0.04) -> dict:
-    """Return `params` (parsed nav2_params.yaml) with footprint + velocity limits from robot.yaml."""
+def patch_nav2_params(params: dict, robot, margin: float = 0.04, odom_topic: str | None = None) -> dict:
+    """Return `params` (parsed nav2_params.yaml) with footprint + velocity limits from robot.yaml.
+    odom_topic: odometry topic Nav2 reads (default /odom; /odometry/filtered with the EKF)."""
     import copy
     p = copy.deepcopy(params)
     poly = footprint_polygon(robot, margin)
@@ -80,4 +81,7 @@ def patch_nav2_params(params: dict, robot, margin: float = 0.04) -> dict:
     sm = p["velocity_smoother"]["ros__parameters"]
     sm["max_velocity"] = [v["vx"], v["vy"], v["wz"]]
     sm["min_velocity"] = [-v["vx"], -v["vy"], -v["wz"]]
+    if odom_topic:
+        p["bt_navigator"]["ros__parameters"]["odom_topic"] = odom_topic
+        sm["odom_topic"] = odom_topic
     return p

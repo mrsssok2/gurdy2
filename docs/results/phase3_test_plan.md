@@ -65,11 +65,42 @@ sets). Run only after step 2.9 (Gazebo deployment test) passed.
 slam_toolbox + Nav2 work together in `nav:=slam`: send the goals of step 3 to unexplored places inside the
 known map; frontier exploration (`explore`) is still to be written (ROADMAP Phase 3, last item).
 
+## 6. Ground truth vs EKF odometry (map quality)
+Code and offline drift numbers: `docs/results/phase3_leg_odometry.md`. Same drive twice, only the odometry differs
+(tripod gait; run one after the other, never together; `docker rm -f gurdy_nav` between runs).
+```bash
+# run A — ground-truth odometry (the upper bound): the step-1 mapping run, save as flat_lab_gt
+ros2 launch gurdy_bringup sim.launch.py nav:=slam navigation:=false odom_source:=ground_truth
+# run B — leg odometry + IMU through the EKF, SAME drive (room A wall-following, door, room B, back to start)
+ros2 launch gurdy_bringup sim.launch.py nav:=slam navigation:=false odom_source:=ekf
+# shell #2 of each run: record + save
+ros2 bag record -o /tmp/run_X /odom/ground_truth /odom/legs /odometry/filtered /tf   # X = gt | ekf (optional)
+scripts/map_tools.sh save flat_lab_gt        # run A      (flat_lab_ekf for run B)
+```
+Checks before driving in run B: `ros2 topic hz /odom/legs` ≈ joint_states rate (100 Hz), `ros2 topic hz /odometry/filtered`
+≈ 50 Hz, `ros2 run tf2_ros tf2_echo odom base_link` works, no "fewer than 2 stance feet" warnings, EKF not
+warning about the IMU frame (`imu_link` must be in the TF tree). Drive with teleop at the **same speeds in both runs**
+(`speed:=0.1 turn:=0.3`); hold the same route as closely as possible.
+
+Compare (outside the sim image — numpy/scipy/pyyaml; the `rl` image has them; no sim running):
+```bash
+docker compose run --rm rl python3 scripts/map_quality.py maps/flat_lab_gt.yaml maps/flat_lab_ekf.yaml   # vs the world
+docker compose run --rm rl python3 scripts/map_quality.py maps/flat_lab_ekf.yaml --ref maps/flat_lab_gt.yaml
+```
+Record per run: precision mean/p95 (m), recall < 10 cm, doubled walls / loop closure at the start (look at the pgm and
+RViz), odometry drift at the end (`/odometry/filtered` vs `/odom/ground_truth` pose after returning to the spawn
+point; the bag gives the whole curve), RAM (`docker stats --no-stream`) and RTF (`scripts/measure_rtf.py`) — the EKF
+uses `use_sim_time` (a C++ node, much cheaper than rclpy's 40 %, but measure it). Expectation from the offline test
+(not a result): translation 1–2 % of path, heading from the IMU; slam_toolbox scan matching corrects the rest. Then
+repeat the Nav2 goals of step 3 with `odom_source:=ekf` (`navigation:=true`) and report the success rate next to the
+ground-truth one. A worse map with the EKF is a finding, not a failure: report both.
+
 ## What to look at first if something is off
 | Symptom | Check |
 |---|---|
 | no `/scan` | `ros2 topic list \| grep scan`; Gazebo log for gpu_lidar/ogre2 errors; `sensors` plugin loaded (`lidar:=true`) |
 | scan shows the ground ring / flickering walls | body pitch/roll; lower `max_laser_range`, see docs/phase3_navigation.md "lidar tilt" |
+| EKF: no `/odometry/filtered` | `ros2 topic hz /odom/legs /imu/ekf`; `imu_link` TF; `ros2 node list \| grep ekf`; `/odom/legs` twist covariance 1e3 = no stance feet |
 | `map` frame missing | slam_toolbox lifecycle (`ros2 lifecycle get /slam_toolbox`), `/odom` + TF `odom->base_link` (odom_tf_node) |
 | Nav2 never becomes active | `ros2 lifecycle get /controller_server`, TF `map->odom->base_link` chain, `use_sim_time` |
 | robot does not move on Nav2 goals | `ros2 topic echo /cmd_vel` (collision_monitor output); `/cmd_vel_nav`, `/cmd_vel_smoothed` upstream; deadband 0.03 m/s / 0.10 rad/s |

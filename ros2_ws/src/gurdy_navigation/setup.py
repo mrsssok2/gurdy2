@@ -19,5 +19,7 @@ setup(
     maintainer="S. Mahadev",
     description="Mapping (slam_toolbox) and navigation (Nav2) for Gurdy",
     license="MIT",
-    entry_points={"console_scripts": ["odom_tf_node = gurdy_navigation.odom_tf_node:main"]},
+    entry_points={"console_scripts": [
+        "odom_tf_node = gurdy_navigation.odom_tf_node:main",
+        "leg_odometry_node = gurdy_navigation.leg_odometry_node:main"]},
 )

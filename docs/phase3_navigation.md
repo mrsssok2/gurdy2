@@ -15,10 +15,13 @@ Gazebo ──/scan (gpu_lidar 360 rays, 10 Hz, 0.15–8 m, on top of the body)�
 ## Choices and why
 - **Lidar** (`robot.yaml: sensors.lidar`, `lidar:=true`, only in the nav profile; RL launches unchanged).
   `depthimage_to_laserscan` from the RGB-D camera is the alternative (`scan_source:=depth`).
-- **Odometry**: ground truth first (`odom_tf_node`, copies sim stamps → no `use_sim_time` CPU cost).
-  Planned EKF (`config/ekf.yaml`, not used): robot_localization fusing IMU yaw/yaw-rate with a *leg
-  odometry* (stance-foot motion → vx, vy, wz at ~50 Hz) published as `/odom/legs`. Needs: a leg-odometry
-  node (gurdy_navigation), then `odom_source:=ekf` in the launch. Until then SLAM quality is an upper bound.
+- **Odometry**: `odom_source:=ground_truth` (default; `odom_tf_node`, copies sim stamps → no `use_sim_time` CPU
+  cost) or `odom_source:=ekf`: `leg_odometry_node` (stance-foot motion from `/joint_states` → `/odom/legs` twist
+  with covariance; `/imu` → `/imu/ekf` with covariances filled in) → robot_localization `ekf_node`
+  (`config/ekf.yaml`: leg vx, vy, wz + IMU yaw/yaw rate, 2D mode, `use_sim_time`) → `/odometry/filtered` and TF
+  `odom→base_link`; Nav2 is pointed at `/odometry/filtered`. Math in `gurdy_core/leg_odometry.py`, drift test
+  and numbers in `docs/results/phase3_leg_odometry.md` (offline; the Gazebo comparison is test-plan step 6).
+  Ground-truth SLAM quality is the upper bound the EKF run is compared with.
 - **slam_toolbox** `config/slam_toolbox.yaml`: min travel 0.05 m / 0.10 rad, scan matching on,
   max range 6 m, 0.05 m cells, loop closure on.
 - **Nav2**: MPPI with the Omni motion model rather than DWB — shipped default, handles vy natively,
@@ -42,5 +45,5 @@ Gazebo ──/scan (gpu_lidar 360 rays, 10 Hz, 0.15–8 m, on top of the body)�
 - gz lidar noise 1 cm; range clipping returns `inf` (handled by Nav2/slam_toolbox).
 
 ## Not done yet (ROADMAP Phase 3)
-Frontier `explore` behaviour; EKF + leg odometry; recorded map of flat_lab; goal-success numbers for
+Frontier `explore` behaviour; EKF run in Gazebo (code + offline drift test done); recorded map of flat_lab; goal-success numbers for
 tripod and policy.

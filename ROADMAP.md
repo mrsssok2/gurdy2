@@ -119,6 +119,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - [~] Demo world with obstacles, rooms and coloured objects — `flat_lab` world written (generator + test); not yet run in Gazebo
 - [~] Depth → laser scan (or 3D) for SLAM; slam_toolbox mapping (RTAB-Map optional) — code done (gz lidar + depth→scan, slam_toolbox params); **untested in sim** (`docs/results/phase3_test_plan.md`)
 - [~] Nav2 configured for a legged base (velocity limits, footprint, controller tuning) driving `/cmd_vel` — MPPI/Omni params + launch done; **untested in sim**
+- [~] Leg odometry + EKF (`odom_source:=ekf`) — code + offline MuJoCo drift test done (1–2 % of path with IMU yaw); **Gazebo GT-vs-EKF comparison not run** (test plan step 6)
 - [ ] Works with both tripod gait and RL policy
 - [ ] Map save/load; `explore` behaviour (frontier exploration)
 

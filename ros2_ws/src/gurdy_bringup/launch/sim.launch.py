@@ -6,7 +6,7 @@
 Mapping / navigation (Phase 3; adds the lidar, flat_lab world, odom TF, slam_toolbox or AMCL, Nav2):
     ros2 launch gurdy_bringup sim.launch.py nav:=slam                       # map while driving (teleop or Nav2 goals)
     ros2 launch gurdy_bringup sim.launch.py nav:=localization map:=flat_lab # saved map (maps/flat_lab.yaml) + AMCL
-    (nav:=slam|localization|none, scan_source:=lidar|depth, navigation:=false for SLAM only, controller:=tripod|policy)
+    (nav:=slam|localization|none, scan_source:=lidar|depth, odom_source:=ground_truth|ekf, navigation:=false for SLAM only, controller:=tripod|policy)
 Drive it (second terminal: docker compose exec sim bash):
     ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p speed:=0.1 -p turn:=0.3
 """
@@ -31,7 +31,8 @@ def _nav_setup(context):
             get_package_share_directory("gurdy_navigation"), "launch", "nav.launch.py")),
         launch_arguments={"mode": nav, "navigation": LaunchConfiguration("navigation"),
                           "scan_source": LaunchConfiguration("scan_source"), "map": LaunchConfiguration("map"),
-                          "robot_yaml": LaunchConfiguration("robot_yaml"), "rviz": LaunchConfiguration("rviz")}.items())]
+                          "robot_yaml": LaunchConfiguration("robot_yaml"), "rviz": LaunchConfiguration("rviz"),
+                          "odom_source": LaunchConfiguration("odom_source")}.items())]
 
 
 def _gazebo_setup(context):
@@ -69,6 +70,7 @@ def generate_launch_description():
            DeclareLaunchArgument("controller", default_value="tripod"),
            DeclareLaunchArgument("nav", default_value="none", description="none | slam | localization"),
            DeclareLaunchArgument("navigation", default_value="true", description="start Nav2 (with nav:=slam|localization)"),
+           DeclareLaunchArgument("odom_source", default_value="ground_truth", description="ground_truth | ekf (leg odometry + IMU)"),
            DeclareLaunchArgument("scan_source", default_value="lidar", description="lidar | depth"),
            DeclareLaunchArgument("lidar", default_value="false", description="force the lidar on without nav"),
            DeclareLaunchArgument("map", default_value="", description="localization: map yaml or name in maps/"),

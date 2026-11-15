@@ -1,21 +1,45 @@
-# PLANNED, NOT USED YET (Phase 3 ships ground-truth odometry). robot_localization EKF fusing
-# IMU + leg/kinematic odometry. Leg odometry node (gurdy_navigation, TODO) must publish
-# /odom/legs (nav_msgs/Odometry: vx, vy, wz from foot stance-phase motion). Enable with
-# odom_source:=ekf once that node exists. See docs/phase3_navigation.md.
+# robot_localization EKF: leg odometry (vx, vy, wz) + IMU (yaw, yaw rate) -> /odometry/filtered and TF odom -> base_link.
+# Used with  odom_source:=ekf  (gurdy_navigation nav.launch.py / gurdy_bringup sim.launch.py); the default
+# odom_source:=ground_truth does not start it. Inputs come from leg_odometry_node:
+#   /odom/legs  body-frame twist from the stance feet (covariance grows with speed and with fewer stance feet)
+#   /imu/ekf    /imu with covariances filled in (Gazebo reports 0 = "perfect", which the EKF would believe)
+# Not fused: IMU accelerations (gait vibration is far larger than the signal), roll/pitch (2D mode).
 ekf_filter_node:
   ros__parameters:
-    frequency: 30.0
+    frequency: 50.0
     two_d_mode: true
     publish_tf: true
+    publish_acceleration: false
     odom_frame: odom
     base_link_frame: base_link
     world_frame: odom
+
     odom0: /odom/legs
-    odom0_config: [false, false, false,  false, false, false,
-                   true,  true,  false,  false, false, true,
-                   false, false, false]
-    imu0: /imu
-    imu0_config: [false, false, false,  false, false, true,
-                  false, false, false,  false, false, true,
-                  true,  true,  false]
+    #                x      y      z      roll   pitch  yaw    vx     vy     vz     vroll  vpitch vyaw   ax     ay     az
+    odom0_config: [false, false, false, false, false, false, true,  true,  false, false, false, true,  false, false, false]
+    odom0_queue_size: 10
+    odom0_differential: false
+
+    imu0: /imu/ekf
+    imu0_config: [false, false, false, false, false, true,  false, false, false, false, false, true,  false, false, false]
+    imu0_queue_size: 20
+    imu0_differential: true       # yaw as a change since the previous sample: the IMU's absolute heading reference is irrelevant
     imu0_remove_gravitational_acceleration: true
+
+    # Process noise (x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az): defaults except
+    # velocities, which the walking gait changes quickly (gait surge 0.01-0.14 m/s within a stride).
+    process_noise_covariance: [0.05, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.05, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.06, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.03, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.03, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.06, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.1,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.1,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.04, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01, 0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01, 0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.02, 0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01, 0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01, 0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.015]
