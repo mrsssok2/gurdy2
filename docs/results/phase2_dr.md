@@ -6,7 +6,7 @@ randomisation (DR), an asymmetric critic and an energy/smoothness curriculum. Mu
 `phase2_dr_smoothness.json`. Video (tripod | flat_bc_v1 | dr_energy_v1 40M):
 [`docs/videos/phase2_3way_tripod_flat_dr.mp4`](../videos/phase2_3way_tripod_flat_dr.mp4).
 
-**Selected in 2.7: 40M steps** (not the final one — see "late-training degeneration" below). **Superseded by 2.7b: `dr_energy_ft` 10M** (fine-tuned from 40M; see the 2.7b section at the end).
+**Selected in 2.7: 40M steps** (not the final one — see "late-training degeneration" below). **Superseded by 2.7b: final selection `dr_energy_ft` 6M** (fine-tuned from 40M; selected 2026-11-15 after the corrected evaluation — see the end of this file).
 
 ## Setup (`rl/configs/dr_energy.yaml`)
 * Start: `flat_bc_v1` 60M, transferred into an asymmetric actor-critic (actor copied exactly; critic copied
@@ -271,7 +271,11 @@ DR scenario physics were not affected; 40M / flat_bc_v1 / tripod numbers are unc
 * **ft-10M meets < 10 % nominally: 9.6 ± 0.4 %** (below 10 % in 4/9 DR scenarios; 9.3–11.5 % overall),
   CoT 6.93, 0 falls, start gate 0/48.
 * **ft-6M tracks better in all 9 scenarios** (9.2 ± 0.6 % nominal, 9.0–10.3 % overall, < 10 % in 8/9),
-  CoT 7.34, ~4 % more power. Selection between 6M (tracking) and 10M (energy) is open — see summary.
+  CoT 7.34, ~4 % more power.
+* **Final selection (user, 2026-11-15): `dr_energy_ft` 6M** — better tracking under DR in all 9 scenarios
+  (9.0–10.3 %, < 10 % in 8/9), CoT 7.34 (≤ 11 and at the tripod's 7.35), 0 falls, start gate 0/48.
+  Checkpoint: `rl/runs/dr_energy_ft/checkpoints/ppo_6000000_steps.zip`. Known limitation: small-command
+  dead zone (below), fix planned in 2.8.
 
 ## Overshoot diagnosis — signed error per axis and speed (`rl/tools/tracking_bias.py`)
 Single-axis commands, 12 s from rest, mean over the last 6 s, deterministic, nominal physics.

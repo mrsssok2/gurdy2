@@ -214,16 +214,15 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   left strafes from rest → always run `rl/tools/start_test.py` before selecting a checkpoint.
   Eval: `rl/eval.py --policies run:ckpt ... --scenarios all`; video: `rl/tools/make_video_v2.py`.
   `docs/results/phase2_dr.md`, video `docs/videos/phase2_3way_tripod_flat_dr.mp4`.
-- 2.7b done (2026-11-15): **current best policy `dr_energy_ft` 10M**
-  (`rl/runs/dr_energy_ft/checkpoints/ppo_10000000_steps.zip`), fine-tuned from dr_energy_v1 40M with 25 %
+- 2.7b done (2026-11-15): `dr_energy_ft` (final selection 6M, see correction below), fine-tuned from dr_energy_v1 40M with 25 %
   axis-aligned + 25 % rest-start commands. Start gate 0/48 (now in every `rl/eval.py` run — never select a
   checkpoint that fails it), CoT 6.93, 0 % falls in all 9 DR scenarios, tracking 10.9 ± 1.0 % (target
   < 10 % NOT met; SE now reported). Stride frequency is measured by touchdown counting (the spectral peak
   was ambiguous). Pushing: the user pushes from their own terminal (git has no credentials here).
 - 2.7b correction (2026-11-15): eval bug — `rl/eval.py` used each run's training command mix; now always
   the standard distribution (`axis_aligned_prob = rest_start_prob = 0`). Corrected: ft-10M 9.6 ± 0.4 %
-  (target < 10 % met nominally), ft-6M 9.2 ± 0.6 % and better in all 9 DR scenarios — **choice 6M vs 10M
-  open (user)**. Reward and eval velocities are identical (EMA vs mean ≤ 0.0014); protocol uses a heading
+  (target < 10 % met nominally), ft-6M 9.2 ± 0.6 % and better in all 9 DR scenarios. **Selected Phase 2
+  flat policy: `dr_energy_ft` 6M** (`rl/runs/dr_energy_ft/checkpoints/ppo_6000000_steps.zip`; user, 2026-11-15). Reward and eval velocities are identical (EMA vs mean ≤ 0.0014); protocol uses a heading
   frame (differs ≤ 0.024 rad/s, valid). No general overshoot. **Dead zone**: DR policies stand still on
   vx/vy ±0.03 m/s and wz ±0.10 rad/s (from rest and while walking); standing is NOT reward-optimal there
   (0.2 vs ~1.3/step) → sampling/learned optimum; fix planned in 2.8. Tools: `tracking_bias.py`,
