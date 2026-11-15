@@ -9,6 +9,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <exec_depend>gurdy_gazebo</exec_depend>
   <exec_depend>gurdy_gait</exec_depend>
+  <exec_depend>gurdy_policy</exec_depend>
   <exec_depend>gurdy_description</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>teleop_twist_keyboard</exec_depend>

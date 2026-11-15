@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # MuJoCo from PyPI. numpy etc. come from apt above, so pip does not replace system numpy
 # that ROS Python packages depend on. (Ubuntu 24.04 needs the PEP 668 override.)
-RUN pip3 install --no-cache-dir --break-system-packages mujoco==3.3.0
+RUN pip3 install --no-cache-dir --break-system-packages mujoco==3.3.0 onnxruntime==1.20.1
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

@@ -34,3 +34,6 @@ node_modules/
 Thumbs.db
 .vscode/*
 !.vscode/extensions.json
+
+# deployable policy exports (small, needed by the ROS node)
+!models/*.onnx

@@ -96,8 +96,13 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
   small commands, `rl/eval.py --terrain` grid + 144-start gate; run `terrain_v1` (init ft-6M, 60M steps)
   training. Baseline ft-6M vs tripod (12 eps/cell): tripod drops to 67–75 % success on 3–3.5 cm steps,
   ft-6M tracking degrades on slopes ≥ 8° (27–74 % error); rough ≤ 2.5 cm easy for both
-- [ ] **2.9** ONNX export + `gurdy_rl_policy` ROS node + Gazebo deployment — AC: ONNX == torch (1e-5);
+- [ ] **2.9** ONNX export + `gurdy_policy` ROS node + Gazebo deployment — AC: ONNX == torch (1e-5);
   walks in Gazebo without retraining; no fall in the 2-min protocol; tracking + sim-to-sim gap reported
+  — prep done (2026-11-15, `dr_energy_ft` 6M, Gazebo NOT run yet): `rl/tools/export_onnx.py` →
+  `models/dr_energy_ft_6M.{onnx,json,_parity.npz}`; ONNX vs torch max diff 3e-7; `gurdy_core/policy_runtime.py`
+  (obs/deadband/EMA, == env, tested); node `gurdy_policy` (stand pose on cmd/sensor timeout, `mode`
+  param policy|tripod); MuJoCo deployment-path protocol: all segments 2–9 %, no fall. Remaining: run
+  `scripts/policy_gazebo_test.sh` (`docs/results/phase2_deploy_gazebo_test.md`), re-export with terrain_v1
 - [ ] **2.10** Experiment A (rough terrain, RL vs tripod, MuJoCo + Gazebo) and Experiment B (one leg
   disabled) — AC: results tables in `docs/results/`
 

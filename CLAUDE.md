@@ -238,5 +238,11 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   144 starts (large / small from rest / small while walking). Eval forces the standard command
   distribution and floor plane unless a terrain cell is requested. Terrain training ≈ 2.0k samples/s,
   1.9 GiB. Run `terrain_v1` (config `rl/configs/terrain.yaml`, init ft-6M) started; evaluate after.
+- 2.9 prep done (2026-11-15, Gazebo not run; terrain_v1 was training): `models/dr_energy_ft_6M.onnx` (+json,
+  parity npz; `*.onnx` gitignored except `models/`), `rl/tools/export_onnx.py`, `gurdy_core/policy_runtime.py`
+  (shared obs/deadband/EMA/ONNX controller), ROS package `gurdy_policy` (`policy_node`; `sim.launch.py
+  controller:=policy`; needs `sensors:=true`; ROS image needs rebuild for onnxruntime). Tests: ONNX==torch 3e-7,
+  controller==env obs, node tests. MuJoCo deployment-path tracking 2–9 %. Gazebo commands:
+  `docs/results/phase2_deploy_gazebo_test.md`.
 - Next: evaluate terrain_v1 (flat no-regression vs ft-6M, terrain grid, start gate); optional 2.6 MJX;
   C1 overnight run for Experiment B still to be planned.
