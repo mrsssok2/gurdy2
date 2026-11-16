@@ -13,7 +13,7 @@ from rosidl_runtime_py.utilities import get_message
 yaw = lambda q: math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
 st = lambda h: h.stamp.sec + h.stamp.nanosec * 1e-9
 r = rosbag2_py.SequentialReader()
-r.open(rosbag2_py.StorageOptions(uri=sys.argv[1], storage_id=""), rosbag2_py.ConverterOptions("", ""))
+r.open(rosbag2_py.StorageOptions(uri=(sys.argv[1] if __import__("os").path.exists(sys.argv[1]+"/metadata.yaml") else sys.argv[1]+"/bag_0.mcap"), storage_id=("" if __import__("os").path.exists(sys.argv[1]+"/metadata.yaml") else "mcap")), rosbag2_py.ConverterOptions("", ""))
 types = {t.name: t.type for t in r.get_all_topics_and_types()}
 S = {k: [] for k in ("gt", "legs", "ekf", "ekf_tf", "map_odom")}
 scans, meta = [], {}

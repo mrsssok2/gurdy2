@@ -1,0 +1,18 @@
+[policy_node-5] [INFO] [1794816341.166006265] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.27 ms, max 0.57 ms over 500 ticks
+[policy_node-5] [INFO] [1794816351.269311577] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.26 ms, max 0.75 ms over 500 ticks
+[policy_node-5] [INFO] [1794816361.481398248] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.27 ms, max 0.65 ms over 500 ticks
+[policy_node-5] [INFO] [1794816371.664063901] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.29 ms, max 1.30 ms over 500 ticks
+[policy_node-5] [INFO] [1794816381.910981841] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.30 ms, max 0.87 ms over 500 ticks
+RTF gazebo 0.98 | fell: gazebo False, mujoco False | min body z 0.081 / 0.091 m | max tilt 0.073 / 0.088 rad
+
+| segment | command (vx, vy, wz) | gazebo measured | err % | mujoco measured | err % | mj vs gz (main axis) |
+|---|---|---|---|---|---|---|
+| forward | (+0.100, +0.000, +0.000) | (+0.077, +0.002, -0.014) | -22.5 | (+0.096, +0.005, +0.002) | -3.7 | +24.3 |
+| backward | (-0.100, +0.000, +0.000) | (-0.100, -0.010, -0.000) | +0.0 | (-0.097, -0.005, -0.006) | -2.9 | -2.9 |
+| strafe_left | (+0.000, +0.080, +0.000) | (+0.017, +0.065, -0.006) | -19.2 | (-0.005, +0.080, -0.001) | -0.2 | +23.6 |
+| strafe_right | (+0.000, -0.080, +0.000) | (-0.001, -0.086, -0.009) | +8.1 | (+0.003, -0.092, -0.011) | +14.5 | +5.9 |
+| turn_left | (+0.000, +0.000, +0.300) | (+0.005, -0.000, +0.266) | -11.3 | (-0.001, -0.000, +0.283) | -5.6 | +6.4 |
+| turn_right | (+0.000, +0.000, -0.300) | (+0.004, -0.004, -0.298) | -0.7 | (+0.003, +0.002, -0.314) | +4.8 | +5.6 |
+| combined | (+0.080, +0.040, +0.200) | (+0.065, +0.038, +0.168) | -15.9 | (+0.081, +0.045, +0.213) | +6.7 | +26.9 |
+
+no fall + all within ±25 %: gazebo True | mujoco True

@@ -274,3 +274,7 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   commands lifted to 0.05 m/s / 0.15 rad/s keeping direction, ≤ policy deadband (0.015 m/s, 0.05 rad/s) → 0; smoother deadband 0; collision_monitor in = `cmd_vel_min`; goal tol
   0.12 m / 0.2 rad). EKF wiring static review: no defect; tests in `gurdy_navigation/test`. Re-test commands (Nav2 5 goals, EKF bag run + analysis):
   `docs/results/phase3_retest.md` — run only after terrain_dr2 finishes.
+- 2026-11-16 (night): terrain_dr2 15M selected (`models/terrain_dr2_15M.onnx`, now the policy_node default); Gazebo gap worst axis 24 → 14 pts (not < 10);
+  Nav2 5/5 goals with the policy but ONLY with collision_monitor FootprintApproach disabled (it throttled /cmd_vel to ~5 %; needs a real fix); EKF mapping
+  run fine (map precision 0.033 m, first distortion did not reproduce); min-speed epsilon = policy deadband. `latency_20ms` scenario was invalid → `latency_18ms`.
+  Details: `docs/results/phase2_9b_nav_results.md`.

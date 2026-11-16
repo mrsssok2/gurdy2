@@ -12,7 +12,7 @@ Parameters
   mode          "policy" (default) | "tripod": switch at runtime (`ros2 param set /policy_node mode tripod`);
                 the tripod mode is the baseline gait inside the same node (A/B on one launch).
   model         path to the .onnx (a .json with the same stem holds the metadata);
-                default $GURDY_REPO|~/gurdy2 / models / terrain_v1_60M.onnx
+                default $GURDY_REPO|~/gurdy2 / models / terrain_dr2_15M.onnx
   cmd_timeout   s of sim time without /cmd_vel   -> policy mode: ramp to the stand pose (tripod: zero command)
   sensor_timeout  s without a fresh /imu (sim time) or /joint_states (wall time) -> stand pose
   stand_speed   rad/s joint speed limit while moving to the stand pose
@@ -37,7 +37,7 @@ from gurdy_core.gait import TripodGait
 from gurdy_core.policy_runtime import OnnxPolicy, PolicyController, load_meta
 from gurdy_core.robot import load_robot
 
-DEFAULT_MODEL = "terrain_v1_60M.onnx"
+DEFAULT_MODEL = "terrain_dr2_15M.onnx"
 
 
 def _stamp(msg) -> float:

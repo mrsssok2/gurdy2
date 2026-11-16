@@ -12,7 +12,7 @@ docker compose run --rm sim bash -c 'cd ~/gurdy2/ros2_ws && colcon build --symli
 docker compose run --rm sim bash -c 'cd ~/gurdy2 && python3 -m pytest -q ros2_ws/src/gurdy_navigation/test && (cd gurdy_core && python3 -m pytest -q tests/test_rl_command.py)'
 ```
 
-## 1. Nav2, 5 goals, policy (terrain_v1 60M is the default model; use model:=... for terrain_dr2 once exported)
+## 1. Nav2, 5 goals, policy (default model terrain_dr2_15M; results: phase2_9b_nav_results.md)
 Goals (map frame): (1.5, 0.5), (4.0, 0.5) through the doorway, (4.0, −2.2), (1.5, −0.5) back through the doorway, (0, 0).
 Map = `maps/flat_lab_tripod_gt` (kept from the first run), GT odometry, headless, ~10–40 min wall.
 ```bash

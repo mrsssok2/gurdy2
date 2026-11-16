@@ -1,0 +1,8 @@
+ Container gurdy2-rl-run-2715a0f739cd Creating 
+ Container gurdy2-rl-run-2715a0f739cd Created 
+gt      cells  4470  precision mean 0.444 m p95 1.175 m | pose err vs gt: xy mean 0.000 max 0.000 m, yaw mean 0.0 deg max 0.0 deg
+ekf_tf  cells  5227  precision mean 0.379 m p95 1.105 m | pose err vs gt: xy mean 0.059 max 0.137 m, yaw mean 0.2 deg max 0.6 deg
+ekf     cells  5227  precision mean 0.379 m p95 1.105 m | pose err vs gt: xy mean 0.059 max 0.137 m, yaw mean 0.2 deg max 0.6 deg
+legs    cells  5437  precision mean 0.382 m p95 1.131 m | pose err vs gt: xy mean 0.075 max 0.186 m, yaw mean 0.7 deg max 1.9 deg
+slam    cells  5418  precision mean 0.372 m p95 1.096 m | pose err vs gt: xy mean 0.037 max 0.092 m, yaw mean 0.6 deg max 1.5 deg
+TF vs /odometry/filtered: last stamps differ by +0.000 s; TF samples 21313, topic samples 21313

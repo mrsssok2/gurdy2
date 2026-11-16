@@ -1,0 +1,19 @@
+[WARN] [ros2bag]: Positional "topics" argument deprecated. Please use optional "--topics" argument instead.
+stdin is not a terminal device. Keyboard handling disabled.[INFO] [1794818710.803401113] [rosbag2_recorder]: Press SPACE for pausing/resuming
+[INFO] [1794818710.803410234] [rosbag2_recorder]: Event publisher thread: Started
+[INFO] [1794818710.823634571] [rosbag2_recorder]: Starting recording to 'docs/results/data/phase3/flat_lab_tripod_ekf2/bag'
+[INFO] [1794818710.837137680] [rosbag2_recorder]: Listening for topics...
+[INFO] [1794818710.837254601] [rosbag2_recorder]: Recording...
+[INFO] [1794818710.837347926] [rosbag2_recorder]: Topics discovery started.
+[INFO] [1794818711.645845869] [rosbag2_recorder]: Subscribed to topic '/imu/ekf'
+[INFO] [1794818711.665420364] [rosbag2_recorder]: Subscribed to topic '/odom/legs'
+[INFO] [1794818711.693270665] [rosbag2_recorder]: Subscribed to topic '/tf'
+[INFO] [1794818711.726772207] [rosbag2_recorder]: Subscribed to topic '/clock'
+[INFO] [1794818711.729744433] [rosbag2_recorder]: Subscribed to topic '/imu'
+[INFO] [1794818711.735798020] [rosbag2_recorder]: Subscribed to topic '/odom/ground_truth'
+[INFO] [1794818711.741720191] [rosbag2_recorder]: Subscribed to topic '/scan'
+[INFO] [1794818711.744218310] [rosbag2_recorder]: Subscribed to topic '/odometry/filtered'
+[INFO] [1794818712.786809329] [rosbag2_recorder]: Subscribed to topic '/tf_static'
+[INFO] [1794818714.882950908] [rosbag2_recorder]: Subscribed to topic '/cmd_vel'
+[INFO] [1794818714.883070781] [rosbag2_recorder]: All requested topics are subscribed. Stopping discovery...
+[INFO] [1794818714.883085314] [rosbag2_recorder]: Topics discovery stopped.

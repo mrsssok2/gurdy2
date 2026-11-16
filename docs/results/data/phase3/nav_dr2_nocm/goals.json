@@ -1,0 +1,72 @@
+[
+ {
+  "goal": [
+   1.5,
+   0.5,
+   0.0
+  ],
+  "status": "SUCCEEDED",
+  "time_s": 59.7,
+  "path_m": 4.31,
+  "final_err_m": 0.098,
+  "recoveries": 0,
+  "max_stall_s": 1.0,
+  "reached_0.25": true
+ },
+ {
+  "goal": [
+   4.0,
+   0.5,
+   0.0
+  ],
+  "status": "SUCCEEDED",
+  "time_s": 95.3,
+  "path_m": 6.84,
+  "final_err_m": 0.127,
+  "recoveries": 0,
+  "max_stall_s": 2.0,
+  "reached_0.25": true
+ },
+ {
+  "goal": [
+   4.0,
+   -2.2,
+   1.57
+  ],
+  "status": "SUCCEEDED",
+  "time_s": 105.0,
+  "path_m": 8.09,
+  "final_err_m": 0.083,
+  "recoveries": 0,
+  "max_stall_s": 1.0,
+  "reached_0.25": true
+ },
+ {
+  "goal": [
+   1.5,
+   -0.5,
+   3.14
+  ],
+  "status": "SUCCEEDED",
+  "time_s": 172.0,
+  "path_m": 12.7,
+  "final_err_m": 0.137,
+  "recoveries": 1,
+  "max_stall_s": 1.0,
+  "reached_0.25": true
+ },
+ {
+  "goal": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "status": "SUCCEEDED",
+  "time_s": 142.3,
+  "path_m": 10.73,
+  "final_err_m": 0.134,
+  "recoveries": 0,
+  "max_stall_s": 1.0,
+  "reached_0.25": true
+ }
+]

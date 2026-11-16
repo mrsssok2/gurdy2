@@ -9,6 +9,7 @@
 #  - goal tolerance xy 0.12 m / yaw 0.2 rad so that the minimum speed cannot make the robot oscillate around the goal
 #  - lidar /scan (frame lidar_link, 0.05 m above base_link): collision_monitor heights are relative to base_link
 #  - AMCL (localization mode) uses the Omni motion model; initial pose = spawn origin
+#  - collision_monitor FootprintApproach is DISABLED: it throttled /cmd_vel to ~5 % (0.04 -> 0.002 m/s) with the policy, goals aborted (phase3_retest_results.md)
 #  - Nav2 output: velocity_smoother -> cmd_vel_min_speed_node -> collision_monitor -> /cmd_vel (gait node or policy node subscribes there)
 amcl:
   ros__parameters:
@@ -236,7 +237,7 @@ collision_monitor:
     stop_pub_timeout: 2.0
     polygons: [FootprintApproach]
     FootprintApproach: {type: polygon, action_type: approach, footprint_topic: /local_costmap/published_footprint, time_before_collision: 2.0,
-      simulation_time_step: 0.1, min_points: 6, visualize: false, enabled: true}
+      simulation_time_step: 0.1, min_points: 6, visualize: false, enabled: false}
     observation_sources: [scan]
     scan: {type: scan, topic: scan, min_height: -0.2, max_height: 0.5, enabled: true}
 docking_server:
