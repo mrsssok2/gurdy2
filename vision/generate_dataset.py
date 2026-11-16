@@ -185,8 +185,13 @@ def cmd_render(a):
         t0 = time.time()
         try:
             n = render_scene(sc, out, a)
+            if n == 0:                                          # seen on a cold start (first 2 scenes of the 5-scene trial):
+                n = render_scene(sc, out, a)                    # the server stops answering set_pose; a second start works
         except Exception as e:                                  # keep going: one bad scene must not stop a long run
-            print(f"{p.stem}: FAILED {e}")
+            print(f"{p.stem}: FAILED {e}", flush=True)
+            continue
+        if n == 0:                                              # not marked done -> picked up again by the next render call
+            print(f"{p.stem}: FAILED 0 frames twice", flush=True)
             continue
         with open(done_file, "a") as fh:
             fh.write(p.stem + "\n")

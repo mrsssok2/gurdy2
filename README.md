@@ -11,7 +11,7 @@ ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL2). License: MIT.
 ![map from autonomous exploration](docs/results/phase3_explore_gt_map.png)
 
 **Status (2026-11-16):** Phases 0–3 done (robot + ROS 2 base, RL locomotion, mapping + navigation + exploration). Experiment B (leg-failure
-adaptation) is training. Phases 4–9 not started. See [ROADMAP.md](ROADMAP.md) and [docs/results/](docs/results/).
+adaptation) is done — negative result, see below. Phase 4 (perception): synthetic dataset rendering started. Phases 5–9 not started. See [ROADMAP.md](ROADMAP.md) and [docs/results/](docs/results/).
 
 ## Results (all measured; MuJoCo unless stated)
 
@@ -29,6 +29,13 @@ adaptation) is training. Phases 4–9 not started. See [ROADMAP.md](ROADMAP.md) 
 | Gazebo, worst single-axis gap to MuJoCo | 3–11 pts | not tested | stalls on 4 of 7 segments | 24 pts | 14 pts (combined segment: 31) |
 
 The tripod does not fall on slopes up to 15°; the RL gain there is tracking accuracy (12–18 % vs 17–25 %) and, on steps ≥ 3 cm, success rate.
+
+**Experiment B — one leg fails (limp or locked), blind policy.** Fine-tuning with leg failures reduces the tracking error after the failure
+(limp 88 → 76 %, locked 61 → 50 %), but **misses the < 40 % criterion and stays worse than the open-loop tripod gait (38 % / 37 %)**; falls ≤ 1 %.
+The adapted policy is not deployed (it also regresses on 15° slopes). 20 episodes per leg × type, MuJoCo flat floor:
+[docs/results/exp_B_leg_failure.md](docs/results/exp_B_leg_failure.md).
+
+![Experiment B](docs/results/exp_B_leg_failure.png)
 
 **Phase 3 — mapping, navigation, exploration (Gazebo).**
 

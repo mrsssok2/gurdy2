@@ -110,6 +110,8 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
     the tripod does NOT fall or fail on slopes <= 15 deg (so "RL success > tripod" holds only on steps). Gazebo part not done.
   - Experiment B: leg failure (limp/locked, random leg + time, actor blind, critic told) built + smoke-tested 2026-11-16; training `leg_failure` started, eval plan
     in `docs/results/exp_B_leg_failure.md` (run after training)
+  - Experiment B evaluated 2026-11-16: **criterion missed** (adapted policy 76 % limp / 50 % locked vs tripod 38 / 37 %, terrain_dr2 88 / 61 %); `leg_failure` not deployed;
+    Gazebo part of Experiment A/B still open
 
 **AC**
 - Training runs without freezing WSL (RAM stays under budget; numbers logged); resume from checkpoint works.
@@ -139,7 +141,8 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - [x] CUDA setup: GPU visible in Docker (`nvidia/cuda` image `nvidia-smi` OK, 2026-11-16); `vision` compose profile + `docker/vision` (CUDA 12.1, PyTorch, onnxruntime-gpu) written, **image not built yet**
 - [ ] Object detection by name (YOLO small or small VLM), trained/run on local GPU, CPU/ONNX fallback; 3D position from depth
   - [x] prep code (2026-11-16, nothing run in Gazebo/GPU): 7 classes, synthetic dataset generator (Gazebo boundingbox_camera → YOLO labels + depth), `vision/train.py`, `vision/eval_detector.py`, `gurdy_core.vision` (decode/NMS/depth geometry/semantic map), `gurdy_perception` detector node (markers + JSON semantic map), `semantic_lab` world; tests 44 pass. Run commands: `docs/results/phase4_runbook.md`; license notes: `docs/vision_objects.md`
-  - [ ] render dataset, train, evaluate mAP, test in semantic_lab
+  - [x] 5-scene render trial 2026-11-16: `set_pose` on the static camera, `/cam/bbox`, shared stamps all OK; labels checked (`vision/check_labels.py`, `docs/results/phase4_trial/`)
+  - [ ] render full dataset (started 2026-11-16), train, evaluate mAP, test in semantic_lab
 - [ ] `find_object(name)` / `go_to(object)` behaviours
 - [ ] Gnani Prisma STT + Timbre TTS (key from env var only); offline Whisper fallback
 - [ ] Replies always start with "Main ek AI assistant hoon"

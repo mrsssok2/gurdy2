@@ -299,3 +299,10 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   aliases, ONNX decode/NMS, depth→3D, SemanticMap de-dup, colours, AP metrics), ROS package `gurdy_perception` (`detector_node`; `sim.launch.py perception:=true`), compose profile `vision`
   (image NOT built yet). Ultralytics is AGPL-3.0: only in docker/vision; runtime uses ONNX + our decoder (`docs/vision_objects.md`). Tests: `vision/tests`, `gurdy_core/tests/test_vision.py`,
   `gurdy_perception/test` (run in the rl or ros image). Nothing rendered/trained yet; riskiest unverified assumptions listed in `docs/results/phase4_runbook.md`.
+- 2026-11-16 (Exp B result + Phase 4 trial): **Experiment B criterion missed** — after a leg failure the adapted `leg_failure` 30M tracks at 76 % (limp) / 50 % (locked) error vs
+  `terrain_dr2` 88 / 61 % and the **open-loop tripod 38 / 37 %**; falls ≤ 1 %; regression check passes except 15° slopes (83 vs 97 %) → `leg_failure` NOT deployed, `terrain_dr2` 15M stays.
+  `docs/results/exp_B_leg_failure.md`, `scripts/exp_b_report.py`. Next-step options (longer history/estimator, tripod fallback) undecided. Phase 4 step 1: 5-scene trial OK
+  (`set_pose` on static cam, `/cam/bbox`, shared stamps verified; `vision/check_labels.py`; `docs/results/phase4_trial/`); render sometimes gives 0 frames for a scene (server stops answering
+  `set_pose`, cause unknown) → retried once, not marked done. `gurdy2/vision:cuda` image is built (do not rebuild). Full render of `datasets/synth_v1` (200 scenes) started in container
+  `gurdy2-render` (log `datasets/synth_v1/render.log`, ends with finalize) — check `docker ps` before any other heavy work. Lesson: a foreground eval that hits the 10-min tool timeout keeps
+  running in the background — do not start the next heavy job until `docker ps` is empty.

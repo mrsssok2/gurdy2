@@ -1,6 +1,8 @@
 # Phase 4 — run commands (after `leg_failure` training has finished)
 
-Status: **code and unit tests only** — nothing below has been run yet (no Gazebo, no rendering, no GPU training while
+Status 2026-11-16: vision image built + GPU-verified; **step 1 trial done** (5 scenes, all camera assumptions OK, labels checked: `docs/results/phase4_trial/README.md`); full render running in container `gurdy2-render` (`tail -f datasets/synth_v1/render.log`; resume with the plain `render` command, then `finalize`). Steps 3–5 not run.
+
+Original status: **code and unit tests only** — nothing below has been run yet (no Gazebo, no rendering, no GPU training while
 `leg_failure` trains). One heavy workload at a time (8 GB RAM / 6 GB VRAM): check `docker ps` first.
 
 GPU check already done (light): `nvidia-smi` in WSL and `docker run --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi -L`
@@ -17,7 +19,8 @@ docker compose run --rm sim python3 vision/generate_dataset.py render --out data
 docker compose run --rm sim python3 vision/generate_dataset.py render --out datasets/synth_v1                          # the rest
 docker compose run --rm sim python3 vision/generate_dataset.py finalize --out datasets/synth_v1                        # dataset.yaml + stats.json
 
-# 2. sanity-check labels visually before training (draw boxes on 20 random frames): vision/tests only cover geometry, not the real renderer
+# 2. sanity-check labels before training (boxes drawn on samples + comparison with ground truth); repeat on the full set, look for box/mannequin frames
+docker compose run --rm sim python3 vision/check_labels.py --data datasets/synth_v1 --out docs/results/phase4_trial --samples 5
 
 # 3. train + export ONNX (GPU) -> models/detector/det_v1.onnx
 docker compose run --rm vision python3 vision/train.py --data datasets/synth_v1 --name det_v1 --epochs 60
