@@ -258,6 +258,18 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 
 ---
 
+## Phase 5b — End-to-end Vision-Language-Navigation experiment (planned, not started)
+Question: can a small end-to-end policy distilled from the modular system (LLM brain + Nav2 + YOLO) match it?
+- [ ] Record the modular system completing English / Hindi / Hinglish missions as demonstrations (camera frames + instruction + `/cmd_vel`, plus outcome labels)
+- [ ] Train a small VLN policy (camera + instruction → `/cmd_vel`) by imitation / distillation
+- [ ] Compare modular vs end-to-end: success rate, time, collisions, unseen rooms, unseen phrasings
+- [ ] Publish dataset and model on Hugging Face (with dataset/model cards)
+
+**AC**
+- One results table (docs/results/phase5b_vln.md), real measured numbers over a fixed mission set, incl. unseen rooms and unseen phrasings; gaps reported honestly.
+
+---
+
 ## Phase 6 — Robot Incident Graph (robot-ops)
 - [ ] Telemetry/log exporter: ROS 2 → Redpanda (also from rosbag replay)
 - [ ] Event normalizer (schema), fingerprinting, embeddings → Qdrant
@@ -342,3 +354,13 @@ Can one robot both walk and hop/fly? Key constraint: **thrust-to-weight ≥ 2** 
 - Take-off → hop over an obstacle taller than leg clearance → landing on legs: success rate over ≥ 50
   sim trials, landing touchdown speed reported.
 - Mode-switch policy beats walk-only and fly-only on an obstacle course in time or energy (numbers).
+
+---
+
+## Phase 10 — Gurdy 3.0: mobile manipulation (planned, not started)
+- [ ] Mount a small arm on the hexapod (arm + VLA from the separate "Hukum" arm project)
+- [ ] Payload-aware locomotion fine-tune (arm mass / pose changes the CoM; DR over payload)
+- [ ] "Walk there and pick it up" missions: LLM brain → navigate to the named object → grasp
+
+**AC**
+- Walking tracking/fall rate with arm mounted reported against the arm-free policy; pick-up success rate over ≥ 20 sim trials (numbers).
