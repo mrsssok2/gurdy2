@@ -101,8 +101,9 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
   — prep done (2026-11-15, `dr_energy_ft` 6M, Gazebo NOT run yet): `rl/tools/export_onnx.py` →
   `models/dr_energy_ft_6M.{onnx,json,_parity.npz}`; ONNX vs torch max diff 3e-7; `gurdy_core/policy_runtime.py`
   (obs/deadband/EMA, == env, tested); node `gurdy_policy` (stand pose on cmd/sensor timeout, `mode`
-  param policy|tripod); MuJoCo deployment-path protocol: all segments 2–9 %, no fall. Remaining: run
-  `scripts/policy_gazebo_test.sh` (`docs/results/phase2_deploy_gazebo_test.md`), re-export with terrain_v1
+  param policy|tripod); MuJoCo deployment-path protocol: all segments 2–9 %, no fall. Gazebo run done 2026-11-16 (`docs/results/phase2_deploy_gazebo.md`): 0 falls both models, but target
+  (within ~5 pts of MuJoCo) NOT met: ft-6M stalls on 4 segments, terrain_v1 60M within ±25 % (gap up to 22 pts); latency
+  + stance-load/contact differences diagnosed; decision pending on closing the gap. Was: re-export with terrain_v1
 - [ ] **2.10** Experiment A (rough terrain, RL vs tripod, MuJoCo + Gazebo) and Experiment B (one leg
   disabled) — AC: results tables in `docs/results/`
 

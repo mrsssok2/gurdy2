@@ -43,6 +43,10 @@ still well under tripod 15.9 %); all_extremes 10.3 → 14.2 %. Energy better (Co
 Best slopes (100 % to 12°), best efficiency, small-while-walking commands fixed (0/48), large starts 0 fails.
 Costs: +2 pt flat tracking error. **Not fixed: small-command starts from rest** (vx, −vx, vy, −vy, −wz: 8/8
 failed each; +wz passes) — the gate still FAILS (40/144); the robot stays standing for |v| ≈ 0.03 m/s from rest.
-Open: fix by fine-tuning with more rest-start small commands (or accept: Nav2 rarely commands < 0.03 m/s from rest).
-ONNX: `models/terrain_v1_60M.{onnx,json,_parity.npz}` (default of `policy_node` is still `dr_energy_ft_6M.onnx`
-until the Gazebo test; use `model:=` to switch).
+**Known limitation (accepted 2026-11-16, no retraining):** `terrain_v1` 60M does not start from rest for
+|v| ≈ 0.03 m/s (gate 40/144 fails, all in the small-from-rest group). Handled at deployment: Nav2
+`velocity_smoother.deadband_velocity` (minimum speed) = 0.05 m/s (vx, vy) / 0.15 rad/s (wz), i.e. anything
+smaller is sent as zero, above the dead zone (±0.03 / ±0.10); `rl_command` deadband stays below that
+(0.015 / 0.05). Consequence: Nav2 can never command a creep below 0.05 m/s. Not covered: teleop or other
+sources that publish small /cmd_vel directly (they hit the policy's dead zone and just stand).
+ONNX: `models/terrain_v1_60M.{onnx,json,_parity.npz}` (default of `policy_node` since 2026-11-16; Gazebo transfer: `phase2_deploy_gazebo.md`).

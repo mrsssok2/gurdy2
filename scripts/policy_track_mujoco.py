@@ -26,10 +26,14 @@ from sim_mujoco.mjcf import build_mjcf  # noqa: E402
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default=os.path.join(os.path.dirname(__file__), "..", "models", "dr_energy_ft_6M.onnx"))
+    ap.add_argument("--dump", help="save joint/imu/target time series to this .npz (diagnosis)")
+    ap.add_argument("--latency-ms", type=float, default=0.0, help="diagnosis: extra delay on the joint targets")
+    ap.add_argument("--friction-scale", type=float, default=1.0, help="diagnosis: scale all geom sliding friction")
     args = ap.parse_args()
     robot = load_robot()
     m = mujoco.MjModel.from_xml_string(build_mjcf(robot))
     d = mujoco.MjData(m)
+    m.geom_friction[:, 0] *= args.friction_scale
     mujoco.mj_resetDataKeyframe(m, d, m.key("stance").id)
     qadr = np.array([m.joint(n).qposadr[0] for n in robot.joint_names])
     vadr = np.array([m.joint(n).dofadr[0] for n in robot.joint_names])
@@ -39,17 +43,25 @@ def main():
     changes, _, total = tracking_protocol()
     decim = int(round(ctl.dt / m.opt.timestep))
     cmd_period = int(round(0.05 / m.opt.timestep))
+    dump = []
+    lag = int(round(args.latency_ms * 1e-3 / m.opt.timestep))
+    pend = []                       # (apply_step, target)
     rows, k, cmd, wall, infer = [], 0, (0.0, 0.0, 0.0), time.perf_counter(), []
     while d.time < total - 1e-9:
         if k % cmd_period == 0:
             cmd = cmd_at(changes, d.time)
         if k % decim == 0:
             t0 = time.perf_counter()
-            d.ctrl[:] = ctl.step(d.sensordata[quat:quat + 4], d.sensordata[gyro:gyro + 3],
+            tgt = ctl.step(d.sensordata[quat:quat + 4], d.sensordata[gyro:gyro + 3],
                                  d.qpos[qadr], d.qvel[vadr], cmd)
+            pend.append((k + lag, tgt))
             infer.append(time.perf_counter() - t0)
+        while pend and pend[0][0] <= k:
+            d.ctrl[:] = pend.pop(0)[1]
         mujoco.mj_step(m, d)
         k += 1
+        if args.dump and k % 5 == 0:   # 100 Hz like /joint_states
+            dump.append((d.time, *d.qpos[qadr], *d.qvel[vadr], *d.sensordata[quat:quat + 4], *d.sensordata[gyro:gyro + 3], *d.ctrl))
         if k % 10 == 0:
             rows.append((d.time, *d.qpos[:7]))
     wall = time.perf_counter() - wall
@@ -58,6 +70,10 @@ def main():
     res = analyze_tracking(a[:, 0], a[:, 1], a[:, 2], yaw, a[:, 3], roll, pitch)
     res.update({"sim": "mujoco_policy_deployment", "rtf": total / wall, "model": os.path.basename(args.model),
                 "tick_ms_mean": 1e3 * float(np.mean(infer)), "tick_ms_max": 1e3 * float(np.max(infer))})
+    if args.dump:
+        a = np.array(dump)
+        np.savez(args.dump, js_t=a[:, 0], js_q=a[:, 1:19], js_qd=a[:, 19:37], imu_t=a[:, 0], imu_quat=a[:, 37:41],
+                 imu_gyro=a[:, 41:44], cmd_t=a[:, 0], cmd_q=a[:, 44:62])
     print(json.dumps(res, indent=2))
 
 

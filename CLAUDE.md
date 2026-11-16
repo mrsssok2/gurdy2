@@ -260,3 +260,9 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   Offline MuJoCo drift (tripod, ~1 m segments): legs+gyro 0.7–1.7 % of path, heading ≤ 1.3°; legs-only heading
   13–29° off → heading must come from the IMU (`docs/results/phase3_leg_odometry.md`). Gazebo GT-vs-EKF map
   comparison = test plan step 6 (not run).
+- 2026-11-16: terrain_v1 60M accepted; from-rest dead zone handled at deployment (Nav2 velocity_smoother minimum speeds
+  0.05 m/s / 0.15 rad/s, `phase2_terrain.md`). Step 2.9 Gazebo test run (`docs/results/phase2_deploy_gazebo.md`): 0 falls,
+  but sim-to-sim gap up to 22 pts (target ~5) — ft-6M stalls in Gazebo, terrain_v1 within ±25 %; causes: loop latency
+  (~5 ms, policy loses speed with delay) + DART-vs-MuJoCo stance load distribution with the policy's asymmetric stance;
+  `policy_node` default model now terrain_v1_60M. Decision pending (DR/fine-tune vs tune MuJoCo vs accept). The ros2_ws
+  build dir must be built in the container (`/home/ubuntu/gurdy2`), not on the host path.

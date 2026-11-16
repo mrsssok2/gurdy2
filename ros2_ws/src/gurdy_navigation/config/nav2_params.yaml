@@ -3,8 +3,8 @@
 #  - MPPI, Omni motion model (vx 0.15, vy 0.10, wz 0.60 = robot.yaml command_limits); accel limits match
 #    the gait node (0.5 m/s2, 2 rad/s2). Footprint + limits are re-patched from robot.yaml at launch
 #    (gurdy_navigation.footprint.patch_nav2_params), the values here are the committed defaults.
-#  - velocity_smoother deadband 0.03 m/s / 0.10 rad/s: anything smaller is sent as 0 (the policy's dead zone
-#    lies below it: rl_command deadband 0.015 / 0.05)
+#  - velocity_smoother minimum speeds (deadband) 0.05 m/s / 0.15 rad/s: anything smaller is sent as 0, so the
+#    terrain_v1 policy's from-rest dead zone (|v| ~0.03 m/s) is never commanded (rl_command deadband 0.015 / 0.05)
 #  - lidar /scan (frame lidar_link, 0.05 m above base_link): collision_monitor heights are relative to base_link
 #  - AMCL (localization mode) uses the Omni motion model; initial pose = spawn origin
 #  - Nav2 output: collision_monitor -> /cmd_vel (gait node or policy node subscribes there)
@@ -219,7 +219,7 @@ velocity_smoother:
     max_decel: [-0.4, -0.3, -1.5]
     odom_topic: odom
     odom_duration: 0.1
-    deadband_velocity: [0.03, 0.03, 0.1]
+    deadband_velocity: [0.05, 0.05, 0.15]
     velocity_timeout: 1.0
 collision_monitor:
   ros__parameters:
