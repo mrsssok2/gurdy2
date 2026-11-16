@@ -18,7 +18,15 @@ Only 5 of 7 classes occur in these 5 scenes (no `box`, no `mannequin`; one `barr
 
 Samples (3× upscaled, box = label, white cross = ground-truth centre): `s0000_v01_boxes.png` … `s0004_v05_boxes.png`.
 
-**Problem found:** on the first run scenes 0 and 1 produced 0 frames (the Gazebo server stopped answering `set_pose`, 12 × 3 s timeouts) and were still marked as done.
-Re-rendering them worked (11/12 each). Cause not found. `render` now retries a scene once and does not mark a 0-frame scene as done.
+**Problem found: scenes with 0 frames.** First run: scenes 0 and 1; first full render: scene 6 once, then scenes 16–19 in a row (render stopped by hand).
+What was observed while it was failing: every scene already had its own Gazebo server (no left-over servers, the current server alive at 59 % CPU), RAM fine (container 890 MiB, GPU 410 MiB),
+`set_pose` timing out (3 s × 12 views per attempt), and the single long-lived Python render process at 747 MiB RSS with one gz-transport node (3 subscriptions) left over from every earlier scene.
+The same scenes 16–19 rendered without any failure as soon as each scene ran in a fresh process. So the fault follows the long-lived process, not the scene or the server —
+**the exact mechanism was not established** (the old servers' logs were discarded, and scenes 0/1 failed with only one or two nodes alive).
 
-Full render started afterwards: log in `datasets/synth_v1/render.log` (container `gurdy2-render`, ends with `finalize`).
+Fix (`vision/generate_dataset.py render`): every scene and every retry runs in its own worker process (`render-scene`) with a fresh Gazebo server and its own `GZ_PARTITION`; the whole process group is
+killed afterwards; hard limit 150 s per attempt, 3 s per service call, 15 s per frame; 3 attempts; frames of a broken attempt are deleted; a scene counts only if no view was lost; finished scenes are
+kept (`rendered.txt`); the run aborts with exit code 2 if more than 5 % of the scenes fail or 3 fail in a row. Server and worker logs per scene: `datasets/synth_v1/logs/`.
+A periodic restart every N scenes is not needed because the server is restarted for every scene (about 1 s extra per scene: 9 s instead of 8 s).
+
+Full render restarted 2026-11-16 16:48 UTC in container `gurdy2-render` (log `datasets/synth_v1/render.log`, ends with `finalize`); first 6 scenes OK, 0 retries.

@@ -4,7 +4,8 @@
     # 1. plan: sample scenes, write worlds + textures + meshes (fast, no simulator needed)
     python3 vision/generate_dataset.py plan   --out datasets/synth_v1 --scenes 200 --views 12 --seed 0
     # 2. render: run each world headless in Gazebo, move the camera through its views, save frames (ROS image, `sim` service)
-    python3 vision/generate_dataset.py render --out datasets/synth_v1 [--start 0 --count 50]   # resumable
+    python3 vision/generate_dataset.py render --out datasets/synth_v1 [--start 0 --count 50]   # resumable; one worker process +
+    #    one fresh Gazebo server per scene (killed afterwards), retries, aborts if > 5 % of the scenes fail; logs in <out>/logs/
     # 3. dataset.yaml (+ per-split counts) for the trainer
     python3 vision/generate_dataset.py finalize --out datasets/synth_v1
 
@@ -122,28 +123,45 @@ def _img(m, channels):
         np.frombuffer(m.data, np.float32).reshape(m.height, m.width)
 
 
-def render_scene(sc: dict, out: Path, a) -> int:
+def _log(*x):
+    print(*x, file=sys.stderr, flush=True)
+
+
+def render_scene(sc: dict, out: Path, a) -> tuple:
+    """Render one scene with its own Gazebo server. Returns (frames saved, views lost to errors). Runs in a worker process
+    (`render-scene`), so a hung server or transport node can always be killed from outside."""
     idx, split = sc["index"], sc["split"]
     world = out / "worlds" / f"scene_{idx:04d}.sdf"
-    env = {**os.environ, "GZ_PARTITION": f"synth{os.getpid()}"}
-    os.environ["GZ_PARTITION"] = env["GZ_PARTITION"]            # for our own gz-transport node
-    srv = subprocess.Popen(["gz", "sim", "-s", "-r", "--headless-rendering", "-v", "1", str(world)], env=env,
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    n_ok, rng = 0, np.random.default_rng(sc["seed"] + 7)
+    os.environ["GZ_PARTITION"] = f"synth{os.getpid()}"         # unique per worker = per server launch
+    (out / "logs").mkdir(exist_ok=True)
+    gz_log = open(out / "logs" / f"scene_{idx:04d}.gz.log", "w")
+    srv = subprocess.Popen(["gz", "sim", "-s", "-r", "--headless-rendering", "-v", "3", str(world)], env=dict(os.environ),
+                           stdout=gz_log, stderr=subprocess.STDOUT)
+    n_ok, n_err, rng = 0, 0, np.random.default_rng(sc["seed"] + 7)
     try:
         cap = Capture(S.WORLD_NAME)
         t0 = time.time()
-        while cap.latest == 0 and time.time() - t0 < 60:       # wait for the first frames (server start-up)
+        while cap.latest == 0 and time.time() - t0 < 60 and srv.poll() is None:   # first frames (server start-up)
             time.sleep(0.2)
+        _log(f"first frame after {time.time() - t0:.1f} s, stamp {cap.latest}, server exit code {srv.poll()}")
         if cap.latest == 0:
-            raise RuntimeError("no camera frames from Gazebo (headless rendering / GPU path?)")
+            raise RuntimeError(f"no camera frames from Gazebo (server exit code {srv.poll()})")
         for vi, view in enumerate(sc["views"]):
-            if not cap.set_pose(view["pos"], view["rpy"]):
+            t1 = time.time()
+            if not cap.set_pose(view["pos"], view["rpy"]):      # service call: 3 s timeout
+                n_err += 1
+                _log(f"view {vi}: set_pose failed after {time.time() - t1:.1f} s, server exit code {srv.poll()}, latest stamp {cap.latest}")
+                if n_err >= 2:                                  # the server is gone or hung: give up, the caller relaunches
+                    break
                 continue
             with cap.lock:
                 t_set = cap.latest
             fr = cap.frame_after(t_set + int(0.35 * 1e9))       # skip frames rendered before/while the pose changed
             if fr is None:
+                n_err += 1
+                _log(f"view {vi}: no synchronised frame within 15 s, server exit code {srv.poll()}, latest stamp {cap.latest}")
+                if n_err >= 2:
+                    break
                 continue
             rgb_m, depth_m, bb = fr
             rgb, depth = _img(rgb_m, 3), _img(depth_m, 0)
@@ -167,35 +185,95 @@ def render_scene(sc: dict, out: Path, a) -> int:
     finally:
         srv.terminate()
         try:
-            srv.wait(10)
+            srv.wait(5)
         except subprocess.TimeoutExpired:
             srv.kill()
-    return n_ok
+    return n_ok, n_err
+
+
+def cmd_render_scene(a):
+    """Worker: one scene, one server. Last stdout line = 'RESULT ok err'. Exit code 0 only if no view was lost."""
+    out = Path(a.out)
+    sc = json.loads((out / "worlds" / f"scene_{a.index:04d}.json").read_text())
+    n_ok, n_err = render_scene(sc, out, a)
+    print(f"RESULT {n_ok} {n_err}", flush=True)
+    os._exit(0 if n_err == 0 else 3)                           # _exit: never wait for gz-transport threads
+
+
+def _remove_scene_files(out: Path, idx: int):
+    for f in out.glob(f"*/*/s{idx:04d}_v*"):
+        f.unlink()
+
+
+def _run_worker(out: Path, idx: int, a, attempt: int):
+    """Run the worker in its own process group with a hard wall-clock limit; afterwards kill the whole group
+    (python worker + gz server + anything they started), so nothing survives into the next scene."""
+    import signal
+    log = open(out / "logs" / f"scene_{idx:04d}.try{attempt}.log", "w")
+    cmd = [sys.executable, os.path.abspath(__file__), "render-scene", "--out", str(out), "--index", str(idx),
+           "--negative-keep", str(a.negative_keep)]
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=log, text=True, start_new_session=True)
+    try:
+        so, _ = p.communicate(timeout=a.scene_timeout)
+        why = "" if p.returncode == 0 else f"worker exit code {p.returncode}"
+    except subprocess.TimeoutExpired:
+        so, why = "", f"worker timeout {a.scene_timeout:.0f} s"
+    finally:
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        p.wait()
+    res = [ln.split()[1:] for ln in (so or "").split("\n") if ln.startswith("RESULT")]
+    n_ok, n_err = (int(res[-1][0]), int(res[-1][1])) if res else (0, -1)
+    return (not why and n_err == 0), n_ok, why or f"{n_err} views lost"
 
 
 def cmd_render(a):
+    """Resumable. Every scene (and every retry) gets a fresh worker process + fresh Gazebo server, killed afterwards;
+    a scene counts only if no view was lost. Stops with exit code 2 if too many scenes fail."""
     out = Path(a.out)
+    (out / "logs").mkdir(exist_ok=True)
     scenes = sorted((out / "worlds").glob("scene_*.json"))[a.start:(a.start + a.count) if a.count else None]
     done_file = out / "rendered.txt"
     done = set(done_file.read_text().split()) if done_file.exists() else set()
-    for p in scenes:
-        if p.stem in done:
-            continue
-        sc = json.loads(p.read_text())
+    todo = [p for p in scenes if p.stem not in done]
+    max_fail = max(2, int(a.max_fail_frac * len(scenes)))
+    print(f"render: {len(scenes)} scenes selected, {len(scenes) - len(todo)} already done, {len(todo)} to do; "
+          f"stop if more than {max_fail} fail or {a.max_consecutive} fail in a row", flush=True)
+    n_fail = consec = n_retry = 0
+    t_start = time.time()
+    for k, p in enumerate(todo):
+        idx = int(p.stem.split("_")[1])
         t0 = time.time()
-        try:
-            n = render_scene(sc, out, a)
-            if n == 0:                                          # seen on a cold start (first 2 scenes of the 5-scene trial):
-                n = render_scene(sc, out, a)                    # the server stops answering set_pose; a second start works
-        except Exception as e:                                  # keep going: one bad scene must not stop a long run
-            print(f"{p.stem}: FAILED {e}", flush=True)
-            continue
-        if n == 0:                                              # not marked done -> picked up again by the next render call
-            print(f"{p.stem}: FAILED 0 frames twice", flush=True)
-            continue
-        with open(done_file, "a") as fh:
-            fh.write(p.stem + "\n")
-        print(f"{p.stem} [{sc['split']}]: {n}/{len(sc['views'])} frames in {time.time() - t0:.0f} s", flush=True)
+        for attempt in range(1, a.attempts + 1):
+            _remove_scene_files(out, idx)                       # never keep frames of a broken attempt
+            ok, n, why = _run_worker(out, idx, a, attempt)
+            if ok:
+                break
+            n_retry += attempt < a.attempts
+            print(f"{p.stem}: attempt {attempt}/{a.attempts} failed ({why}); server killed, relaunching", flush=True)
+            time.sleep(2.0)
+        if ok:
+            consec = 0
+            with open(done_file, "a") as fh:
+                fh.write(p.stem + "\n")
+            split = json.loads(p.read_text())["split"]
+            print(f"{p.stem} [{split}]: {n}/{a.views_hint or '?'} frames in {time.time() - t0:.0f} s"
+                  f"{'' if attempt == 1 else f' (attempt {attempt})'} | done {k + 1 - n_fail}/{len(todo)}, failed {n_fail}, "
+                  f"retries {n_retry}, elapsed {(time.time() - t_start) / 60:.1f} min", flush=True)
+        else:
+            _remove_scene_files(out, idx)
+            n_fail += 1; consec += 1
+            print(f"{p.stem}: FAILED after {a.attempts} attempts ({why}) | failed scenes {n_fail} (limit {max_fail})", flush=True)
+            if n_fail > max_fail or consec >= a.max_consecutive:
+                print(f"ABORT: {n_fail} failed scenes ({consec} in a row) - see {out}/logs/. Finished scenes are kept; "
+                      f"run the same command again to resume.", flush=True)
+                sys.exit(2)
+    print(f"render finished: {len(todo) - n_fail} scenes rendered, {n_fail} failed, {n_retry} retries, "
+          f"{(time.time() - t_start) / 60:.1f} min", flush=True)
+    if n_fail:
+        sys.exit(1)
 
 
 def cmd_finalize(a):
@@ -217,12 +295,20 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("plan"); p.add_argument("--out", required=True); p.add_argument("--scenes", type=int, default=200)
     p.add_argument("--views", type=int, default=12); p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--robot-yaml", default="ros2_ws/src/gurdy_description/config/robot.yaml", help="camera intrinsics source")
+    p.add_argument("--robot-yaml", default=str(Path(__file__).resolve().parents[1] / "ros2_ws/src/gurdy_description/config/robot.yaml"), help="camera intrinsics source")
     p.set_defaults(fn=cmd_plan)
     p = sub.add_parser("render"); p.add_argument("--out", required=True); p.add_argument("--start", type=int, default=0)
     p.add_argument("--count", type=int, default=0); p.add_argument("--negative-keep", type=float, default=0.1,
                                                                     help="probability to keep a frame with no labelled object")
+    p.add_argument("--attempts", type=int, default=3, help="tries per scene, each with a fresh server")
+    p.add_argument("--scene-timeout", type=float, default=150.0, help="hard wall-clock limit per attempt (s)")
+    p.add_argument("--max-fail-frac", type=float, default=0.05, help="abort if more than this share of the scenes fail")
+    p.add_argument("--max-consecutive", type=int, default=3, help="abort after this many failed scenes in a row")
+    p.add_argument("--views-hint", type=int, default=12, help=argparse.SUPPRESS)
     p.set_defaults(fn=cmd_render)
+    p = sub.add_parser("render-scene", help="internal worker: one scene"); p.add_argument("--out", required=True)
+    p.add_argument("--index", type=int, required=True); p.add_argument("--negative-keep", type=float, default=0.1)
+    p.set_defaults(fn=cmd_render_scene)
     p = sub.add_parser("finalize"); p.add_argument("--out", required=True); p.set_defaults(fn=cmd_finalize)
     a = ap.parse_args()
     a.fn(a)

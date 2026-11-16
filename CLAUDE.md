@@ -306,3 +306,7 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   `set_pose`, cause unknown) → retried once, not marked done. `gurdy2/vision:cuda` image is built (do not rebuild). Full render of `datasets/synth_v1` (200 scenes) started in container
   `gurdy2-render` (log `datasets/synth_v1/render.log`, ends with finalize) — check `docker ps` before any other heavy work. Lesson: a foreground eval that hits the 10-min tool timeout keeps
   running in the background — do not start the next heavy job until `docker ps` is empty.
+- 2026-11-16 (render fix): the 0-frame scenes follow the long-lived render process (gz-transport nodes pile up; `set_pose` times out), not the scene or the server; mechanism not established.
+  `render` now runs each scene in a fresh worker process + fresh gz server (killed as a process group), retries 3×, aborts at > 5 % failed scenes or 3 in a row, logs in `datasets/synth_v1/logs/`.
+  Lesson: for long Gazebo batch jobs, one process per unit of work with a hard timeout; keep the server log.
+
