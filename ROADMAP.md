@@ -112,6 +112,16 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
     in `docs/results/exp_B_leg_failure.md` (run after training)
   - Experiment B evaluated 2026-11-16: **criterion missed** (adapted policy 76 % limp / 50 % locked vs tripod 38 / 37 %, terrain_dr2 88 / 61 %); `leg_failure` not deployed;
     Gazebo part of Experiment A/B still open
+  - [ ] **Experiment B v2** (planned 2026-11-16, not started; later overnight run). Why: in v1 the actor sees only 3 frames (60 ms) and cannot tell which leg is dead.
+    - Option 1, longer history: actor gets ~0.5–1 s of proprioception (25–50 frames at 50 Hz; 1D-conv or GRU encoder instead of frame stacking).
+    - Option 2, RMA-style teacher–student: teacher actor gets the privileged failure info (leg id, limp/locked, time since failure) through a small latent;
+      student estimates that latent from the 0.5–1 s history (supervised, then optional joint fine-tune). Only the student is deployed (no ground truth in obs).
+    - Failure detector + fallback: detect a dead leg from joint tracking error / missing foot contact (per-leg residual over ~0.3 s), then switch to a
+      fault-tolerant gait (5-leg crawl / tripod re-timed without the dead leg, in `gurdy_core`); report detection delay and false-alarm rate on healthy walking.
+    - Compare, same protocol as v1 (`rl/eval_failure.py`, limp + locked, random leg/time): open-loop tripod (38 / 37 %), `terrain_dr2` 15M, `leg_failure` 30M,
+      history policy, RMA student, detector + fault-tolerant gait. AC: best learned or hybrid controller beats the tripod after the failure in tracking error with
+      falls <= 1 %, and no regression on healthy flat/terrain evals (incl. 15° slopes and the start gate).
+    - Order: detector + fault-tolerant gait first (no training), then one overnight run (Option 2 preferred; Option 1 is its student without the teacher).
 
 **AC**
 - Training runs without freezing WSL (RAM stays under budget; numbers logged); resume from checkpoint works.
@@ -142,7 +152,8 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - [ ] Object detection by name (YOLO small or small VLM), trained/run on local GPU, CPU/ONNX fallback; 3D position from depth
   - [x] prep code (2026-11-16, nothing run in Gazebo/GPU): 7 classes, synthetic dataset generator (Gazebo boundingbox_camera → YOLO labels + depth), `vision/train.py`, `vision/eval_detector.py`, `gurdy_core.vision` (decode/NMS/depth geometry/semantic map), `gurdy_perception` detector node (markers + JSON semantic map), `semantic_lab` world; tests 44 pass. Run commands: `docs/results/phase4_runbook.md`; license notes: `docs/vision_objects.md`
   - [x] 5-scene render trial 2026-11-16: `set_pose` on the static camera, `/cam/bbox`, shared stamps all OK; labels checked (`vision/check_labels.py`, `docs/results/phase4_trial/`)
-  - [ ] render full dataset (started 2026-11-16), train, evaluate mAP, test in semantic_lab
+  - [x] full dataset `datasets/synth_v1` rendered 2026-11-16: 180 scenes, 0 failed, 2136 images (1499/323/314), 3408 boxes; checked (`docs/results/phase4_dataset.md`)
+  - [ ] train (yolo11n then yolo11s, started 2026-11-16 17:24 UTC, container `gurdy2-train-det`), evaluate mAP, test in semantic_lab
 - [ ] `find_object(name)` / `go_to(object)` behaviours
 - [ ] Gnani Prisma STT + Timbre TTS (key from env var only); offline Whisper fallback
 - [ ] Replies always start with "Main ek AI assistant hoon"

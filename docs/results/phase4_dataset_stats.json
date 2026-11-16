@@ -1,0 +1,103 @@
+{
+ "splits": {
+  "train": {
+   "images": 1499,
+   "empty_label_images": 30,
+   "images_without_label_file": 0,
+   "label_files_without_image": 0,
+   "instances": {
+    "box": 298,
+    "barrel": 362,
+    "fire_extinguisher": 353,
+    "traffic_cone": 354,
+    "toolbox": 299,
+    "mannequin": 373,
+    "chair": 352
+   }
+  },
+  "val": {
+   "images": 323,
+   "empty_label_images": 5,
+   "images_without_label_file": 0,
+   "label_files_without_image": 0,
+   "instances": {
+    "box": 74,
+    "barrel": 45,
+    "fire_extinguisher": 78,
+    "traffic_cone": 89,
+    "toolbox": 93,
+    "mannequin": 48,
+    "chair": 103
+   }
+  },
+  "test": {
+   "images": 314,
+   "empty_label_images": 4,
+   "images_without_label_file": 0,
+   "label_files_without_image": 0,
+   "instances": {
+    "box": 55,
+    "barrel": 94,
+    "fire_extinguisher": 61,
+    "traffic_cone": 90,
+    "toolbox": 46,
+    "mannequin": 74,
+    "chair": 67
+   }
+  }
+ },
+ "image_wh": [
+  320,
+  240
+ ],
+ "boxes": 3408,
+ "invalid_lines": [],
+ "n_invalid_lines": 0,
+ "duplicate_lines": 0,
+ "boxes_touching_border": 1895,
+ "width_px": {
+  "p5": 14.0,
+  "p25": 35.0,
+  "p50": 56.0,
+  "p75": 96.0,
+  "p95": 190.0
+ },
+ "height_px": {
+  "p5": 25.0,
+  "p25": 56.0,
+  "p50": 86.0,
+  "p75": 122.0,
+  "p95": 197.0
+ },
+ "sqrt_area_px": {
+  "p5": 22.0,
+  "p25": 43.9,
+  "p50": 67.5,
+  "p75": 103.7,
+  "p95": 185.5
+ },
+ "min_side_px": {
+  "min": 6.0,
+  "lt_4px": 0,
+  "lt_8px": 40,
+  "lt_16px": 246
+ },
+ "area_fraction_gt_50pct": 131,
+ "boxes_per_image": {
+  "p5": 1.0,
+  "p25": 1.0,
+  "p50": 1.0,
+  "p75": 2.0,
+  "p95": 3.0,
+  "max": 5
+ },
+ "median_height_px_per_class": {
+  "box": 57.0,
+  "barrel": 101.0,
+  "fire_extinguisher": 72.0,
+  "traffic_cone": 91.0,
+  "toolbox": 42.0,
+  "mannequin": 105.0,
+  "chair": 98.5
+ }
+}

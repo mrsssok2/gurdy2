@@ -309,4 +309,8 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
 - 2026-11-16 (render fix): the 0-frame scenes follow the long-lived render process (gz-transport nodes pile up; `set_pose` times out), not the scene or the server; mechanism not established.
   `render` now runs each scene in a fresh worker process + fresh gz server (killed as a process group), retries 3×, aborts at > 5 % failed scenes or 3 in a row, logs in `datasets/synth_v1/logs/`.
   Lesson: for long Gazebo batch jobs, one process per unit of work with a hard timeout; keep the server log.
-
+- 2026-11-16 (dataset + detector training): `datasets/synth_v1` rendered (180 scenes, 0 failed, 2136 images, 3408 boxes) and checked (`vision/dataset_report.py`,
+  `docs/results/phase4_dataset.md`): no invalid labels, 39 empty images (1.8 %), no re-render. 27 % of boxes do not contain a GT centre — truncated/occluded objects
+  (mannequins are mostly legs from the 0.29 m camera), not label errors. Training started 17:24 UTC in container `gurdy2-train-det`: `det_v1_n` (yolo11n) then
+  `det_v1_s` (yolo11s), 300 epochs, patience 50, log `vision/runs/train_det.log`, exports to `models/detector/` (`*.onnx` there is gitignored — decide when selecting).
+  Not evaluated yet (`vision/eval_detector.py` on the test split, then semantic_lab). Check `docker ps` before heavy work. Experiment B v2 is planned in ROADMAP 2.10.

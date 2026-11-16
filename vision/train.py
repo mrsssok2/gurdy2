@@ -18,6 +18,7 @@ ap.add_argument("--data", required=True, help="dataset dir with dataset.yaml (vi
 ap.add_argument("--name", default="det_v1")
 ap.add_argument("--model", default="yolo11n.pt", help="Ultralytics weights/config (downloaded on first use)")
 ap.add_argument("--epochs", type=int, default=60)
+ap.add_argument("--patience", type=int, default=20, help="early stopping: epochs without val improvement")
 ap.add_argument("--imgsz", type=int, default=320)
 ap.add_argument("--batch", type=int, default=32)
 ap.add_argument("--workers", type=int, default=4)
@@ -31,7 +32,7 @@ data = str(Path(a.data).resolve() / "dataset.yaml")
 runs = Path("vision/runs").resolve()
 if not a.export_only:
     YOLO(a.model).train(data=data, epochs=a.epochs, imgsz=a.imgsz, batch=a.batch, device=a.device, workers=a.workers,
-                        project=str(runs), name=a.name, exist_ok=True, patience=20, cos_lr=True, close_mosaic=10,
+                        project=str(runs), name=a.name, exist_ok=True, patience=a.patience, cos_lr=True, close_mosaic=10,
                         fliplr=0.5, flipud=0.0, hsv_h=0.02, hsv_s=0.5, hsv_v=0.4, degrees=0.0, amp=True, plots=True, seed=0)
 best = runs / a.name / "weights" / "best.pt"
 onnx = YOLO(str(best)).export(format="onnx", imgsz=[256, 320], opset=12, simplify=True, dynamic=False, half=False)
