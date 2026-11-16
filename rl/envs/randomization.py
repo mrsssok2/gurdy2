@@ -25,7 +25,13 @@ DEFAULTS = {
     "kp_scale": [0.9, 1.1],
     "damping_scale": [0.8, 1.2],
     "joint_friction": [0.0, 0.04],       # N·m (nominal from robot.yaml, 0.02)
-    "latency_substeps": [0, 5],          # 2 ms substeps (0-10 ms)
+    "latency_substeps": [0, 5],          # 2 ms substeps (0-10 ms); step 2.9b: [0, 10] (0-20 ms)
+    # step 2.9b (sim-to-sim gap): per-joint constant offset added to the joint TARGETS sent to the PD (hidden from the
+    # policy and the critic; mimics Gazebo's different stance sag), amplitude per joint type (rad), 0 = off
+    "target_offset": {"hip_yaw": 0.0, "hip_pitch": 0.0, "knee": 0.0},
+    # contact softness of feet + ground: MuJoCo solref (timeconst s, dampratio); nominal = model defaults
+    "contact_timeconst": None,           # [lo, hi] or None (off)
+    "contact_dampratio": None,
     "noise": {"gyro": 0.05, "gravity": 0.02, "joint_pos": 0.005, "joint_vel": 0.1},
     "push": {"interval_s": [5.0, 8.0], "speed": [0.1, 0.2]},
     "leg_failure_prob": 0.0,             # Experiment B (not used in 2.7)
@@ -40,6 +46,7 @@ class DomainRandomizer:
         c = {**DEFAULTS, **(cfg or {})}
         c["noise"] = {**DEFAULTS["noise"], **(cfg or {}).get("noise", {})}
         c["push"] = {**DEFAULTS["push"], **(cfg or {}).get("push", {})}
+        c["target_offset"] = {**DEFAULTS["target_offset"], **(cfg or {}).get("target_offset", {})}
         self.cfg = c
         self.m = model
         self.foot_geoms, self.floor_geom = np.asarray(foot_geoms), floor_geom
@@ -56,6 +63,9 @@ class DomainRandomizer:
         self.biasprm0 = model.actuator_biasprm.copy()
         self.damping0 = model.dof_damping.copy()
         self.frictionloss0 = model.dof_frictionloss.copy()
+        self.solref0 = model.geom_solref.copy()
+        self.n_joint = len(self.vadr)
+        self.offset_amp = np.tile([c['target_offset'][k] for k in ('hip_yaw', 'hip_pitch', 'knee')], self.n_joint // 3)
         self.params = self.nominal()
 
     # ------------------------------------------------------------------ sampling
@@ -64,10 +74,12 @@ class DomainRandomizer:
                 "payload_offset": np.zeros(2), "link_mass_scale": np.ones(len(self.legs)),
                 "effort_scale": 1.0, "kp_scale": 1.0, "damping_scale": 1.0,
                 "joint_friction": self.nom_jfric, "latency_substeps": 0, "noise_scale": 0.0,
-                "push": False, "push_scale": 0.0, "leg_failure": -1}
+                "push": False, "push_scale": 0.0, "leg_failure": -1,
+                "target_offset": np.zeros(self.n_joint), "contact_timeconst": float(self.solref0[self.floor_geom, 0]),
+                "contact_dampratio": float(self.solref0[self.floor_geom, 1])}
 
     def _range(self, key, nominal, scale, rng):
-        lo, hi = self.cfg[key]
+        lo, hi = self.cfg[key] if isinstance(self.cfg[key], (list, tuple)) else (nominal, nominal)
         return rng.uniform(nominal + scale * (lo - nominal), nominal + scale * (hi - nominal))
 
     def sample(self, rng, scale: float, fixed: dict | None = None) -> dict:
@@ -85,13 +97,17 @@ class DomainRandomizer:
             p["joint_friction"] = self._range("joint_friction", self.nom_jfric, scale, rng)
             lat_hi = int(round(scale * self.cfg["latency_substeps"][1]))
             p["latency_substeps"] = int(rng.integers(self.cfg["latency_substeps"][0], lat_hi + 1))
+            p["target_offset"] = rng.uniform(-1, 1, self.n_joint) * self.offset_amp * scale
+            for k, i in (("contact_timeconst", 0), ("contact_dampratio", 1)):
+                if self.cfg[k] is not None:
+                    p[k] = self._range(k, float(self.solref0[self.floor_geom, i]), scale, rng)
             p["noise_scale"] = scale
             p["push"] = True
             p["push_scale"] = scale
             if rng.random() < self.cfg["leg_failure_prob"]:
                 p["leg_failure"] = int(rng.integers(0, 6))
         for k, v in (fixed or {}).items():
-            p[k] = np.asarray(v, dtype=float) if k == "payload_offset" else v
+            p[k] = np.asarray(v, dtype=float) if k in ("payload_offset", "target_offset") else v
         if (fixed or {}).get("push") and "push_scale" not in fixed:
             p["push_scale"] = 1.0
         self.params = p
@@ -103,6 +119,9 @@ class DomainRandomizer:
         m.geom_friction[:] = self.geom_friction0
         for g in list(self.foot_geoms) + [self.floor_geom]:
             m.geom_friction[g, 0] = p["friction"]
+        m.geom_solref[:] = self.solref0
+        for g in list(self.foot_geoms) + [self.floor_geom]:
+            m.geom_solref[g] = (p["contact_timeconst"], p["contact_dampratio"])
         m.body_mass[:] = self.body_mass0
         m.body_inertia[:] = self.body_inertia0
         m.body_ipos[:] = self.body_ipos0

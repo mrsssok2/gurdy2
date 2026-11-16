@@ -1,0 +1,17 @@
+# Step 2.9b: close the Gazebo sim-to-sim gap. Fine-tune from terrain_v1 60M (ppo_latest) with wider DR:
+#   - latency 0-20 ms (was 0-10): Gazebo loop latency measured 3-8 ms; the policy loses speed with delay
+#   - per-joint constant offsets on the PD targets (hip_yaw 0.02 / hip_pitch 0.06 / knee 0.08 rad): Gazebo legs sag
+#     45-95 mrad differently from MuJoCo when the stance is asymmetric
+#   - foot/ground contact softness: solref timeconst 0.01-0.04 s (nominal 0.02), dampratio 0.8-1.5 (nominal 1.0)
+# Everything else (reward, terrain curriculum, command mix, PPO) as terrain_v1. Observations unchanged -> loads as is.
+# Start: see README "RL training" / docs/results/phase2_9b_plan.md
+_base: terrain.yaml
+env:
+  domain_randomization:
+    latency_substeps: [0, 10]
+    target_offset: {hip_yaw: 0.02, hip_pitch: 0.06, knee: 0.08}
+    contact_timeconst: [0.01, 0.04]
+    contact_dampratio: [0.8, 1.5]
+training:
+  total_timesteps: 15000000
+  critic_warmup_steps: 0            # actor + critic continue from terrain_v1 (privileged latency range grows, critic adapts)

@@ -154,3 +154,49 @@ def test_transfer_from_flat_preserves_actor_and_critic():
         assert torch.allclose(asym.policy.get_distribution(obs).distribution.mean,
                               flat.policy.get_distribution(x).distribution.mean, atol=1e-6)
         assert torch.allclose(asym.policy.predict_values(obs), flat.policy.predict_values(x), atol=1e-6)
+
+
+# ---------------------------------------------------------------- step 2.9b: sim-to-sim gap randomisation
+GAP_DR = {"enabled": True, "latency_substeps": [0, 10], "target_offset": {"hip_yaw": 0.02, "hip_pitch": 0.06, "knee": 0.08},
+          "contact_timeconst": [0.01, 0.04], "contact_dampratio": [0.8, 1.5]}
+
+
+def test_gap_dr_off_by_default_is_nominal():
+    e = env_with({"enabled": True})
+    e.dr_scale = 1.0
+    _, info = e.reset(seed=1)
+    assert np.all(info["dr"]["target_offset"] == 0.0)
+    assert np.allclose(e.model.geom_solref[e.foot_geoms], e.dr.solref0[e.foot_geoms])
+
+
+def test_gap_dr_sampled_in_range_and_applied_to_targets():
+    e = env_with(GAP_DR)
+    e.dr_scale = 1.0
+    seen_lat, tcs = set(), []
+    for s in range(60):
+        _, info = e.reset(seed=s)
+        p = info["dr"]
+        off = p["target_offset"].reshape(6, 3)
+        assert np.all(np.abs(off[:, 0]) <= 0.02) and np.all(np.abs(off[:, 1]) <= 0.06) and np.all(np.abs(off[:, 2]) <= 0.08)
+        assert 0.01 <= p["contact_timeconst"] <= 0.04 and 0.8 <= p["contact_dampratio"] <= 1.5
+        assert np.allclose(e.model.geom_solref[e.foot_geoms], [[p["contact_timeconst"], p["contact_dampratio"]]] * 6)
+        seen_lat.add(p["latency_substeps"])
+        tcs.append(p["contact_timeconst"])
+    assert max(seen_lat) == 10 and min(tcs) < 0.015 and max(tcs) > 0.035
+    e.dr_scale = 1.0
+    e.reset(seed=3, options={"command": [0.1, 0, 0]})
+    e.step(np.zeros(18, np.float32))
+    exp = np.clip(e.q_ref + e.dr.params["target_offset"], e.q_lo, e.q_hi)
+    assert np.allclose(e.data.ctrl, exp)                  # zero latency or held: after the step the offset target is applied
+    assert np.all(e.data.ctrl >= e.q_lo - 1e-12) and np.all(e.data.ctrl <= e.q_hi + 1e-12)
+
+
+def test_gap_dr_fixed_scenario_and_scale_zero():
+    off = np.full(18, 0.03)
+    e = env_with(GAP_DR, fixed={"target_offset": off, "contact_timeconst": 0.04, "latency_substeps": 10})
+    _, info = e.reset(seed=0)
+    assert np.allclose(info["dr"]["target_offset"], off) and info["dr"]["latency_substeps"] == 10
+    e2 = env_with(GAP_DR)
+    e2.dr_scale = 0.0
+    _, info = e2.reset(seed=0)
+    assert np.all(info["dr"]["target_offset"] == 0) and np.allclose(e2.model.geom_solref[e2.foot_geoms], e2.dr.solref0[e2.foot_geoms])

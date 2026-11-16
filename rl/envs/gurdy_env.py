@@ -309,6 +309,7 @@ class GurdyEnv(gym.Env):
         self.q_ref = self.mapper(action)               # clip, EMA filter (gurdy_core), joint targets
         a = self.mapper.a_filt                         # filtered action = what the policy observes next
         cmd = self.command.copy()                      # command this step was taken under
+        q_cmd = np.clip(self.q_ref + self.dr.params["target_offset"], self.q_lo, self.q_hi)   # DR: PD-side offset
         lat = int(self.dr.params["latency_substeps"])  # previous targets held for `lat` substeps
         energy = 0.0
         sub = []
@@ -316,7 +317,7 @@ class GurdyEnv(gym.Env):
             dt = self.model.opt.timestep
             for k in range(self.n_sub):
                 if k == lat:
-                    d.ctrl[:] = self.q_ref
+                    d.ctrl[:] = q_cmd
                 mujoco.mj_step(self.model, d)
                 energy += float(np.sum(np.abs(d.actuator_force * d.qvel[self.vadr]))) * dt
                 if self.cfg["record_substeps"]:
@@ -324,7 +325,7 @@ class GurdyEnv(gym.Env):
         else:
             if lat:
                 mujoco.mj_step(self.model, d, nstep=lat)
-            d.ctrl[:] = self.q_ref
+            d.ctrl[:] = q_cmd
             mujoco.mj_step(self.model, d, nstep=self.n_sub - lat)
         self.steps += 1
         if self.dr.params["push"] and self.steps >= self.next_push:   # random push (velocity kick)

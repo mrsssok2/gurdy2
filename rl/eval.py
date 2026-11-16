@@ -51,6 +51,10 @@ SCENARIOS = {
               "link_mass_scale": [1.1] * 18},
     "weak_motors": {"effort_scale": 0.85, "kp_scale": 0.9},
     "latency_10ms": {"latency_substeps": 5},
+    # step 2.9b (Gazebo-gap scenarios; also in the gate below when named explicitly)
+    "latency_20ms": {"latency_substeps": 10},
+    "target_offset": {"target_offset": [0.0, 0.06, 0.08] * 6},
+    "soft_contact": {"contact_timeconst": 0.04, "contact_dampratio": 1.5},
     "sensor_noise": {"noise_scale": 1.0},
     "pushes": {"push": True},
     "all_extremes": {"friction": 0.5, "body_mass_scale": 1.15, "payload_kg": 0.3, "payload_offset": [0.02, 0.02],
