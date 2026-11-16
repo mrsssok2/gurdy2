@@ -244,7 +244,8 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   controller:=policy`; needs `sensors:=true`; ROS image needs rebuild for onnxruntime). Tests: ONNX==torch 3e-7,
   controller==env obs, node tests. MuJoCo deployment-path tracking 2–9 %. Gazebo commands:
   `docs/results/phase2_deploy_gazebo_test.md`.
-- Next: evaluate terrain_v1 (flat no-regression vs ft-6M, terrain grid, start gate); optional 2.6 MJX;
+- terrain_v1 evaluated (2026-11-16, `docs/results/phase2_terrain.md`): selected **60M** (`models/terrain_v1_60M.onnx`): slopes 100 % to 12° (ft-6M 43 %), CoT 5.76, small-walking starts fixed; flat tracking 11.2 % vs 9.2 %; start gate still FAIL 40/144 (small from rest). policy_node default model still ft-6M.
+- (old) Next: evaluate terrain_v1 (flat no-regression vs ft-6M, terrain grid, start gate); optional 2.6 MJX;
   C1 overnight run for Experiment B still to be planned.
 - Phase 3 code written (2026-11-15, nothing run in Gazebo; terrain_v1 was training): lidar in robot.yaml/URDF
   (`lidar:=true`, nav profile only), `flat_lab` world (`scripts/gen_world_flat_lab.py`), ROS package

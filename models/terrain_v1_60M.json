@@ -1,0 +1,78 @@
+{
+  "format_version": 1,
+  "exported": "2026-11-16 02:53:22",
+  "checkpoint": "rl/runs/terrain_v1/checkpoints/ppo_latest.zip",
+  "run_config": "rl/runs/terrain_v1/config.yaml",
+  "onnx_sha256": "2a9892511c468eba9582af947f2fd547fb21ffe5f20aa37852ee12fa067b0d5b",
+  "input": {
+    "name": "obs",
+    "shape": [
+      1,
+      195
+    ],
+    "dtype": "float32"
+  },
+  "output": {
+    "name": "action_mean",
+    "shape": [
+      1,
+      18
+    ],
+    "dtype": "float32",
+    "note": "deterministic mean, unclipped; ActionMapper clips to [-1, 1]"
+  },
+  "obs": {
+    "history": 3,
+    "frame_layout": [
+      [
+        "gravity",
+        3
+      ],
+      [
+        "gyro",
+        3
+      ],
+      [
+        "joint_pos",
+        18
+      ],
+      [
+        "joint_vel",
+        18
+      ],
+      [
+        "prev_action",
+        18
+      ],
+      [
+        "command",
+        3
+      ],
+      [
+        "clock",
+        2
+      ]
+    ],
+    "oldest_first": true,
+    "source": "gurdy_core.rl_obs",
+    "normalisation": "VecNormalize mean/std/clip baked into the graph (raw obs in)",
+    "obs_clip": 10.0,
+    "obs_epsilon": 1e-08
+  },
+  "policy_rate_hz": 50.0,
+  "clock_period_s": 0.8,
+  "action_scale": {
+    "hip_pitch": 0.7,
+    "hip_yaw": 0.3,
+    "knee": 0.6
+  },
+  "action_filter_alpha": 0.5,
+  "action_mapping": "q_ref = clip(q_stance + scale * a_filt, limits); a_filt = alpha*clip(a,-1,1) + (1-alpha)*a_filt_prev (gurdy_core.rl_action)",
+  "command_deadband": {
+    "linear_m_s": 0.015,
+    "angular_rad_s": 0.05,
+    "source": "gurdy_core.rl_command"
+  },
+  "trained_with_deadband": true,
+  "parity_fixture": "terrain_v1_60M_parity.npz"
+}
