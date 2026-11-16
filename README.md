@@ -5,29 +5,36 @@ mission planner, an RL gait for rough terrain, mapping + navigation, object find
 robot-ops system that clusters failures into incidents and diagnoses root causes.
 ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL2). License: MIT.
 
-**Status (2026-11-16):** Phase 1 (robot + ROS 2 base) complete; Phase 2 (RL locomotion) trained and
-evaluated in MuJoCo, Gazebo transfer partly working (gap being closed); Phase 3 (mapping + navigation)
-mapping works, Nav2 and EKF odometry still being fixed. See [ROADMAP.md](ROADMAP.md) and
-[docs/results/](docs/results/).
+**Demo (75 s):** [docs/videos/gurdy2_demo.mp4](docs/videos/gurdy2_demo.mp4) — tripod gait vs the RL policy on a 12° slope and 4 cm steps
+(MuJoCo), then autonomous exploration of a lab from an empty map (Gazebo + Nav2 + slam_toolbox).
 
-## Results so far (all measured; MuJoCo unless stated)
+![map from autonomous exploration](docs/results/phase3_explore_gt_map.png)
 
-| | tripod gait | `flat_bc_v1` | `dr_energy_ft` 6M | `terrain_v1` 60M (current) |
-|---|---|---|---|---|
-| flat velocity-tracking error, nominal | 15.9 % | 4.9 % | 9.2 % | 11.2 % |
-| cost of transport (protocol) | 7.35 | 18.3 | 7.34 | **5.76** |
-| tracking error, all DR extremes / falls | 13.8 % / 0 % | 35.1 % / 0 % | 10.3 % / 0 % | 14.2 % / 0 % |
-| terrain success: rough 4 cm / slope 12° / steps 3-4-5 cm | 100 / 100 / 83-57-43 % | n/a | 100 / 43 / 97-77-43 % | 100 / **100** / 93-80-53 % |
-| Gazebo sim-to-sim (0 falls in all) | gap 3-11 pts | not tested | stalls on 4 of 7 segments | within ±25 %, gap to MuJoCo up to 22 pts |
+**Status (2026-11-16):** Phases 0–3 done (robot + ROS 2 base, RL locomotion, mapping + navigation + exploration). Experiment B (leg-failure
+adaptation) is training. Phases 4–9 not started. See [ROADMAP.md](ROADMAP.md) and [docs/results/](docs/results/).
 
-| Phase 3 mapping (Gazebo, lidar + slam_toolbox, ground-truth odometry, 38 m route through both rooms) | mean map error | p95 |
+## Results (all measured; MuJoCo unless stated)
+
+**Phase 2 — locomotion.** Selected policy: `terrain_dr2` 15M. Terrain: 30 episodes per cell, success = no fall and tracking error < 50 %
+([Experiment A](docs/results/exp_A_terrain.md)).
+
+| | tripod gait | `flat_bc_v1` | `dr_energy_ft` 6M | `terrain_v1` 60M | `terrain_dr2` 15M (selected) |
+|---|---|---|---|---|---|
+| flat tracking error, nominal | 15.9 % | 4.9 % | 9.2 % | 11.2 % | 10.6 % |
+| cost of transport (protocol) | 7.35 | 18.3 | 7.34 | 5.76 | 5.77 |
+| tracking error, all DR extremes / falls | 13.8 % / 0 % | 35.1 % / 0 % | 10.3 % / 0 % | 14.2 % / 0 % | 11.2 % / 0 % |
+| success: rough 4 cm | 100 % | n/a | 100 % | 100 % | 100 % |
+| success: slope 12° / 15° | 100 / 100 % | n/a | 43 / 33 % | 100 / 93 % | 93 / 97 % |
+| success: steps 3 / 4 / 5 cm | 83 / 57 / 43 % | n/a | 97 / 77 / 43 % | 93 / 80 / 53 % | 100 / 83 / 63 % |
+| Gazebo, worst single-axis gap to MuJoCo | 3–11 pts | not tested | stalls on 4 of 7 segments | 24 pts | 14 pts (combined segment: 31) |
+
+The tripod does not fall on slopes up to 15°; the RL gain there is tracking accuracy (12–18 % vs 17–25 %) and, on steps ≥ 3 cm, success rate.
+
+**Phase 3 — mapping, navigation, exploration (Gazebo).**
+
+| | tripod gait | `terrain_v1` policy |
 |---|---|---|
-| tripod gait | **2.4 cm** | 6.4 cm |
-| `terrain_v1` policy | **3.1 cm** | 12.3 cm |
-
-| tripod gait map | policy map |
-|---|---|
-| ![map tripod](docs/results/phase3_map_tripod_gt.png) | ![map policy](docs/results/phase3_map_policy_gt.png) |
+| mapping, ground-truth odom, 38 m route: mean map error / p95 | **2.4 cm** / 6.4 cm | **3.1 cm** / 12.3 cm |
 
 Autonomous exploration from an empty map (frontier explorer + slam_toolbox + Nav2, policy `terrain_dr2`, then back to the start;
 [details](docs/results/phase3_explore.md)):
@@ -38,23 +45,27 @@ Autonomous exploration from an empty map (frontier explorer + slam_toolbox + Nav
 | sim time to finish exploring (+ return) / distance | 345 s (465 s) / 43.8 m | 468 s (510 s) / 47.4 m |
 | failed goals / recoveries / stuck events / ends at start | 0 / 0 / 0 / 0.12 m | 1 / 12 / 0 / 0.06 m |
 
-![exploration](docs/results/phase3_explore_gt_map.png)
-
+Nav2 with the policy: 5/5 goals on a saved map ([details](docs/results/phase3_selfhit_and_minspeed.md)).
 Time-lapse: [GIF](docs/results/phase3_explore_gt_timelapse.gif) · [MP4](docs/results/phase3_explore_gt_timelapse.mp4).
 
-Black = map, red = true world outline, blue = path. Video: [tripod vs flat vs DR policy](docs/videos/phase2_3way_tripod_flat_dr.mp4).
-Details: [flat](docs/results/phase2_flat.md) · [DR](docs/results/phase2_dr.md) · [terrain](docs/results/phase2_terrain.md) ·
-[Gazebo transfer](docs/results/phase2_deploy_gazebo.md) · [Phase 3 mapping/Nav2](docs/results/phase3_gazebo_results.md).
+| tripod gait map | policy map |
+|---|---|
+| ![map tripod](docs/results/phase3_map_tripod_gt.png) | ![map policy](docs/results/phase3_map_policy_gt.png) |
 
-## Known limitations / in progress
-- **Small commands from rest:** `terrain_v1` stands still for |v| ≈ 0.03 m/s from rest (start gate 40/144). Handled at deployment: Nav2 commands
-  below 0.09 m/s / 0.23 rad/s are lifted to that minimum; direct teleop of tiny speeds still stands.
-- **Sim-to-sim gap:** in Gazebo the policy loses up to 22 points of tracking vs MuJoCo (latency + stance-load/contact differences).
-  Fine-tune `terrain_dr2` (wider randomisation) is training now; success target is ≤ 10 points.
-- **Nav2 + policy:** 5/5 goals on a saved map and full autonomous exploration work in Gazebo with ground-truth or EKF odometry (single runs, no
-  variance yet). EKF mode had a hidden bug until 2026-11-16 (MPPI read a non-existent `/odom` and stalled), now fixed. One start-up flake is known
-  (Nav2 lifecycle bring-up occasionally hangs); the run scripts detect it and restart the stack ([details](docs/results/phase3_explore.md)).
-- Gazebo RTF drops to ~0.35–0.5 with slam_toolbox + Nav2 + policy running; results are in sim time.
+Details: [flat](docs/results/phase2_flat.md) · [DR](docs/results/phase2_dr.md) · [terrain](docs/results/phase2_terrain.md) ·
+[Gazebo transfer](docs/results/phase2_deploy_gazebo.md) · [Phase 3 mapping/Nav2](docs/results/phase3_gazebo_results.md) ·
+[3-way video](docs/videos/phase2_3way_tripod_flat_dr.mp4).
+
+## Known limitations
+- **Small commands from rest:** the policies stand still for |v| ≈ 0.03 m/s from rest (`terrain_dr2` start gate: 65/144 fail). Handled at deployment:
+  Nav2 commands below 0.09 m/s / 0.23 rad/s are *lifted* to that minimum (smaller values fail the start check); direct teleop of tiny speeds still stands.
+- **Sim-to-sim gap:** in Gazebo the policy's tracking differs from MuJoCo by up to 14 points on single axes (target ≤ 10 not met) and 31 on the
+  combined segment (MuJoCo overshoots there). 0 falls in Gazebo.
+- **Single runs:** Nav2 (5 goals) and exploration were run once per odometry source (ground truth, EKF), in one world (`flat_lab`); no variance
+  estimates. EKF vs ground-truth differences (468 vs 345 s, one goal timeout) are not statistically meaningful. Terrain results are n = 30 per cell.
+- Steps ≥ 4 cm still fail 17–37 % of episodes for every controller; Nav2 start-up occasionally hangs (detected and restarted by the run scripts).
+- Gazebo RTF drops to ~0.35–0.5 with slam_toolbox + Nav2 + policy running; results are in sim time. The demo video has no Nav2 goal clip
+  (no recording exists), only exploration.
 - Phases 4–9 (perception, voice, LLM, ops, web, air-ground) are not started.
 
 ## Quick start (Phase 1 demo)

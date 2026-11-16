@@ -106,6 +106,10 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
   + stance-load/contact differences diagnosed; decision pending on closing the gap. Was: re-export with terrain_v1
 - [ ] **2.10** Experiment A (rough terrain, RL vs tripod, MuJoCo + Gazebo) and Experiment B (one leg
   disabled) — AC: results tables in `docs/results/`
+  - Experiment A: MuJoCo part written (`docs/results/exp_A_terrain.md`, from existing evals): RL beats the tripod on steps >= 3 cm and in tracking error everywhere;
+    the tripod does NOT fall or fail on slopes <= 15 deg (so "RL success > tripod" holds only on steps). Gazebo part not done.
+  - Experiment B: leg failure (limp/locked, random leg + time, actor blind, critic told) built + smoke-tested 2026-11-16; training `leg_failure` started, eval plan
+    in `docs/results/exp_B_leg_failure.md` (run after training)
 
 **AC**
 - Training runs without freezing WSL (RAM stays under budget; numbers logged); resume from checkpoint works.

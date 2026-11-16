@@ -141,6 +141,8 @@ def main():
     ap.add_argument("--init-from", help="start a NEW run from these weights (e.g. BC checkpoint ppo_bc.zip)")
     ap.add_argument("--transfer-from", help="start a NEW asymmetric run from a FLAT checkpoint "
                                             "(actor + critic + VecNormalize['policy'] copied)")
+    ap.add_argument("--extend-from", help="start a NEW asymmetric run from an asymmetric checkpoint whose critic "
+                                          "has fewer privileged inputs (Experiment B: +8 failure values)")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
 
@@ -180,6 +182,25 @@ def main():
         warmup = int(tc.get("critic_warmup_steps", 0))
         print(f"[train] new asymmetric run transferred from {a.transfer_from}; critic warm-up {warmup} steps",
               flush=True)
+    elif a.extend_from:
+        import pickle
+        from policies import extend_privileged
+        old = PPO.load(a.extend_from, device="cpu")
+        with open(vecnorm_for(a.extend_from), "rb") as f:
+            old_vn = pickle.load(f)
+        venv = VecNormalize(venv, norm_obs=pc["normalize_obs"], norm_reward=pc["normalize_reward"],
+                            clip_obs=10.0, gamma=pc["gamma"])
+        venv.obs_rms["policy"] = old_vn.obs_rms["policy"]          # actor inputs normalised identically
+        n_old = old_vn.obs_rms["privileged"].mean.shape[0]
+        for k in ("mean", "var"):                                  # old privileged stats kept, new ones start at 0 / 1
+            getattr(venv.obs_rms["privileged"], k)[:n_old] = getattr(old_vn.obs_rms["privileged"], k)
+        venv.obs_rms["privileged"].count = old_vn.obs_rms["privileged"].count
+        venv.ret_rms = old_vn.ret_rms
+        model = make_model(cfg, venv, run, a.seed)
+        extend_privileged(model.policy, old.policy)
+        warmup = int(tc.get("critic_warmup_steps", 0))
+        print(f"[train] new run extended from {a.extend_from} (privileged {n_old} -> "
+              f"{venv.obs_rms['privileged'].mean.shape[0]}); critic warm-up {warmup} steps", flush=True)
     elif a.init_from:
         venv = VecNormalize.load(vecnorm_for(a.init_from), venv)
         venv.training = True

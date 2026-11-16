@@ -94,3 +94,26 @@ def transfer_from_flat(asym: AsymmetricActorCriticPolicy, flat: ActorCriticPolic
             else:
                 la.load_state_dict(lf.state_dict())
     asym.value_net.load_state_dict(flat.value_net.state_dict())
+
+
+@torch.no_grad()
+def extend_privileged(new: AsymmetricActorCriticPolicy, old: AsymmetricActorCriticPolicy) -> None:
+    """Experiment B: copy an asymmetric policy whose critic input is narrower (fewer privileged values).
+
+    Actor and log_std identical; critic first layer keeps the old columns, new privileged columns start at 0,
+    so the new critic predicts exactly what the old one did until it learns to use the extra inputs."""
+    new.mlp_extractor.policy_net.load_state_dict(old.mlp_extractor.policy_net.state_dict())
+    new.action_net.load_state_dict(old.action_net.state_dict())
+    new.log_std.copy_(old.log_std)
+    first = True
+    for ln, lo in zip(new.mlp_extractor.value_net, old.mlp_extractor.value_net):
+        if not isinstance(lo, nn.Linear):
+            continue
+        if first:
+            ln.weight.zero_()
+            ln.weight[:, :lo.in_features] = lo.weight
+            ln.bias.copy_(lo.bias)
+            first = False
+        else:
+            ln.load_state_dict(lo.state_dict())
+    new.value_net.load_state_dict(old.value_net.state_dict())

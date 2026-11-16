@@ -288,3 +288,8 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   (2) Nav2 start-up flake = lost lifecycle `change_state` response, lifecycle_manager hangs forever → `scripts/wait_nav_ready.py` + `scripts/lib_nav_start.sh` (wait for 3 action servers + TF, restart stack ≤ 3×;
   restart path not yet exercised). Planner clearance for goals 0.40 m (Nav2 inflation 0.55). Gotcha: `rclpy.Node` has a read-only `handle` attribute; `pkill -f` patterns match your own shell's command line (use `[x]` tricks or scripts).
   Open: single runs only (no variance), one world; the EKF map-distortion question is now less likely a leg-odometry problem (the EKF exploration map is as good as the GT one).
+- 2026-11-16 (demo + experiments): demo video `docs/videos/gurdy2_demo.mp4` (68 s; `rl/tools/make_demo_video.py`; the slope demo seed is the first where the policy
+  does not fall, eval success 93 % at 12°; no Nav2 goal clip exists), README rewritten (Phase 2+3 table, honest limitations), Experiment A MuJoCo write-up
+  `docs/results/exp_A_terrain.md` (tripod never fails on slopes <= 15°; RL wins on steps >= 3 cm + tracking). Experiment B: leg-failure env (limp/locked, random leg/time, actor blind,
+  critic +8 privileged), `rl/configs/leg_failure.yaml`, `train.py --extend-from`, `rl/eval_failure.py`, plan `docs/results/exp_B_leg_failure.md`; run `leg_failure` (30M steps,
+  ~2.2k steps/s ≈ 3.9 h) started 2026-11-16 11:50 UTC. Eval after training (plan in the doc); do not run Gazebo or anything heavy meanwhile.

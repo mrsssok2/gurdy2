@@ -39,7 +39,7 @@ from sim_mujoco.mjcf import build_mjcf
 
 from . import reward as R
 from . import terrain as T
-from .randomization import PRIVILEGED_DIM, DomainRandomizer
+from .randomization import FAILURE_PRIV_DIM, PRIVILEGED_DIM, DomainRandomizer
 
 DEFAULTS = {
     "episode_s": 20.0,
@@ -60,6 +60,7 @@ DEFAULTS = {
     "record_substeps": False,       # eval: info["substeps"] = (qdot, tau, qpos) at every 2 ms substep
     "obs_mode": "flat",             # "flat": Box(195) | "asym": Dict(policy 195, privileged 17)
     "domain_randomization": {},     # see envs/randomization.py DEFAULTS (enabled false = nominal)
+    "failure_privileged": False,    # Experiment B: critic obs gets +8 values (failed leg one-hot, limp/locked flag)
     "dr_fixed": None,               # eval scenario: fixed DR values (e.g. {"friction": 0.5})
 }
 
@@ -124,9 +125,10 @@ class GurdyEnv(gym.Env):
 
         self.action_space = gym.spaces.Box(-1.0, 1.0, (len(r.joint_names),), np.float32)
         box = gym.spaces.Box(-np.inf, np.inf, (OBS_DIM,), np.float32)
+        self.priv_dim = PRIVILEGED_DIM + (FAILURE_PRIV_DIM if self.cfg["failure_privileged"] else 0)
         if self.cfg["obs_mode"] == "asym":
             self.observation_space = gym.spaces.Dict({
-                "policy": box, "privileged": gym.spaces.Box(-np.inf, np.inf, (PRIVILEGED_DIM,), np.float32)})
+                "policy": box, "privileged": gym.spaces.Box(-np.inf, np.inf, (self.priv_dim,), np.float32)})
         else:
             self.observation_space = box
         self.hist = ObsHistory()
@@ -190,7 +192,10 @@ class GurdyEnv(gym.Env):
                            phase=(self.steps * self.policy_dt / self.clock_period) % 1.0)
 
     def _privileged(self, v_body, contact) -> np.ndarray:
-        return np.concatenate([v_body, self.data.qvel[3:6], contact.astype(float), self.dr.privileged()])
+        priv = [v_body, self.data.qvel[3:6], contact.astype(float), self.dr.privileged()]
+        if self.cfg["failure_privileged"]:
+            priv.append(self.dr.failure_privileged(self.leg_failed))
+        return np.concatenate(priv)
 
     def _obs(self, policy_obs, v_body, contact):
         if self.cfg["obs_mode"] != "asym":
@@ -259,6 +264,19 @@ class GurdyEnv(gym.Env):
         else:
             self.heights = None
 
+    def _maybe_fail_leg(self) -> None:
+        """Experiment B: at the sampled step the chosen leg goes limp (zero torque) or locked (target frozen)."""
+        p = self.dr.params
+        if p["leg_failure"] < 0 or self.leg_failed or self.steps < p["failure_step"]:
+            return
+        self.leg_failed = True
+        sl = self.dr.leg_slice()
+        if p["failure_type"] == "limp":
+            self.dr.fail_limp()
+        else:
+            self.q_lock = self.data.qpos[self.qadr][sl].copy()
+            self.data.ctrl[sl] = self.q_lock
+
     def _fallen(self) -> bool:
         d = self.data
         g = gravity_in_body(d.qpos[3:7])
@@ -288,6 +306,7 @@ class GurdyEnv(gym.Env):
         self.prev_action = np.zeros(self.action_space.shape[0])
         self.prev_action2 = np.zeros(self.action_space.shape[0])
         self.mapper.reset()
+        self.leg_failed, self.q_lock = False, None       # Experiment B: failure state of this episode
         self._schedule_push()
         self.q_ref = self.q_stance.copy()
         self.qd_prev = d.qvel[self.vadr].copy()
@@ -309,7 +328,10 @@ class GurdyEnv(gym.Env):
         self.q_ref = self.mapper(action)               # clip, EMA filter (gurdy_core), joint targets
         a = self.mapper.a_filt                         # filtered action = what the policy observes next
         cmd = self.command.copy()                      # command this step was taken under
+        self._maybe_fail_leg()
         q_cmd = np.clip(self.q_ref + self.dr.params["target_offset"], self.q_lo, self.q_hi)   # DR: PD-side offset
+        if self.q_lock is not None:                    # locked leg: PD target frozen at the failure angles
+            q_cmd[self.dr.leg_slice()] = self.q_lock
         lat = int(self.dr.params["latency_substeps"])  # previous targets held for `lat` substeps
         energy = 0.0
         sub = []
@@ -359,7 +381,7 @@ class GurdyEnv(gym.Env):
                                      / np.linalg.norm(cmd / self.cmd_lim))
             self.ep_err_n += 1
         level_change = 0
-        if (terminated or truncated) and self.curriculum is not None:
+        if (terminated or truncated) and self.curriculum is not None and not self.leg_failed:   # failures must not demote the terrain level
             err = self.ep_err_sum / self.ep_err_n if self.ep_err_n else None
             level_change = self.curriculum.update(self.terrain_type, terminated, err, self.np_random)
         self.prev_action2 = self.prev_action
@@ -372,7 +394,7 @@ class GurdyEnv(gym.Env):
         self.cmd_age = 0 if not np.array_equal(self.command, cmd) else self.cmd_age + 1
         obs = self._obs(self.hist.push(self._frame()), v, contact)
         info = {"terrain": self.terrain_type, "terrain_level": self.terrain_level,
-                "terrain_value": self.terrain_value, "terrain_level_change": level_change, "command": cmd, "body_vel": v, "yaw_rate": float(wz), "body_z": float(d.qpos[2]),
+                "terrain_value": self.terrain_value, "leg_failed": self.leg_failed, "terrain_level_change": level_change, "command": cmd, "body_vel": v, "yaw_rate": float(wz), "body_z": float(d.qpos[2]),
                 "foot_contact": contact, "track_vel": self.track_vel.copy(), "reward_terms": terms,
                 "reward_clipped": clipped, "energy_J": energy, "substeps": sub}
         return obs, reward, terminated, truncated, info

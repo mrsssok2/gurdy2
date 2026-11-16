@@ -98,10 +98,48 @@ def test_push_changes_velocity():
     assert v[9] > v[8] + 0.05                      # kick of 0.1-0.2 m/s at step 10
 
 
-def test_leg_failure_zeroes_that_legs_torque():
-    e = env_with(fixed={"leg_failure": 1})
-    e.reset(seed=0)
+def test_leg_failure_limp_zeroes_that_legs_torque_from_the_failure_step():
+    e = env_with(fixed={"leg_failure": 1, "failure_type": "limp", "failure_step": 5}, obs_mode="asym",
+                 failure_privileged=True)
+    obs, _ = e.reset(seed=0, options={"command": (0.1, 0, 0)})
+    assert np.all(e.model.actuator_forcerange[3:6] != 0)
+    for k in range(10):
+        obs, *_, info = e.step(np.zeros(18))
+        if k < 5:
+            assert not info["leg_failed"] and obs["privileged"][17:].sum() == 0
+    assert info["leg_failed"]
     assert np.all(e.model.actuator_forcerange[3:6] == 0) and np.all(e.model.actuator_forcerange[0:3] != 0)
+    assert np.allclose(np.abs(e.data.actuator_force[3:6]), 0)
+    f = obs["privileged"][17:]
+    assert f.shape == (8,) and f[1] == 1 and f[6] == 1 and f.sum() == 2
+    e.reset(seed=1)                                   # next episode starts healthy again (forcerange restored)
+    assert np.all(e.model.actuator_forcerange[3:6] != 0)
+
+
+def test_leg_failure_locked_holds_the_failure_angles_and_actor_obs_unchanged():
+    e = env_with(fixed={"leg_failure": 2, "failure_type": "locked", "failure_step": 20})
+    e.reset(seed=0, options={"command": (0.1, 0, 0)})
+    for _ in range(19):
+        e.step(np.zeros(18))
+    q0 = e.data.qpos[e.qadr][6:9].copy()
+    for _ in range(40):
+        obs, *_ = e.step(np.random.uniform(-1, 1, 18))
+    assert obs.shape == (195,)                        # actor sees no failure flag
+    assert np.allclose(e.q_lock, e.data.qpos[e.qadr][6:9], atol=0.2) and e.q_lock is not None
+    assert np.allclose(e.data.ctrl[6:9], e.q_lock)
+    assert np.all(np.abs(e.data.qpos[e.qadr][6:9] - q0) < 0.2)
+
+
+def test_failure_sampling_probability_types_and_time():
+    e = env_with({"enabled": True, "leg_failure_prob": 0.5, "failure_time_s": [2.0, 6.0]})
+    ps = []
+    for s in range(200):
+        e.reset(seed=s)
+        ps.append(e.dr.params)
+    failed = [p for p in ps if p["leg_failure"] >= 0]
+    assert 70 < len(failed) < 130
+    assert {p["failure_type"] for p in failed} == {"limp", "locked"} and {p["leg_failure"] for p in failed} == set(range(6))
+    assert all(100 <= p["failure_step"] <= 300 for p in failed)
 
 
 def test_asym_env_check_and_spaces():
@@ -200,3 +238,18 @@ def test_gap_dr_fixed_scenario_and_scale_zero():
     e2.dr_scale = 0.0
     _, info = e2.reset(seed=0)
     assert np.all(info["dr"]["target_offset"] == 0) and np.allclose(e2.model.geom_solref[e2.foot_geoms], e2.dr.solref0[e2.foot_geoms])
+
+
+def test_extend_privileged_keeps_actor_and_critic_values():
+    from policies import extend_privileged
+    mk = lambda **kw: PPO(AsymmetricActorCriticPolicy, DummyVecEnv([lambda: env_with({"enabled": True}, obs_mode="asym", **kw)]),
+                          policy_kwargs=dict(net_arch=dict(pi=[64, 64], vf=[64, 64])), device="cpu", seed=0)
+    old, new = mk(), mk(failure_privileged=True)
+    extend_privileged(new.policy, old.policy)
+    pol = torch.randn(4, 195)
+    po, pn = torch.randn(4, PRIVILEGED_DIM), torch.randn(4, 8)
+    o_old = {"policy": pol, "privileged": po}
+    o_new = {"policy": pol, "privileged": torch.cat([po, pn], 1)}
+    with torch.no_grad():
+        assert torch.allclose(old.policy.get_distribution(o_old).distribution.mean, new.policy.get_distribution(o_new).distribution.mean)
+        assert torch.allclose(old.policy.predict_values(o_old), new.policy.predict_values(o_new), atol=1e-6)

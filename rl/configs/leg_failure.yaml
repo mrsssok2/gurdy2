@@ -1,0 +1,20 @@
+# Experiment B: leg-failure adaptation. Fine-tune terrain_dr2 15M (flat + mild terrain, DR on).
+# In ~50 % of episodes one random leg fails at a random time (1-10 s of 20 s): limp (zero torque) or locked (target frozen).
+# The ACTOR is not told (same 195 proprioceptive inputs; it has to infer the failure from joint/IMU history);
+# the CRITIC gets +8 privileged values (failed-leg one-hot, limp / locked flag) -> `failure_privileged`.
+# Terrain: mild only (flat 35 %, rough <= 2 cm, slopes <= 8 deg, steps <= 2.5 cm); episodes with a failure do not move the terrain curriculum.
+# Start: see docs/results/exp_B_leg_failure.md. Loads terrain_dr2 via --extend-from (critic input 212 -> 220).
+_base: terrain_dr2.yaml
+env:
+  failure_privileged: true
+  domain_randomization:
+    leg_failure_prob: 0.5
+    failure_types: [limp, locked]
+    failure_time_s: [1.0, 10.0]
+  terrain:
+    type_probs: {flat: 0.35, rough: 0.25, slopes: 0.20, steps: 0.20}
+    hard: {rough: 0.02, slopes: 8.0, steps: 0.025}
+training:
+  total_timesteps: 30000000
+  checkpoint_every: 2000000
+  critic_warmup_steps: 409600      # 20 iterations, actor frozen: the critic must learn the failure inputs first

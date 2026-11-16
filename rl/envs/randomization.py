@@ -34,10 +34,16 @@ DEFAULTS = {
     "contact_dampratio": None,
     "noise": {"gyro": 0.05, "gravity": 0.02, "joint_pos": 0.005, "joint_vel": 0.1},
     "push": {"interval_s": [5.0, 8.0], "speed": [0.1, 0.2]},
-    "leg_failure_prob": 0.0,             # Experiment B (not used in 2.7)
+    # Experiment B: with this probability one random leg fails at a random time within the episode.
+    # Type "limp" = zero motor torque (leg flops, joint damping only), "locked" = PD target frozen at the joint
+    # angles of the failure moment. Hidden from the actor; the critic gets leg id + type (failure_privileged).
+    "leg_failure_prob": 0.0,
+    "failure_types": ["limp", "locked"],
+    "failure_time_s": [1.0, 10.0],       # failure time, uniform (seconds from episode start)
 }
 
 PRIVILEGED_DIM = 17   # body lin vel 3, ang vel 3, foot contacts 6, friction, payload, mass, effort, latency
+FAILURE_PRIV_DIM = 8  # Experiment B extra (env cfg failure_privileged): one-hot failed leg (6, once failed), limp flag, locked flag
 
 
 class DomainRandomizer:
@@ -74,7 +80,7 @@ class DomainRandomizer:
                 "payload_offset": np.zeros(2), "link_mass_scale": np.ones(len(self.legs)),
                 "effort_scale": 1.0, "kp_scale": 1.0, "damping_scale": 1.0,
                 "joint_friction": self.nom_jfric, "latency_substeps": 0, "noise_scale": 0.0,
-                "push": False, "push_scale": 0.0, "leg_failure": -1,
+                "push": False, "push_scale": 0.0, "leg_failure": -1, "failure_type": "limp", "failure_step": 0,
                 "target_offset": np.zeros(self.n_joint), "contact_timeconst": float(self.solref0[self.floor_geom, 0]),
                 "contact_dampratio": float(self.solref0[self.floor_geom, 1])}
 
@@ -106,6 +112,9 @@ class DomainRandomizer:
             p["push_scale"] = scale
             if rng.random() < self.cfg["leg_failure_prob"]:
                 p["leg_failure"] = int(rng.integers(0, 6))
+                p["failure_type"] = str(rng.choice(self.cfg["failure_types"]))
+                lo, hi = self.cfg["failure_time_s"]
+                p["failure_step"] = int(round(rng.uniform(lo, hi) / 0.02))
         for k, v in (fixed or {}).items():
             p[k] = np.asarray(v, dtype=float) if k in ("payload_offset", "target_offset") else v
         if (fixed or {}).get("push") and "push_scale" not in fixed:
@@ -142,10 +151,22 @@ class DomainRandomizer:
         m.dof_damping[self.vadr] = self.damping0[self.vadr] * p["damping_scale"]
         m.dof_frictionloss[:] = self.frictionloss0
         m.dof_frictionloss[self.vadr] = p["joint_friction"]
-        if p["leg_failure"] >= 0:                    # Experiment B: limp leg = no motor torque
-            sl = slice(3 * p["leg_failure"], 3 * p["leg_failure"] + 3)
-            m.actuator_forcerange[sl] = 0.0
         mujoco.mj_setConst(m, data)
+
+    def leg_slice(self):
+        k = self.params["leg_failure"]
+        return slice(3 * k, 3 * k + 3)
+
+    def fail_limp(self) -> None:
+        """Limp failure: motor torque of the failed leg -> 0 (called by the env at the failure step)."""
+        self.m.actuator_forcerange[self.leg_slice()] = 0.0
+
+    def failure_privileged(self, failed: bool) -> np.ndarray:
+        out = np.zeros(FAILURE_PRIV_DIM)
+        if failed and self.params["leg_failure"] >= 0:
+            out[self.params["leg_failure"]] = 1.0
+            out[6 + (0 if self.params["failure_type"] == "limp" else 1)] = 1.0
+        return out
 
     def privileged(self) -> np.ndarray:
         """Episode constants for the critic (appended to body velocity and contacts by the env)."""
