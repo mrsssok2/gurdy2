@@ -25,9 +25,8 @@ docker compose run --rm rl python3 rl/eval.py --policies terrain_v1:latest terra
 # 2 terrain grid (no regression: slopes 100 % to 12°, CoT ≈ 5.8)
 docker compose run --rm rl python3 rl/eval.py --policies terrain_v1:latest terrain_dr2:latest --terrain all
 # 3 export + Gazebo (the decisive test)
-docker compose run --rm rl python3 rl/tools/export_onnx.py --run terrain_dr2 --checkpoint latest --out models/terrain_dr2_15M
+docker compose run --rm rl python3 rl/tools/export_onnx.py --checkpoint rl/runs/terrain_dr2/checkpoints/ppo_latest.zip --out models/terrain_dr2_15M --parity-samples 300
 docker compose run --rm sim bash -c 'cd ~/gurdy2 && scripts/policy_gazebo_test.sh docs/results/data/policy_dr2 models/terrain_dr2_15M.onnx'
 ```
 Success: Gazebo tracking within ~10 pts of MuJoCo on every segment, 0 falls (Gazebo + all DR scenarios), flat nominal tracking
 ≤ 11.2 % (terrain_v1) +1 pt, terrain slopes/CoT no worse, start gate no worse than 40/144.
-Check the export flags with `python3 rl/tools/export_onnx.py -h` first (used as in the 2.9 prep).
