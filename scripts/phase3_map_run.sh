@@ -15,8 +15,15 @@ done
 for _ in $(seq 60); do ros2 topic list 2>/dev/null | grep -q "^/map$" && break; sleep 1; done
 sleep 3
 timeout 20 ros2 topic hz /scan 2>&1 | grep "average rate" | tail -1 > "$OUT/scan_hz.txt" || true
-(python3 scripts/measure_rtf.py > "$OUT/rtf.txt" 2>&1 &) 
+(python3 scripts/measure_rtf.py > "$OUT/rtf.txt" 2>&1 &)
+if [ -n "$BAG" ]; then      # BAG=1: TF + scans + all odometry for offline analysis (scripts/bag_export.py, bag_overlay.py)
+  rm -rf "$OUT/bag"
+  ros2 bag record -o "$OUT/bag" /tf /tf_static /scan /clock /imu /odom/ground_truth /odom/legs /imu/ekf /odometry/filtered \
+    /cmd_vel > "$OUT/bag_record.log" 2>&1 &
+  BAGPID=$!; sleep 3
+fi
 python3 scripts/drive_route.py "$OUT/route.json" | tee "$OUT/route_summary.txt"
+if [ -n "$BAGPID" ]; then kill -INT $BAGPID; sleep 5; fi
 scripts/map_tools.sh save "$NAME" > "$OUT/map_save.log" 2>&1
 scripts/map_tools.sh serialize "$NAME" > "$OUT/serialize.log" 2>&1 || true
 ps -eo rss,cmd --sort=-rss | head -8 > "$OUT/ps_top.txt"

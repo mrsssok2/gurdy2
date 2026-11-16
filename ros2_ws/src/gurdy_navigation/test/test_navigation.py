@@ -13,7 +13,7 @@ REPO = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO / "gurdy_core"))
 sys.path.insert(0, str(PKG))
 
-from gurdy_core.rl_command import ANGULAR_DEADBAND, LINEAR_DEADBAND  # noqa: E402
+from gurdy_core.rl_command import MIN_ANGULAR_SPEED, MIN_LINEAR_SPEED, lift_to_min_speed  # noqa: E402
 from gurdy_core.robot import load_robot  # noqa: E402
 from gurdy_navigation import footprint as fp  # noqa: E402
 
@@ -49,16 +49,41 @@ def test_committed_params_match_robot_yaml(robot, nav2):
     assert patched == nav2, "config/nav2_params.yaml is out of date vs robot.yaml (footprint / limits)"
 
 
-def test_speed_limits_and_deadband(robot, nav2):
+def test_speed_limits_and_minimum_speed_chain(robot, nav2):
     lim = robot.command_limits
     f = nav2["controller_server"]["ros__parameters"]["FollowPath"]
     assert f["vx_max"] <= lim["vx"] and f["vy_max"] <= lim["vy"] and f["wz_max"] <= lim["wz"]
     assert f["motion_model"] == "Omni"
     sm = nav2["velocity_smoother"]["ros__parameters"]
-    db = sm["deadband_velocity"]
-    assert db[0] > LINEAR_DEADBAND and db[1] > LINEAR_DEADBAND and db[2] > ANGULAR_DEADBAND
-    assert db[0] < 0.5 * lim["vx"] and db[2] < 0.5 * lim["wz"]
+    # the smoother must NOT zero small commands (start deadlock): MPPI's first step from rest is ax_max * model_dt
+    assert list(sm["deadband_velocity"]) == [0.0, 0.0, 0.0]
+    first_step = f["ax_max"] * f["model_dt"]
+    assert first_step < MIN_LINEAR_SPEED, "premise: MPPI's first step is below the minimum, so it must be lifted"
+    assert np.hypot(*lift_to_min_speed([first_step, 0.0, 0.0])[:2]) == pytest.approx(MIN_LINEAR_SPEED)
+    assert MIN_LINEAR_SPEED < 0.5 * lim["vx"] and MIN_ANGULAR_SPEED < 0.5 * lim["wz"]
     assert sm["max_accel"][0] <= 0.5 and sm["max_accel"][2] <= 2.0     # gait node accel limits
+
+
+def test_min_speed_node_is_in_the_chain(nav2):
+    """smoother -> cmd_vel_min_speed_node -> collision_monitor -> /cmd_vel (topic names line up)."""
+    src = (PKG / "gurdy_navigation/cmd_vel_min_speed_node.py").read_text()
+    assert 'declare_parameter("input_topic", "cmd_vel_smoothed")' in src      # Nav2 smoother output
+    assert 'declare_parameter("output_topic", "cmd_vel_min")' in src
+    cm = nav2["collision_monitor"]["ros__parameters"]
+    assert cm["cmd_vel_in_topic"] == "cmd_vel_min" and cm["cmd_vel_out_topic"] == "cmd_vel"
+    assert "cmd_vel_min_speed_node" in (PKG / "setup.py").read_text()
+    assert "cmd_vel_min_speed_node" in (PKG / "launch/nav.launch.py").read_text()
+
+
+def test_goal_tolerances_cover_the_minimum_speed(nav2):
+    """The robot cannot move slower than 0.05 m/s / 0.15 rad/s: tolerances must be wider than one control step."""
+    gc = nav2["controller_server"]["ros__parameters"]["general_goal_checker"]
+    pc = nav2["controller_server"]["ros__parameters"]["progress_checker"]
+    step_xy = MIN_LINEAR_SPEED / nav2["controller_server"]["ros__parameters"]["controller_frequency"]
+    step_yaw = MIN_ANGULAR_SPEED / nav2["controller_server"]["ros__parameters"]["controller_frequency"]
+    assert gc["xy_goal_tolerance"] == pytest.approx(0.12) and gc["yaw_goal_tolerance"] == pytest.approx(0.2)
+    assert gc["xy_goal_tolerance"] > 10 * step_xy and gc["yaw_goal_tolerance"] > 10 * step_yaw
+    assert pc["required_movement_radius"] < MIN_LINEAR_SPEED * pc["movement_time_allowance"]   # progress is possible
 
 
 def test_collision_monitor_sees_the_lidar_plane(nav2):
@@ -168,3 +193,71 @@ def test_odometry_launch_actions():
     with pytest.raises(ValueError):
         mod.odometry_actions("magic", "", "/x")
     assert mod.ODOM_TOPIC["ekf"] == "/odometry/filtered"
+
+
+# ---------------------------------------------------------------- odom_source:=ekf wiring (static review, step 3 follow-up)
+def _launch_nodes(mod, source):
+    """(package, executable, parameter dicts) of every Node the odometry actions would start."""
+    out = []
+    for a in mod.odometry_actions(source, "", "/share/gurdy_navigation"):
+        params = []
+        for p in (getattr(a, "_Node__parameters", None) or []):
+            if isinstance(p, dict):
+                params.append({getattr(k, "text", None) or "".join(getattr(s, "text", "") for s in k): v for k, v in p.items()})
+        exe = "".join(s.text for s in a._Node__node_executable) if not isinstance(a._Node__node_executable, str) else a._Node__node_executable
+        out.append((exe, params))
+    return out
+
+
+def _nav_launch_module():
+    pytest.importorskip("launch_ros")
+    pytest.importorskip("ament_index_python")
+    spec = importlib.util.spec_from_file_location("nav_launch_t2", PKG / "launch/nav.launch.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_ekf_mode_has_exactly_one_odom_to_base_link_publisher():
+    mod = _nav_launch_module()
+    ekf_nodes = [e for e, _ in _launch_nodes(mod, "ekf")]
+    gt_nodes = [e for e, _ in _launch_nodes(mod, "ground_truth")]
+    assert "odom_tf_node" not in ekf_nodes and gt_nodes == ["odom_tf_node"]      # GT TF node must not run with the EKF
+    assert sorted(ekf_nodes) == ["ekf_node", "leg_odometry_node"]
+    cfg = yaml.safe_load((PKG / "config/ekf.yaml").read_text())["ekf_filter_node"]["ros__parameters"]
+    assert cfg["publish_tf"] is True                                              # the EKF is that one publisher
+    # nothing else publishes odom -> base_link: the Gazebo bridge has no TF topic, the OdometryPublisher's tf stays in gz
+    bridge = yaml.safe_load((REPO / "ros2_ws/src/gurdy_gazebo/config/bridge.yaml").read_text())
+    assert not any("tf" in b["ros_topic_name"].lower().split("/") for b in bridge)
+    # (static check of the whole repo: only odom_tf_node.py and the EKF broadcast odom->base_link)
+    for f in (REPO / "ros2_ws/src").rglob("*.py"):
+        if f.name not in ("odom_tf_node.py",) and "TransformBroadcaster" in f.read_text() and "test" not in f.parts[-2:-1]:
+            pytest.fail(f"{f} broadcasts TF")
+
+
+def test_ekf_mode_frames_and_clock():
+    mod = _nav_launch_module()
+    ekf_params = next(p for e, p in _launch_nodes(mod, "ekf") if e == "ekf_node")
+    assert {"use_sim_time": True} in ekf_params                                  # EKF runs on the sim clock
+    cfg = yaml.safe_load((PKG / "config/ekf.yaml").read_text())["ekf_filter_node"]["ros__parameters"]
+    assert (cfg["odom_frame"], cfg["base_link_frame"], cfg["world_frame"]) == ("odom", "base_link", "odom")
+    slam = yaml.safe_load((PKG / "config/slam_toolbox.yaml").read_text())["slam_toolbox"]["ros__parameters"]
+    assert (slam["odom_frame"], slam["base_frame"], slam["map_frame"]) == ("odom", "base_link", "map")
+    # frames of the messages the leg odometry node produces (the EKF reads the twist in child_frame_id = base_link)
+    src = (PKG / "gurdy_navigation/leg_odometry_node.py").read_text()
+    assert 'declare_parameter("odom_frame", "odom")' in src and 'declare_parameter("base_frame", "base_link")' in src
+    # the IMU frame the EKF needs must exist in the URDF as a fixed child of base_link
+    urdf = (REPO / "ros2_ws/src/gurdy_description/urdf/gurdy.urdf.xacro").read_text()
+    assert '<child link="imu_link"/>' in urdf and urdf.index('<parent link="base_link"/>\n    <child link="imu_link"/>') > 0
+
+
+def test_python_odometry_nodes_stamp_from_input_messages_not_the_clock():
+    """leg_odometry_node / odom_tf_node run without use_sim_time (rclpy /clock costs ~40 % CPU): that is only correct while
+    every output stamp is copied from an input message and no code reads the node clock."""
+    for name in ("leg_odometry_node.py", "odom_tf_node.py"):
+        src = (PKG / "gurdy_navigation" / name).read_text()
+        assert "get_clock" not in src and ".now()" not in src, name
+    leg = (PKG / "gurdy_navigation/leg_odometry_node.py").read_text()
+    assert "odometry_message(msg.header.stamp" in leg                              # /odom/legs stamped by /joint_states
+    assert "self.pub_imu.publish(msg)" in leg                                      # /imu/ekf keeps the /imu header
+    assert "t.header.stamp = msg.header.stamp" in (PKG / "gurdy_navigation/odom_tf_node.py").read_text()

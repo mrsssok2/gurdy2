@@ -270,3 +270,7 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   test run (`docs/results/phase3_gazebo_results.md`): GT-odom mapping OK (tripod 0.024 m / policy 0.031 m mean map error, RTF 0.99); Nav2+policy
   FAILS: start deadlock (MPPI ax_max·dt = 0.04 m/s < velocity_smoother deadband 0.05) — "minimum speed" should probably raise small commands to the
   minimum, not zero them (decision pending); EKF-odom map distorted although EKF == GT within ~3 cm (cause open; one EKF run hung at 133 s).
+- 2026-11-16 (code only, training running): Nav2 minimum speeds now via `cmd_vel_min_speed_node` (`gurdy_core.rl_command.lift_to_min_speed`: small
+  commands lifted to 0.05 m/s / 0.15 rad/s keeping direction, < 1 % of min → 0; smoother deadband 0; collision_monitor in = `cmd_vel_min`; goal tol
+  0.12 m / 0.2 rad). EKF wiring static review: no defect; tests in `gurdy_navigation/test`. Re-test commands (Nav2 5 goals, EKF bag run + analysis):
+  `docs/results/phase3_retest.md` — run only after terrain_dr2 finishes.

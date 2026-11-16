@@ -21,5 +21,6 @@ setup(
     license="MIT",
     entry_points={"console_scripts": [
         "odom_tf_node = gurdy_navigation.odom_tf_node:main",
-        "leg_odometry_node = gurdy_navigation.leg_odometry_node:main"]},
+        "leg_odometry_node = gurdy_navigation.leg_odometry_node:main",
+        "cmd_vel_min_speed_node = gurdy_navigation.cmd_vel_min_speed_node:main"]},
 )

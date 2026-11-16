@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Diagnosis: print per-10 s windows of the Nav2 velocity chain + ground-truth motion while goals run (run next to nav_eval.py).
-cmd_vel_nav (MPPI) -> cmd_vel_smoothed (velocity_smoother) -> cmd_vel (collision_monitor) -> policy/cmd (after deadband)."""
+cmd_vel_nav (MPPI) -> cmd_vel_smoothed (velocity_smoother) -> cmd_vel_min (cmd_vel_min_speed_node) -> cmd_vel (collision_monitor) -> policy/cmd (after deadband)."""
 import math
 import sys
 import numpy as np
@@ -10,7 +10,7 @@ from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 
-TOP = ["/cmd_vel_nav", "/cmd_vel_smoothed", "/cmd_vel", "/policy/cmd"]
+TOP = ["/cmd_vel_nav", "/cmd_vel_smoothed", "/cmd_vel_min", "/cmd_vel", "/policy/cmd"]
 
 
 class P(Node):

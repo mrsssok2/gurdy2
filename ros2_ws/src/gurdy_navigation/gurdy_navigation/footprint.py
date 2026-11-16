@@ -11,9 +11,8 @@ import numpy as np
 from gurdy_core.kinematics import nominal_foot
 from gurdy_core.robot import LEG_NAMES
 
-# Nav2 speed floors sit above the policy dead zone (rl_command deadband 0.015 m/s, 0.05 rad/s).
-MIN_LINEAR = 0.03
-MIN_ANGULAR = 0.10
+# Nav2 minimum speeds (enforced by cmd_vel_min_speed_node) live in gurdy_core.rl_command.
+from gurdy_core.rl_command import MIN_ANGULAR_SPEED as MIN_ANGULAR, MIN_LINEAR_SPEED as MIN_LINEAR  # noqa: E402,F401
 
 
 def foot_points_body(robot) -> np.ndarray:

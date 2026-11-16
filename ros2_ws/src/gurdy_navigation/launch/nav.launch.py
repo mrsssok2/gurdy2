@@ -99,6 +99,7 @@ def _setup(context):
         actions.append(IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(nav2_share, "launch", "navigation_launch.py")),
             launch_arguments={"params_file": nav2_params, "use_sim_time": "true"}.items()))
+        actions.append(Node(package="gurdy_navigation", executable="cmd_vel_min_speed_node", output="screen"))
     if cfg["rviz"].lower() == "true":
         actions.append(Node(package="rviz2", executable="rviz2", output="screen",
                             arguments=["-d", os.path.join(share, "config", "nav.rviz")],

@@ -17,10 +17,12 @@ for _ in $(seq 60); do ros2 lifecycle get /controller_server 2>/dev/null | grep 
 sleep 5
 timeout 15 ros2 topic echo /amcl_pose --once > "$OUT/amcl_initial.txt" 2>&1 || true
 (python3 scripts/measure_rtf.py > "$OUT/rtf.txt" 2>&1 &)
-python3 scripts/nav_eval.py "$OUT/goals.json" "1.5,0.5,0.0" "4.0,0.5,0.0" "4.0,-2.2,1.57" "5.5,1.0,0.0" "1.5,-0.5,3.14" "0.0,0.0,0.0" | tee "$OUT/goals.txt"
+(python3 scripts/nav_probe.py 3000 > "$OUT/probe.txt" 2>&1 &)      # velocity chain + GT motion per 10 s window
+python3 scripts/nav_eval.py "$OUT/goals.json" "1.5,0.5,0.0" "4.0,0.5,0.0" "4.0,-2.2,1.57" "1.5,-0.5,3.14" "0.0,0.0,0.0" | tee "$OUT/goals.txt"
 ps -eo rss,cmd --sort=-rss | head -8 > "$OUT/ps_top.txt"
 timeout 10 ros2 topic echo /amcl_pose --once > "$OUT/amcl_final.txt" 2>&1 || true
 grep -iE "warn|error" "$OUT/launch.log" | grep -v "gz_ros_control\|controller_manager\|Utils.cc" | cut -c1-220 | sort | uniq -c | sort -rn | head -20 > "$OUT/warnings.txt" || true
 kill -TERM $LAUNCH 2>/dev/null || true
 sleep 4
+pkill -f nav_probe 2>/dev/null || true
 pkill -KILL -f "gz sim|robot_state_publisher|parameter_bridge|policy_node|gait_node|nav2|amcl|ros2 launch|measure_rtf|component_container" 2>/dev/null || true
