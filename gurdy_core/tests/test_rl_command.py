@@ -48,7 +48,7 @@ def test_min_speed_lifts_linear_keeping_direction():
 
 
 def test_min_speed_wz_independent_and_signed():
-    out = lift_to_min_speed([0.0, 0.0, -0.05])
+    out = lift_to_min_speed([0.0, 0.0, -0.08])
     assert tuple(out) == (0.0, 0.0, -MIN_ANGULAR_SPEED)
     out = lift_to_min_speed([0.1, 0.0, 0.06])                           # real translation, small turn -> turn lifted
     assert out[0] == 0.1 and out[2] == pytest.approx(MIN_ANGULAR_SPEED)
