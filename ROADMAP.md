@@ -136,8 +136,10 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 ---
 
 ## Phase 4 — Perception + voice
-- [ ] CUDA setup: `gpu` compose profile (or CUDA base image) using the RTX 4050; `nvidia-smi` check in container
+- [x] CUDA setup: GPU visible in Docker (`nvidia/cuda` image `nvidia-smi` OK, 2026-11-16); `vision` compose profile + `docker/vision` (CUDA 12.1, PyTorch, onnxruntime-gpu) written, **image not built yet**
 - [ ] Object detection by name (YOLO small or small VLM), trained/run on local GPU, CPU/ONNX fallback; 3D position from depth
+  - [x] prep code (2026-11-16, nothing run in Gazebo/GPU): 7 classes, synthetic dataset generator (Gazebo boundingbox_camera → YOLO labels + depth), `vision/train.py`, `vision/eval_detector.py`, `gurdy_core.vision` (decode/NMS/depth geometry/semantic map), `gurdy_perception` detector node (markers + JSON semantic map), `semantic_lab` world; tests 44 pass. Run commands: `docs/results/phase4_runbook.md`; license notes: `docs/vision_objects.md`
+  - [ ] render dataset, train, evaluate mAP, test in semantic_lab
 - [ ] `find_object(name)` / `go_to(object)` behaviours
 - [ ] Gnani Prisma STT + Timbre TTS (key from env var only); offline Whisper fallback
 - [ ] Replies always start with "Main ek AI assistant hoon"

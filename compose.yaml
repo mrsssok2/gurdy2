@@ -75,3 +75,27 @@ services:
     init: true
     stdin_open: true
     tty: true
+
+  # Vision (Phase 4): YOLO training / ONNX export / eval on the RTX 4050. Needs the NVIDIA runtime of Docker Desktop.
+  #   docker compose build vision && docker compose run --rm vision nvidia-smi
+  #   docker compose run --rm vision python3 vision/train.py --data datasets/synth_v1 --name det_v1
+  # One GPU workload at a time (6 GB VRAM) and not together with Gazebo / RL training (8 GB RAM budget).
+  vision:
+    profiles: [vision]
+    image: gurdy2/vision:cuda
+    build:
+      context: docker/vision
+    volumes:
+      - .:/home/ubuntu/gurdy2
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    mem_limit: 6g
+    shm_size: 2g
+    init: true
+    stdin_open: true
+    tty: true

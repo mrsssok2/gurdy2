@@ -293,3 +293,9 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   `docs/results/exp_A_terrain.md` (tripod never fails on slopes <= 15°; RL wins on steps >= 3 cm + tracking). Experiment B: leg-failure env (limp/locked, random leg/time, actor blind,
   critic +8 privileged), `rl/configs/leg_failure.yaml`, `train.py --extend-from`, `rl/eval_failure.py`, plan `docs/results/exp_B_leg_failure.md`; run `leg_failure` (30M steps,
   ~2.2k steps/s ≈ 3.9 h) started 2026-11-16 11:50 UTC. Eval after training (plan in the doc); do not run Gazebo or anything heavy meanwhile.
+- 2026-11-16 (Phase 4 prep, code only; leg_failure was training): GPU works in Docker. 7 classes (box incl. plain colours, barrel, fire_extinguisher, traffic_cone,
+  toolbox, mannequin, chair), self-made procedural models (MIT). `vision/` (scene sampler, SDF world writer, `generate_dataset.py plan|render|finalize`, textures, augment, `train.py`
+  Ultralytics yolo11n → ONNX 256x320, `eval_detector.py`, `make_test_world.py` → `semantic_lab` world + GT json, `compare_semantic_map.py`), `gurdy_core/vision/` (classes + Hinglish
+  aliases, ONNX decode/NMS, depth→3D, SemanticMap de-dup, colours, AP metrics), ROS package `gurdy_perception` (`detector_node`; `sim.launch.py perception:=true`), compose profile `vision`
+  (image NOT built yet). Ultralytics is AGPL-3.0: only in docker/vision; runtime uses ONNX + our decoder (`docs/vision_objects.md`). Tests: `vision/tests`, `gurdy_core/tests/test_vision.py`,
+  `gurdy_perception/test` (run in the rl or ros image). Nothing rendered/trained yet; riskiest unverified assumptions listed in `docs/results/phase4_runbook.md`.

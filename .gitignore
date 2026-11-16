@@ -44,3 +44,8 @@ docs/results/data/phase3/*/run.npz
 docs/results/data/phase3/*/frames/
 maps/*.data
 maps/*.posegraph
+
+# Phase 4 vision
+datasets/
+vision/runs/
+models/detector/*.pt

@@ -12,6 +12,7 @@
   <exec_depend>gurdy_policy</exec_depend>
   <exec_depend>gurdy_navigation</exec_depend>
   <exec_depend>gurdy_description</exec_depend>
+  <exec_depend>gurdy_perception</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>teleop_twist_keyboard</exec_depend>
   <export><build_type>ament_cmake</build_type></export>

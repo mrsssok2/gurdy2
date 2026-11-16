@@ -1,0 +1,81 @@
+{
+ "objects": [
+  {
+   "name": "barrel_a",
+   "class": "barrel",
+   "x": -1.0,
+   "y": -1.6,
+   "color": ""
+  },
+  {
+   "name": "extinguisher",
+   "class": "fire_extinguisher",
+   "x": -1.2,
+   "y": 1.9,
+   "color": ""
+  },
+  {
+   "name": "cone",
+   "class": "traffic_cone",
+   "x": 1.8,
+   "y": -0.7,
+   "color": ""
+  },
+  {
+   "name": "toolbox",
+   "class": "toolbox",
+   "x": -1.5,
+   "y": 0.5,
+   "color": ""
+  },
+  {
+   "name": "mannequin",
+   "class": "mannequin",
+   "x": 3.8,
+   "y": 0.4,
+   "color": ""
+  },
+  {
+   "name": "chair",
+   "class": "chair",
+   "x": 5.5,
+   "y": 2.0,
+   "color": ""
+  },
+  {
+   "name": "barrel_b",
+   "class": "barrel",
+   "x": 5.6,
+   "y": -2.2,
+   "color": ""
+  },
+  {
+   "name": "cardboard_box",
+   "class": "box",
+   "x": 3.6,
+   "y": -2.4,
+   "color": ""
+  },
+  {
+   "name": "red_box",
+   "class": "box",
+   "x": 1.0,
+   "y": 1.6,
+   "color": "red"
+  },
+  {
+   "name": "blue_box",
+   "class": "box",
+   "x": 1.8,
+   "y": -2.2,
+   "color": "blue"
+  },
+  {
+   "name": "yellow_box",
+   "class": "box",
+   "x": 4.6,
+   "y": -1.5,
+   "color": "yellow"
+  }
+ ]
+}
