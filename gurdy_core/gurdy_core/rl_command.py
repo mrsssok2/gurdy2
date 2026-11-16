@@ -29,24 +29,26 @@ def apply_deadband(command, lin: float = LINEAR_DEADBAND, ang: float = ANGULAR_D
 # (zeroing deadlocked the start, phase3_gazebo_results.md).
 MIN_LINEAR_SPEED = 0.05    # m/s, on sqrt(vx^2 + vy^2)
 MIN_ANGULAR_SPEED = 0.15   # rad/s, on |wz|
-MIN_SPEED_EPSILON = 0.01   # normalised to the minimum: below it the command is an exact zero
+MIN_LINEAR_EPSILON = LINEAR_DEADBAND    # m/s: |(vx, vy)| at or below the policy deadband (0.015) is an exact zero
+MIN_ANGULAR_EPSILON = ANGULAR_DEADBAND  # rad/s: |wz| at or below the policy deadband (0.05) is an exact zero
 
 
 def lift_to_min_speed(command, lin_min: float = MIN_LINEAR_SPEED, ang_min: float = MIN_ANGULAR_SPEED,
-                      epsilon: float = MIN_SPEED_EPSILON) -> np.ndarray:
+                      lin_eps: float = MIN_LINEAR_EPSILON,
+                      ang_eps: float = MIN_ANGULAR_EPSILON) -> np.ndarray:
     """(vx, vy, wz) -> command with small non-zero parts lifted to the minimum speed.
 
-    Linear part: |(vx, vy)| / lin_min <= epsilon -> exactly 0; < 1 -> the vector is scaled up to lin_min keeping its
-    direction; otherwise unchanged. Angular part: the same on |wz| / ang_min, keeping the sign. The two parts are
+    Linear part: |(vx, vy)| <= lin_eps (m/s) -> exactly 0; < 1 -> the vector is scaled up to lin_min keeping its
+    direction; otherwise unchanged. Angular part: the same on |wz| with ang_eps (rad/s), keeping the sign. The two parts are
     independent (a pure turn stays a pure turn; a tiny turn next to a real translation is lifted to ang_min)."""
     c = np.array(command, dtype=float)
     n = float(np.hypot(c[0], c[1]))
-    if n / lin_min <= epsilon:
+    if n <= lin_eps:
         c[0] = c[1] = 0.0
     elif n < lin_min:
         c[:2] *= lin_min / n
     w = abs(c[2])
-    if w / ang_min <= epsilon:
+    if w <= ang_eps:
         c[2] = 0.0
     elif w < ang_min:
         c[2] = np.sign(c[2]) * ang_min

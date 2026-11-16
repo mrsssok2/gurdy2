@@ -1,6 +1,6 @@
 # Phase 3 Gazebo re-test (run AFTER terrain_dr2 training has finished; one heavy workload at a time)
 
-Code state: `cmd_vel_min_speed_node` (small Nav2 commands are lifted to 0.05 m/s / 0.15 rad/s, direction kept; < 1 % of the minimum → exact 0),
+Code state: `cmd_vel_min_speed_node` (small Nav2 commands are lifted to 0.05 m/s / 0.15 rad/s, direction kept; ≤ the policy deadband 0.015 m/s / 0.05 rad/s → exact 0),
 smoother deadband 0, collision_monitor input `cmd_vel_min`, goal tolerance xy 0.12 m / yaw 0.2 rad. EKF wiring reviewed statically
 (below). Nothing here has been run in Gazebo yet.
 
