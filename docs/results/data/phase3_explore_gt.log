@@ -1,0 +1,5 @@
+nav ready after 5 s wall
+-rw-r--r-- 1 ubuntu ubuntu  9931384 Nov 16 10:34 maps/explore_gt.data
+-rw-r--r-- 1 ubuntu ubuntu    20706 Nov 16 10:34 maps/explore_gt.pgm
+-rw-r--r-- 1 ubuntu ubuntu 12496892 Nov 16 10:34 maps/explore_gt.posegraph
+-rw-r--r-- 1 ubuntu ubuntu      132 Nov 16 10:34 maps/explore_gt.yaml

@@ -41,3 +41,6 @@ docs/results/data/diag/*.npz
 maps/*.data
 maps/*.posegraph
 docs/results/data/phase3/*/run.npz
+docs/results/data/phase3/*/frames/
+maps/*.data
+maps/*.posegraph

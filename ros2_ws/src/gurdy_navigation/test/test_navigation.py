@@ -183,6 +183,8 @@ def test_nav2_odom_topic_patch(nav2, robot):
     p = fp.patch_nav2_params(nav2, robot, odom_topic="/odometry/filtered")
     assert p["bt_navigator"]["ros__parameters"]["odom_topic"] == "/odometry/filtered"
     assert p["velocity_smoother"]["ros__parameters"]["odom_topic"] == "/odometry/filtered"
+    # MPPI's current-velocity source: without this the EKF runs stalled (commands stayed at ax_max*dt, 2026-11-16)
+    assert p["controller_server"]["ros__parameters"]["odom_topic"] == "/odometry/filtered"
     assert fp.patch_nav2_params(nav2, robot) == fp.patch_nav2_params(nav2, robot, odom_topic=None)
 
 
@@ -285,3 +287,15 @@ def test_python_odometry_nodes_stamp_from_input_messages_not_the_clock():
     assert "odometry_message(msg.header.stamp" in leg                              # /odom/legs stamped by /joint_states
     assert "self.pub_imu.publish(msg)" in leg                                      # /imu/ekf keeps the /imu header
     assert "t.header.stamp = msg.header.stamp" in (PKG / "gurdy_navigation/odom_tf_node.py").read_text()
+
+
+def test_explorer_registered_and_start_helper_waits_for_action_servers():
+    setup = (PKG / "setup.py").read_text()
+    assert "frontier_explorer_node = gurdy_navigation.frontier_explorer_node:main" in setup
+    wait = (REPO / "scripts/wait_nav_ready.py").read_text()
+    for server in ("navigate_to_pose", "compute_path_to_pose", "follow_path"):
+        assert server in wait
+    lib = (REPO / "scripts/lib_nav_start.sh").read_text()
+    assert "wait_nav_ready.py" in lib and "NAV_START_ATTEMPTS" in lib
+    for run in ("phase3_nav_run.sh", "phase3_explore_run.sh"):
+        assert "start_nav_stack" in (REPO / "scripts" / run).read_text()

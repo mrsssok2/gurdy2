@@ -281,3 +281,10 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
 - 2026-11-16 (latest): lidar self-hits confirmed (femurs reach the lidar plane, 91 % of walking scans, 0.15–0.29 m) and fixed with `scan_self_filter_node`
   (bridge → `/scan_raw`, filtered `/scan`); collision_monitor FootprintApproach re-enabled, Nav2 5/5 goals with it on. Start check at the old minimum FAILED in MuJoCo
   (38/48) → **min-speed lift now 0.09 m/s / 0.23 rad/s** (smallest passing, 0.085 fails; Gazebo starts at both); Nav2 5/5 again. `docs/results/phase3_selfhit_and_minspeed.md`.
+- 2026-11-16 (exploration): Phase 3 frontier exploration done (`docs/results/phase3_explore.md`). Own explorer (no explore_lite for Jazzy in apt): `gurdy_core/frontier.py`
+  (pure numpy, tested) + `gurdy_navigation/frontier_explorer_node`; run `scripts/phase3_explore_run.sh NAME policy ground_truth|ekf` (monitor + `render_explore.py` for the time-lapse).
+  flat_lab from an empty map, policy dr2, collision monitor on: GT odom 99.1 % interior mapped, 465 s sim, 43.8 m, 0 failed goals; EKF odom 98.5 %, 510 s, 47.4 m, 1 goal timeout, both back at the start
+  (≤ 0.12 m). **Bugs fixed:** (1) EKF mode never set `controller_server.odom_topic` → MPPI read a non-existent `/odom`, stalled (every earlier EKF Nav2 run was affected; `patch_nav2_params` + test);
+  (2) Nav2 start-up flake = lost lifecycle `change_state` response, lifecycle_manager hangs forever → `scripts/wait_nav_ready.py` + `scripts/lib_nav_start.sh` (wait for 3 action servers + TF, restart stack ≤ 3×;
+  restart path not yet exercised). Planner clearance for goals 0.40 m (Nav2 inflation 0.55). Gotcha: `rclpy.Node` has a read-only `handle` attribute; `pkill -f` patterns match your own shell's command line (use `[x]` tricks or scripts).
+  Open: single runs only (no variance), one world; the EKF map-distortion question is now less likely a leg-odometry problem (the EKF exploration map is as good as the GT one).

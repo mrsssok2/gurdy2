@@ -29,6 +29,19 @@ mapping works, Nav2 and EKF odometry still being fixed. See [ROADMAP.md](ROADMAP
 |---|---|
 | ![map tripod](docs/results/phase3_map_tripod_gt.png) | ![map policy](docs/results/phase3_map_policy_gt.png) |
 
+Autonomous exploration from an empty map (frontier explorer + slam_toolbox + Nav2, policy `terrain_dr2`, then back to the start;
+[details](docs/results/phase3_explore.md)):
+
+| | ground-truth odom | EKF odom (legs + IMU) |
+|---|---|---|
+| lab interior mapped / wall+object recall (10 cm) | 99.1 % / 94.9 % | 98.5 % / 93.1 % |
+| sim time to finish exploring (+ return) / distance | 345 s (465 s) / 43.8 m | 468 s (510 s) / 47.4 m |
+| failed goals / recoveries / stuck events / ends at start | 0 / 0 / 0 / 0.12 m | 1 / 12 / 0 / 0.06 m |
+
+![exploration](docs/results/phase3_explore_gt_map.png)
+
+Time-lapse: [GIF](docs/results/phase3_explore_gt_timelapse.gif) · [MP4](docs/results/phase3_explore_gt_timelapse.mp4).
+
 Black = map, red = true world outline, blue = path. Video: [tripod vs flat vs DR policy](docs/videos/phase2_3way_tripod_flat_dr.mp4).
 Details: [flat](docs/results/phase2_flat.md) · [DR](docs/results/phase2_dr.md) · [terrain](docs/results/phase2_terrain.md) ·
 [Gazebo transfer](docs/results/phase2_deploy_gazebo.md) · [Phase 3 mapping/Nav2](docs/results/phase3_gazebo_results.md).
@@ -38,10 +51,10 @@ Details: [flat](docs/results/phase2_flat.md) · [DR](docs/results/phase2_dr.md) 
   below 0.09 m/s / 0.23 rad/s are lifted to that minimum; direct teleop of tiny speeds still stands.
 - **Sim-to-sim gap:** in Gazebo the policy loses up to 22 points of tracking vs MuJoCo (latency + stance-load/contact differences).
   Fine-tune `terrain_dr2` (wider randomisation) is training now; success target is ≤ 10 points.
-- **Nav2 with the policy: not working yet.** First test deadlocked at start (minimum speeds zeroed MPPI's first step); a fix is coded
-  but not yet re-tested in Gazebo ([re-test plan](docs/results/phase3_retest.md)). No goal success rate exists yet.
-- **EKF (leg odometry + IMU) map is unusable** (1.3 m mean error) although the odometry matched ground truth within 3 cm; cause unknown,
-  analysis planned. Only ground-truth odometry maps are good so far.
+- **Nav2 + policy:** 5/5 goals on a saved map and full autonomous exploration work in Gazebo with ground-truth or EKF odometry (single runs, no
+  variance yet). EKF mode had a hidden bug until 2026-11-16 (MPPI read a non-existent `/odom` and stalled), now fixed. One start-up flake is known
+  (Nav2 lifecycle bring-up occasionally hangs); the run scripts detect it and restart the stack ([details](docs/results/phase3_explore.md)).
+- Gazebo RTF drops to ~0.35–0.5 with slam_toolbox + Nav2 + policy running; results are in sim time.
 - Phases 4–9 (perception, voice, LLM, ops, web, air-ground) are not started.
 
 ## Quick start (Phase 1 demo)

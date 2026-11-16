@@ -1,0 +1,20 @@
+     11 [gazebo-17] NodeShared::Publish() Error: Interrupted system call
+      1 [planner_server-7] [WARN] [1794827840.573057286] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 2.0040 Hz
+      1 [planner_server-7] [WARN] [1794827839.622650865] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+      1 [planner_server-7] [WARN] [1794827839.622512232] [planner_server]: GridBased plugin failed to plan from (2.69, 0.56) to (0.35, -1.84): "Failed to create plan with tolerance of: 0.300000"
+      1 [planner_server-7] [WARN] [1794827837.575902792] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 3.7453 Hz
+      1 [planner_server-7] [WARN] [1794827836.893319501] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+      1 [planner_server-7] [WARN] [1794827836.893211729] [planner_server]: GridBased plugin failed to plan from (2.79, 0.51) to (0.35, -1.84): "Failed to create plan with tolerance of: 0.300000"
+      1 [planner_server-7] [WARN] [1794827705.586708779] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 3.6496 Hz
+      1 [planner_server-7] [WARN] [1794827704.704729450] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+      1 [planner_server-7] [WARN] [1794827704.704587297] [planner_server]: GridBased plugin failed to plan from (4.99, -0.50) to (0.35, -1.84): "Failed to create plan with tolerance of: 0.300000"
+      1 [planner_server-7] [WARN] [1794827699.585626704] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 1.8832 Hz
+      1 [planner_server-7] [WARN] [1794827698.604947998] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+      1 [planner_server-7] [WARN] [1794827698.604792403] [planner_server]: GridBased plugin failed to plan from (5.19, -0.61) to (0.35, -1.84): "Failed to create plan with tolerance of: 0.300000"
+      1 [planner_server-7] [WARN] [1794827697.585851683] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 2.4814 Hz
+      1 [planner_server-7] [WARN] [1794827696.783654724] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+      1 [planner_server-7] [WARN] [1794827696.783538828] [planner_server]: GridBased plugin failed to plan from (5.25, -0.66) to (0.35, -1.84): "Failed to create plan with tolerance of: 0.300000"
+      1 [planner_server-7] [WARN] [1794827688.584158891] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 4.8780 Hz
+      1 [planner_server-7] [WARN] [1794827688.052049840] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+      1 [planner_server-7] [WARN] [1794827688.051873111] [planner_server]: GridBased plugin failed to plan from (5.36, -0.84) to (0.35, -1.84): "Failed to create plan with tolerance of: 0.300000"
+      1 [planner_server-7] [WARN] [1794827668.589568030] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 1.7857 Hz

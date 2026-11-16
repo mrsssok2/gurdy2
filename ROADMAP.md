@@ -123,10 +123,10 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - [~] Nav2 configured for a legged base (velocity limits, footprint, controller tuning) driving `/cmd_vel` — MPPI/Omni params + launch done; **untested in sim**
 - [~] Leg odometry + EKF (`odom_source:=ekf`) — code + offline MuJoCo drift test done (1–2 % of path with IMU yaw); **Gazebo GT-vs-EKF comparison not run** (test plan step 6)
 - [ ] Works with both tripod gait and RL policy
-- [ ] Map save/load; `explore` behaviour (frontier exploration)
+- [x] Map save/load (`scripts/map_tools.sh`); `explore` behaviour: own frontier explorer (`frontier_explorer_node`), flat_lab from an empty map: 99.1 % (GT odom) / 98.5 % (EKF) of the interior mapped, returns to start — `docs/results/phase3_explore.md`
 
 **AC**
-- Builds a usable map of the demo world from teleop and from autonomous exploration.
+- Builds a usable map of the demo world from teleop and from autonomous exploration. **Met for exploration (2026-11-16, flat_lab, 2 runs).**
 - Nav2 reaches ≥ 8/10 goal poses without collision (reported for gait and policy).
 
 ---

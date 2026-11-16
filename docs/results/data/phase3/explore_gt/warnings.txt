@@ -1,0 +1,20 @@
+      9 [gazebo-16] NodeShared::Publish() Error: Interrupted system call
+      1 [planner_server-6] [INFO] [1794824491.862900207] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Re
+      1 [opennav_docking-13] [WARN] [1794824486.897748219] [docking_server]: Dock database filepath nor dock parameters set. Docking actions can only be executed specifying the dock pose via the action request. Or update the doc
+      1 [controller_server-4] [WARN] [1794824886.512913168] [controller_server]: Optimizer fail to compute path
+      1 [controller_server-4] [WARN] [1794824886.411538252] [controller_server]: Optimizer fail to compute path
+      1 [controller_server-4] [WARN] [1794824504.864906947] [controller_server]: No progress checker was specified in parameter 'current_progress_checker'. Server will use only plugin loaded progress_checker . This warning will 
+      1 [controller_server-4] [WARN] [1794824504.864883713] [controller_server]: No goal checker was specified in parameter 'current_goal_checker'. Server will use only plugin loaded general_goal_checker . This warning will appe
+      1 [controller_server-4] [WARN] [1794824491.604371880] [controller_server]: Parameter controller_server.verbose not found
+      1 [controller_server-4] [INFO] [1794824490.902090250] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-4] [INFO] [1794824490.402107265] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-4] [INFO] [1794824489.902070798] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-4] [INFO] [1794824489.402095394] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-4] [INFO] [1794824488.902094227] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-4] [INFO] [1794824488.402234948] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-4] [INFO] [1794824487.902122558] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-4] [INFO] [1794824487.402476189] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-4] [INFO] [1794824486.902086451] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [bt_navigator-9] [ERROR] [1794825063.839869274] [bt_navigator_navigate_to_pose_rclcpp_node]: Failed to get result for follow_path in node halt!
+      1 [bt_navigator-9] [ERROR] [1794825042.837263750] [bt_navigator_navigate_to_pose_rclcpp_node]: Failed to get result for follow_path in node halt!
+      1 [bt_navigator-9] [ERROR] [1794825031.838618510] [bt_navigator_navigate_to_pose_rclcpp_node]: Failed to get result for follow_path in node halt!

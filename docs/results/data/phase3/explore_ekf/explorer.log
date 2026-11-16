@@ -1,0 +1,40 @@
+[INFO] [1794827078.232785998] [frontier_explorer]: frontier explorer up; waiting for /map, TF and navigate_to_pose
+[INFO] [1794827079.204936558] [frontier_explorer]: start pose 0.00,0.00; exploring
+[INFO] [1794827079.239549384] [frontier_explorer]: goal 1: [-0.205, -0.147] (frontier), path 0.26 m, size 29.55 m
+[INFO] [1794827082.262076214] [frontier_explorer]: goal 1 CANCELED frontier resolved after 1.5 s
+[INFO] [1794827083.269007504] [frontier_explorer]: goal 2: [-0.055, -0.752] (frontier), path 0.65 m, size 30.65 m
+[INFO] [1794827084.258917065] [frontier_explorer]: goal 2 CANCELED frontier resolved after 0.4 s
+[INFO] [1794827085.310115591] [frontier_explorer]: goal 3: [-0.555, 0.448] (frontier), path 0.76 m, size 20.45 m
+[INFO] [1794827088.267043171] [frontier_explorer]: goal 3 CANCELED frontier resolved after 1.4 s
+[INFO] [1794827089.347785801] [frontier_explorer]: goal 4: [0.492, 0.997] (frontier), path 1.37 m, size 4.75 m
+[INFO] [1794827090.244539890] [frontier_explorer]: goal 4 CANCELED frontier resolved after 0.5 s
+[INFO] [1794827091.339914479] [frontier_explorer]: goal 5: [-1.258, 1.047] (frontier), path 1.58 m, size 2.3 m
+[INFO] [1794827096.247262326] [frontier_explorer]: goal 5 CANCELED frontier resolved after 2.8 s
+[INFO] [1794827097.287019461] [frontier_explorer]: goal 6: [0.542, 1.989] (frontier), path 2.41 m, size 1.5 m
+[INFO] [1794827236.234813035] [frontier_explorer]: goal 6 CANCELED close enough after 63.5 s
+[INFO] [1794827237.309031481] [frontier_explorer]: goal 7: [0.612, 1.737] (frontier), path 0.15 m, size 1.05 m
+[INFO] [1794827246.222725118] [frontier_explorer]: goal 7 CANCELED close enough after 4.3 s
+[INFO] [1794827247.280711265] [frontier_explorer]: goal 8: [0.859, 1.93] (frontier), path 0.35 m, size 0.5 m
+[INFO] [1794827322.235105256] [frontier_explorer]: goal 8 CANCELED frontier resolved after 38.6 s
+[INFO] [1794827323.270205801] [frontier_explorer]: goal 9: [2.801, 0.717] (frontier), path 3.55 m, size 1.9 m
+[INFO] [1794827472.238159779] [frontier_explorer]: goal 9 CANCELED close enough after 83.5 s
+[INFO] [1794827473.290761187] [frontier_explorer]: goal 10: [2.601, 0.264] (frontier), path 0.25 m, size 8.95 m
+[INFO] [1794827476.248955428] [frontier_explorer]: goal 10 CANCELED frontier resolved after 1.4 s
+[INFO] [1794827477.351374852] [frontier_explorer]: goal 11: [3.001, 1.514] (frontier), path 1.17 m, size 0.6 m
+[INFO] [1794827478.243904971] [frontier_explorer]: goal 11 CANCELED frontier resolved after 0.4 s
+[INFO] [1794827479.351784327] [frontier_explorer]: goal 12: [3.001, -1.736] (frontier), path 2.27 m, size 0.7 m
+[INFO] [1794827480.238141674] [frontier_explorer]: goal 12 CANCELED frontier resolved after 0.4 s
+[INFO] [1794827481.323567256] [frontier_explorer]: goal 13: [5.101, 1.364] (frontier), path 2.76 m, size 2.65 m
+[INFO] [1794827572.236599211] [frontier_explorer]: goal 13 CANCELED frontier resolved after 35.0 s
+[INFO] [1794827573.309477975] [frontier_explorer]: goal 14: [5.201, -1.536] (frontier), path 2.39 m, size 0.95 m
+[INFO] [1794827647.230214519] [frontier_explorer]: goal 14 CANCELED close enough after 29.2 s
+[INFO] [1794827648.260468278] [frontier_explorer]: goal 15: [5.101, -1.386] (frontier), path 0.21 m, size 0.45 m
+[INFO] [1794827655.238785210] [frontier_explorer]: goal 15 CANCELED close enough after 4.1 s
+[INFO] [1794827656.262148475] [frontier_explorer]: goal 16: [0.351, -1.836] (frontier), path 7.63 m, size 0.9 m
+[INFO] [1794828005.237771371] [frontier_explorer]: goal 16 CANCELED goal timeout after 150.3 s
+[INFO] [1794828006.275074864] [frontier_explorer]: goal 17: [0.601, -1.936] (frontier), path 1.19 m, size 0.65 m
+[INFO] [1794828082.239364335] [frontier_explorer]: goal 17 CANCELED frontier resolved after 32.0 s
+[INFO] [1794828108.216092348] [frontier_explorer]: exploration over: no frontiers left
+[INFO] [1794828108.218418777] [frontier_explorer]: goal 18: [0.0, 0.0] (return), path 0.0 m, size 0.0 m
+[INFO] [1794828192.578597721] [frontier_explorer]: goal 18 SUCCEEDED  after 41.9 s
+[INFO] [1794828192.589005881] [frontier_explorer]: done: no frontiers left; log docs/results/data/phase3/explore_ekf/explore_log.json

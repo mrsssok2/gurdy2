@@ -1,0 +1,16 @@
+[INFO] [1794828205.804229352] [map_saver]: 
+	map_saver lifecycle node launched. 
+	Waiting on external lifecycle transitions to activate
+	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[INFO] [1794828205.806456406] [map_saver]: Creating
+[INFO] [1794828205.807636771] [map_saver]: Configuring
+[INFO] [1794828205.830981326] [map_saver]: Saving map from 'map' topic to '/home/ubuntu/gurdy2/maps/explore_ekf' file
+[WARN] [1794828205.831357025] [map_saver]: Free threshold unspecified. Setting it to default value: 0.250000
+[WARN] [1794828205.831376223] [map_saver]: Occupied threshold unspecified. Setting it to default value: 0.650000
+[WARN] [1794828206.306820804] [map_io]: Image format unspecified. Setting it to: pgm
+[INFO] [1794828206.308999175] [map_io]: Received a 171 X 121 map @ 0.05 m/pix
+[INFO] [1794828206.357545344] [map_io]: Writing map occupancy data to /home/ubuntu/gurdy2/maps/explore_ekf.pgm
+[INFO] [1794828206.362837310] [map_io]: Writing map metadata to /home/ubuntu/gurdy2/maps/explore_ekf.yaml
+[INFO] [1794828206.363270540] [map_io]: Map saved
+[INFO] [1794828206.363862823] [map_saver]: Map saved successfully
+[INFO] [1794828206.369723208] [map_saver]: Destroying

@@ -83,6 +83,10 @@ def patch_nav2_params(params: dict, robot, margin: float = 0.04, odom_topic: str
     if odom_topic:
         p["bt_navigator"]["ros__parameters"]["odom_topic"] = odom_topic
         sm["odom_topic"] = odom_topic
+        # MPPI takes the robot's current velocity from the controller_server's own odometry subscription. Left at the default
+        # /odom (which does not exist with the EKF) MPPI believes the robot never moves: it re-starts from v = 0 every cycle,
+        # so its commands stay at ax_max * dt (~0.04 m/s, mostly below the min-speed threshold) and the robot stalls.
+        p["controller_server"]["ros__parameters"]["odom_topic"] = odom_topic
     return p
 
 

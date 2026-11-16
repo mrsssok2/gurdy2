@@ -1,0 +1,6 @@
+nav ready after 5 s wall
+attempt 1/3: ready
+-rw-r--r-- 1 ubuntu ubuntu 11067807 Nov 16 11:23 maps/explore_ekf.data
+-rw-r--r-- 1 ubuntu ubuntu    20706 Nov 16 11:23 maps/explore_ekf.pgm
+-rw-r--r-- 1 ubuntu ubuntu 13707673 Nov 16 11:23 maps/explore_ekf.posegraph
+-rw-r--r-- 1 ubuntu ubuntu      133 Nov 16 11:23 maps/explore_ekf.yaml

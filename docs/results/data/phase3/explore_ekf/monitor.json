@@ -1,0 +1,16 @@
+{
+ "known_m2": 50.95000151842834,
+ "free_m2": 46.71750139229,
+ "occupied_cells": 1693,
+ "interior_known_m2": 50.230001496970665,
+ "interior_fraction": 0.9849019901366797,
+ "sim_time_s": 515.3,
+ "gt_path_m": 47.42,
+ "stuck_events": 0,
+ "max_still_s": 9.0,
+ "snapshots": 53,
+ "end_pose": [
+  -0.04415596154984652,
+  0.019378575239632493
+ ]
+}

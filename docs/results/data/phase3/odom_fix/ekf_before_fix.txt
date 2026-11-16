@@ -1,0 +1,5 @@
+nav ready after 4 s wall
+attempt 1/3: ready
+north: nav max|vx| 0.022 |vy| 0.008 |wz| 0.098 ; min-speed out max|vx| 0.086 |vy| 0.035 ; GT end x,y = 0.00 0.00
+east: nav max|vx| 0.013 |vy| 0.007 |wz| 0.049 ; min-speed out max|vx| 0.000 |vy| 0.000 ; GT end x,y = 0.00 0.00
+south: nav max|vx| 0.001 |vy| 0.001 |wz| 0.006 ; min-speed out max|vx| 0.000 |vy| 0.000 ; GT end x,y = 0.00 0.00
