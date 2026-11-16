@@ -1,0 +1,6 @@
+[scan_raw] stand: scans=194 scans_with_return<0.5=1 min_range min/median=0.18227452039718628/3.0412211418151855 hits=9
+   hit range 0.182-0.223; dist to nearest leg segment median 0.021 max 0.027; dist to body box median 0.121
+[scan_raw] walk: scans=351 scans_with_return<0.5=321 min_range min/median=0.15000000596046448/0.15443122386932373 hits=9599
+   hit range 0.150-0.289; dist to nearest leg segment median 0.019 max 0.045; dist to body box median 0.072
+[scan] stand: scans=194 scans_with_return<0.5=0 min_range min/median=2.781972885131836/3.074458360671997 hits=0
+[scan] walk: scans=351 scans_with_return<0.5=0 min_range min/median=2.1246697902679443/2.8641276359558105 hits=0

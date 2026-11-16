@@ -1,0 +1,5 @@
+{'goal': (1.5, 0.5, 0.0), 'status': 'SUCCEEDED', 'time_s': 54.9, 'path_m': 4.18, 'final_err_m': 0.098, 'recoveries': 0, 'max_stall_s': 0.0, 'reached_0.25': True}
+{'goal': (4.0, 0.5, 0.0), 'status': 'SUCCEEDED', 'time_s': 81.6, 'path_m': 6.11, 'final_err_m': 0.11, 'recoveries': 1, 'max_stall_s': 1.0, 'reached_0.25': True}
+{'goal': (4.0, -2.2, 1.57), 'status': 'SUCCEEDED', 'time_s': 40.1, 'path_m': 3.64, 'final_err_m': 0.072, 'recoveries': 0, 'max_stall_s': 0.0, 'reached_0.25': True}
+{'goal': (1.5, -0.5, 3.14), 'status': 'SUCCEEDED', 'time_s': 157.9, 'path_m': 12.16, 'final_err_m': 0.216, 'recoveries': 0, 'max_stall_s': 2.0, 'reached_0.25': True}
+{'goal': (0.0, 0.0, 0.0), 'status': 'SUCCEEDED', 'time_s': 76.2, 'path_m': 5.77, 'final_err_m': 0.091, 'recoveries': 0, 'max_stall_s': 1.0, 'reached_0.25': True}

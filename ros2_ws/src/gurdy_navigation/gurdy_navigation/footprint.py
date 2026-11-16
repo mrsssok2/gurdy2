@@ -84,3 +84,32 @@ def patch_nav2_params(params: dict, robot, margin: float = 0.04, odom_topic: str
         p["bt_navigator"]["ros__parameters"]["odom_topic"] = odom_topic
         sm["odom_topic"] = odom_topic
     return p
+
+
+def beam_exit_radius(poly, angles, origin=(0.0, 0.0), margin: float = 0.0) -> np.ndarray:
+    """For each beam angle (rad, in the sensor frame, sensor at `origin` inside the body frame), the distance at which a ray
+    from the sensor leaves the (convex, sensor-containing) footprint polygon grown by `margin` metres. Returns on a beam
+    closer than this are the robot itself (swinging femurs reach the lidar plane) or a collision, never a useful obstacle."""
+    pts = np.array(poly, dtype=float) - np.asarray(origin, dtype=float)
+    if margin:
+        n = np.linalg.norm(pts, axis=1, keepdims=True)
+        pts = pts + margin * pts / n
+    a = np.asarray(angles, dtype=float)
+    d = np.stack([np.cos(a), np.sin(a)], axis=1)
+    out = np.full(len(a), np.inf)
+    for p, q in zip(pts, np.roll(pts, -1, axis=0)):
+        e = q - p
+        denom = d[:, 0] * e[1] - d[:, 1] * e[0]
+        with np.errstate(divide="ignore", invalid="ignore"):
+            t = (p[0] * e[1] - p[1] * e[0]) / denom          # ray parameter
+            u = (p[0] * d[:, 1] - p[1] * d[:, 0]) / denom    # segment parameter
+        hit = (np.abs(denom) > 1e-12) & (t > 0) & (u >= -1e-9) & (u <= 1 + 1e-9)
+        out = np.where(hit, np.minimum(out, t), out)
+    return out
+
+
+def filter_self_hits(ranges, exit_radius) -> np.ndarray:
+    """Copy of `ranges` with every finite return inside the footprint replaced by +inf (= no return)."""
+    r = np.asarray(ranges, dtype=float).copy()
+    r[np.isfinite(r) & (r < np.asarray(exit_radius))] = np.inf
+    return r

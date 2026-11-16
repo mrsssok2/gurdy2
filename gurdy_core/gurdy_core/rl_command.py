@@ -27,8 +27,8 @@ def apply_deadband(command, lin: float = LINEAR_DEADBAND, ang: float = ANGULAR_D
 # The policy stands still for |v| below ~0.03 m/s / 0.10 rad/s from rest (phase2_terrain.md). Nav2 (MPPI) starts from
 # standstill with at most ax_max * model_dt = 0.04 m/s, so a command below the minimum must be LIFTED to it, never zeroed
 # (zeroing deadlocked the start, phase3_gazebo_results.md).
-MIN_LINEAR_SPEED = 0.05    # m/s, on sqrt(vx^2 + vy^2)
-MIN_ANGULAR_SPEED = 0.15   # rad/s, on |wz|
+MIN_LINEAR_SPEED = 0.09    # m/s, on sqrt(vx^2 + vy^2); smallest level at which terrain_dr2 starts from rest in all 6 directions (0.085 fails)
+MIN_ANGULAR_SPEED = 0.23   # rad/s, on |wz|; smallest passing (0.22 fails); rl/tools/min_speed_start.py
 MIN_LINEAR_EPSILON = LINEAR_DEADBAND    # m/s: |(vx, vy)| at or below the policy deadband (0.015) is an exact zero
 MIN_ANGULAR_EPSILON = ANGULAR_DEADBAND  # rad/s: |wz| at or below the policy deadband (0.05) is an exact zero
 

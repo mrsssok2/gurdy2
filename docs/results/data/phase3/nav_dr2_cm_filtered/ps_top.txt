@@ -1,0 +1,8 @@
+  RSS CMD
+513304 gz sim -r -v 2 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_gazebo/share/gurdy_gazebo/worlds/flat_lab.sdf -s --headless-rendering
+101408 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_policy/lib/gurdy_policy/policy_node --ros-args --params-file /tmp/launch_params_vxhe8mmr
+84612 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_navigation/lib/gurdy_navigation/odom_tf_node --ros-args
+81932 /opt/ros/jazzy/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator -p use_sim_time:=True --params-file /tmp/launch_params_qayk9ykl -r /tf:=tf -r /tf_static:=tf_static
+81524 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_navigation/lib/gurdy_navigation/scan_self_filter_node --ros-args --params-file /tmp/launch_params_iz1bp9ws
+80000 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_navigation/lib/gurdy_navigation/cmd_vel_min_speed_node --ros-args
+79780 python3 scripts/nav_probe.py 3000

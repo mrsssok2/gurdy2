@@ -82,6 +82,9 @@ def _setup(context):
             parameters=[os.path.join(share, "config", "depth_scan.yaml"), {"use_sim_time": True}],
             remappings=[("depth", "/camera/depth_image"), ("depth_camera_info", "/camera/camera_info"),
                         ("scan", "/scan")]))
+    else:  # lidar: the raw scan (/scan_raw) contains the robot's own swinging legs -> filtered /scan
+        actions.append(Node(package="gurdy_navigation", executable="scan_self_filter_node", output="screen",
+                            parameters=[{"robot_yaml": cfg["robot_yaml"]}]))
 
     nav2_params = nav2_params_file(cfg["robot_yaml"], ODOM_TOPIC[cfg["odom_source"]])
     if cfg["mode"] == "slam":

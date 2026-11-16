@@ -57,7 +57,7 @@ def test_min_speed_wz_independent_and_signed():
 
 
 def test_min_speed_leaves_large_commands_alone_and_is_idempotent():
-    for c in ([0.1, 0.0, 0.0], [0.06, 0.03, -0.4], [0.0, 0.0, 0.15], [0.05, 0.0, 0.0]):
+    for c in ([0.1, 0.0, 0.0], [0.10, 0.03, -0.4], [0.0, 0.0, 0.25], [0.09, 0.0, 0.0]):
         assert np.allclose(lift_to_min_speed(c), c)
     for c in ([0.024, 0.004, 0.06], [0.0, 0.03, 0.1], [0.001, 0.0, 0.0]):
         once = lift_to_min_speed(c)

@@ -1,6 +1,6 @@
 # Phase 3 Gazebo re-test (run AFTER terrain_dr2 training has finished; one heavy workload at a time)
 
-Code state: `cmd_vel_min_speed_node` (small Nav2 commands are lifted to 0.05 m/s / 0.15 rad/s, direction kept; ≤ the policy deadband 0.015 m/s / 0.05 rad/s → exact 0),
+Code state: `cmd_vel_min_speed_node` (small Nav2 commands are lifted to 0.09 m/s / 0.23 rad/s, direction kept; ≤ the policy deadband 0.015 m/s / 0.05 rad/s → exact 0),
 smoother deadband 0, collision_monitor input `cmd_vel_min`, goal tolerance xy 0.12 m / yaw 0.2 rad. EKF wiring reviewed statically
 (below). Nothing here has been run in Gazebo yet.
 
@@ -22,7 +22,7 @@ timeout 3000 bash -c 'until [ -z "$(docker ps -q -f name=gurdy_nav)" ]; do sleep
 cat docs/results/data/phase3/nav_policy_min/goals.txt        # per goal: status, sim time, path, final error, recoveries, max stall
 head -20 docs/results/data/phase3/nav_policy_min/probe.txt   # velocity chain: cmd_vel_nav -> smoothed -> cmd_vel_min -> cmd_vel -> policy/cmd
 ```
-What to check first: in `probe.txt` the first window must show `cmd_vel_min` ≥ 0.05 m/s while `cmd_vel_nav` is ~0.024 (the old deadlock), and
+What to check first: in `probe.txt` the first window must show `cmd_vel_min` ≥ 0.09 m/s while `cmd_vel_nav` is ~0.024 (the old deadlock), and
 `moved` > 0. Success = status SUCCEEDED and final error < 0.25 m (the Nav2 tolerance is 0.12 m), no stall > 20 s near goals, no recoveries needed
 on goals 1–3. Policy variant with the 2.9b model: append `models/terrain_dr2_15M.onnx` as the 5th argument of the script.
 Tripod comparison (same goals): `... phase3_nav_run.sh nav_tripod_min flat_lab_tripod_gt tripod ground_truth`.

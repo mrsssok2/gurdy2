@@ -3,13 +3,14 @@
 #  - MPPI, Omni motion model (vx 0.15, vy 0.10, wz 0.60 = robot.yaml command_limits); accel limits match
 #    the gait node (0.5 m/s2, 2 rad/s2). Footprint + limits are re-patched from robot.yaml at launch
 #    (gurdy_navigation.footprint.patch_nav2_params), the values here are the committed defaults.
-#  - minimum speeds 0.05 m/s / 0.15 rad/s are enforced by cmd_vel_min_speed_node (smoother -> node -> collision_monitor):
+#  - minimum speeds 0.09 m/s / 0.23 rad/s are enforced by cmd_vel_min_speed_node (smoother -> node -> collision_monitor):
 #    small commands are LIFTED to the minimum (zeroing deadlocked the start: MPPI's first step from rest is 0.04 m/s),
 #    so the terrain_v1 policy's from-rest dead zone (|v| ~0.03 m/s) is never commanded (rl_command deadband 0.015 / 0.05)
 #  - goal tolerance xy 0.12 m / yaw 0.2 rad so that the minimum speed cannot make the robot oscillate around the goal
 #  - lidar /scan (frame lidar_link, 0.05 m above base_link): collision_monitor heights are relative to base_link
 #  - AMCL (localization mode) uses the Omni motion model; initial pose = spawn origin
-#  - collision_monitor FootprintApproach is DISABLED: it throttled /cmd_vel to ~5 % (0.04 -> 0.002 m/s) with the policy, goals aborted (phase3_retest_results.md)
+#  - lidar /scan is /scan_raw minus the robot's own legs (scan_self_filter_node: returns inside the footprint -> inf). Raw scans had
+#    self-hits at 0.15-0.29 m while walking, which made collision_monitor FootprintApproach throttle /cmd_vel to ~5 % (docs/results/phase3_selfhit.md)
 #  - Nav2 output: velocity_smoother -> cmd_vel_min_speed_node -> collision_monitor -> /cmd_vel (gait node or policy node subscribes there)
 amcl:
   ros__parameters:
@@ -237,7 +238,7 @@ collision_monitor:
     stop_pub_timeout: 2.0
     polygons: [FootprintApproach]
     FootprintApproach: {type: polygon, action_type: approach, footprint_topic: /local_costmap/published_footprint, time_before_collision: 2.0,
-      simulation_time_step: 0.1, min_points: 6, visualize: false, enabled: false}
+      simulation_time_step: 0.1, min_points: 6, visualize: false, enabled: true}
     observation_sources: [scan]
     scan: {type: scan, topic: scan, min_height: -0.2, max_height: 0.5, enabled: true}
 docking_server:

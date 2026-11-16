@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Scripted mapping drive for flat_lab: closed-loop waypoint follower on /odom/ground_truth -> /cmd_vel
-(turn to face the waypoint, then walk; commands respect the policy minimum speeds 0.05 m/s / 0.15 rad/s).
+(turn to face the waypoint, then walk; commands respect the policy minimum speeds 0.09 m/s / 0.23 rad/s).
 Route: room A west loop, doorway (x 2.5, y 0.5), room B loop, back through the door, room A south, start.
     python3 scripts/drive_route.py OUT.json [--speed 0.12] [--max-s 1500]
 Prints/saves: sim time, path length, per-waypoint times, stalls, final error to the start, GT path (2 Hz).

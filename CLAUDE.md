@@ -261,7 +261,7 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   13–29° off → heading must come from the IMU (`docs/results/phase3_leg_odometry.md`). Gazebo GT-vs-EKF map
   comparison = test plan step 6 (not run).
 - 2026-11-16: terrain_v1 60M accepted; from-rest dead zone handled at deployment (Nav2 velocity_smoother minimum speeds
-  0.05 m/s / 0.15 rad/s, `phase2_terrain.md`). Step 2.9 Gazebo test run (`docs/results/phase2_deploy_gazebo.md`): 0 falls,
+  0.09 m/s / 0.23 rad/s, `phase2_terrain.md`). Step 2.9 Gazebo test run (`docs/results/phase2_deploy_gazebo.md`): 0 falls,
   but sim-to-sim gap up to 22 pts (target ~5) — ft-6M stalls in Gazebo, terrain_v1 within ±25 %; causes: loop latency
   (~5 ms, policy loses speed with delay) + DART-vs-MuJoCo stance load distribution with the policy's asymmetric stance;
   `policy_node` default model now terrain_v1_60M. Decision pending (DR/fine-tune vs tune MuJoCo vs accept). The ros2_ws
@@ -271,10 +271,13 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   FAILS: start deadlock (MPPI ax_max·dt = 0.04 m/s < velocity_smoother deadband 0.05) — "minimum speed" should probably raise small commands to the
   minimum, not zero them (decision pending); EKF-odom map distorted although EKF == GT within ~3 cm (cause open; one EKF run hung at 133 s).
 - 2026-11-16 (code only, training running): Nav2 minimum speeds now via `cmd_vel_min_speed_node` (`gurdy_core.rl_command.lift_to_min_speed`: small
-  commands lifted to 0.05 m/s / 0.15 rad/s keeping direction, ≤ policy deadband (0.015 m/s, 0.05 rad/s) → 0; smoother deadband 0; collision_monitor in = `cmd_vel_min`; goal tol
+  commands lifted to 0.09 m/s / 0.23 rad/s keeping direction, ≤ policy deadband (0.015 m/s, 0.05 rad/s) → 0; smoother deadband 0; collision_monitor in = `cmd_vel_min`; goal tol
   0.12 m / 0.2 rad). EKF wiring static review: no defect; tests in `gurdy_navigation/test`. Re-test commands (Nav2 5 goals, EKF bag run + analysis):
   `docs/results/phase3_retest.md` — run only after terrain_dr2 finishes.
 - 2026-11-16 (night): terrain_dr2 15M selected (`models/terrain_dr2_15M.onnx`, now the policy_node default); Gazebo gap worst axis 24 → 14 pts (not < 10);
   Nav2 5/5 goals with the policy but ONLY with collision_monitor FootprintApproach disabled (it throttled /cmd_vel to ~5 %; needs a real fix); EKF mapping
   run fine (map precision 0.033 m, first distortion did not reproduce); min-speed epsilon = policy deadband. `latency_20ms` scenario was invalid → `latency_18ms`.
   Details: `docs/results/phase2_9b_nav_results.md`.
+- 2026-11-16 (latest): lidar self-hits confirmed (femurs reach the lidar plane, 91 % of walking scans, 0.15–0.29 m) and fixed with `scan_self_filter_node`
+  (bridge → `/scan_raw`, filtered `/scan`); collision_monitor FootprintApproach re-enabled, Nav2 5/5 goals with it on. Start check at the old minimum FAILED in MuJoCo
+  (38/48) → **min-speed lift now 0.09 m/s / 0.23 rad/s** (smallest passing, 0.085 fails; Gazebo starts at both); Nav2 5/5 again. `docs/results/phase3_selfhit_and_minspeed.md`.

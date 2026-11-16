@@ -35,7 +35,7 @@ Details: [flat](docs/results/phase2_flat.md) · [DR](docs/results/phase2_dr.md) 
 
 ## Known limitations / in progress
 - **Small commands from rest:** `terrain_v1` stands still for |v| ≈ 0.03 m/s from rest (start gate 40/144). Handled at deployment: Nav2 commands
-  below 0.05 m/s / 0.15 rad/s are lifted to that minimum; direct teleop of tiny speeds still stands.
+  below 0.09 m/s / 0.23 rad/s are lifted to that minimum; direct teleop of tiny speeds still stands.
 - **Sim-to-sim gap:** in Gazebo the policy loses up to 22 points of tracking vs MuJoCo (latency + stance-load/contact differences).
   Fine-tune `terrain_dr2` (wider randomisation) is training now; success target is ≤ 10 points.
 - **Nav2 with the policy: not working yet.** First test deadlocked at start (minimum speeds zeroed MPPI's first step); a fix is coded
