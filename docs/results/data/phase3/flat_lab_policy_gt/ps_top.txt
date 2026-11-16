@@ -1,0 +1,8 @@
+  RSS CMD
+515256 gz sim -r -v 2 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_gazebo/share/gurdy_gazebo/worlds/flat_lab.sdf -s --headless-rendering
+94116 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_policy/lib/gurdy_policy/policy_node --ros-args --params-file /tmp/launch_params_l8uax_2v
+85748 /usr/bin/python3 /opt/ros/jazzy/bin/ros2 launch gurdy_bringup sim.launch.py gui:=false nav:=slam navigation:=false controller:=policy odom_source:=ground_truth model:=models/terrain_v1_60M.onnx
+77668 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_navigation/lib/gurdy_navigation/odom_tf_node --ros-args
+74368 /opt/ros/jazzy/lib/slam_toolbox/async_slam_toolbox_node --ros-args -r __node:=slam_toolbox -r __ns:=/ --params-file /home/ubuntu/gurdy2/ros2_ws/install/gurdy_navigation/share/gurdy_navigation/config/slam_toolbox.yaml --params-file /tmp/launch_params_l3enjkrl
+72788 /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 42 --rmw-implementation rmw_fastrtps_cpp
+58448 /opt/ros/jazzy/lib/ros_gz_bridge/parameter_bridge --ros-args --params-file /tmp/launch_params_geuehfnj

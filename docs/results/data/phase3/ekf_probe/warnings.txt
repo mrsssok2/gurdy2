@@ -1,0 +1,11 @@
+      2 [gazebo-4] NodeShared::Publish() Error: Interrupted system call
+      1 [gazebo-4] [WARN] [1794802495.547000179] [gz_ros_control]:  Desired controller update period (0.002 s) is slower than the gazebo simulation period (0.001 s).
+      1 [gazebo-4] [WARN] [1794802494.734311825] [controller_manager]: Component 'GazeboSimSystem' does not have read or write statistics initialized, skipping registration.
+      1 [gazebo-4] [WARN] [1794802494.733367528] [controller_manager.hardware_component.system.GazeboSimSystem]: Executor is not available during hardware component initialization for 'GazeboSimSystem'. Skipping node creation!
+      1 [gazebo-4] [WARN] [1794802494.733170538] [gz_ros_control]: IMU sensor 'imu' not found in hardware_info, skipping.
+      1 [gazebo-4] [WARN] [1794802494.519292591] [controller_manager]: Waiting for data on 'robot_description' topic to finish initialization
+      1 [gazebo-4] [WARN] [1794802493.519098919] [gz_ros_control]: Waiting RM to load and initialize hardware...
+      1 [gazebo-4] [WARN] [1794802493.509167005] [controller_manager]: The resource manager is not yet initialized, will wait for the robot description to initialize it..
+      1 [gazebo-4] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="gurdy"]/link[@name="base_link"]/sensor[@name="lidar"]/gz_frame_id:<urdf-string>:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+      1 [gazebo-4] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="gurdy"]/link[@name="base_link"]/sensor[@name="imu"]/gz_frame_id:<urdf-string>:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+      1 [gazebo-4] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="gurdy"]/link[@name="base_link"]/sensor[@name="depth_camera"]/gz_frame_id:<urdf-string>:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].

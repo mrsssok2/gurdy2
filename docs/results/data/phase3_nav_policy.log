@@ -1,0 +1,1 @@
+{'goal': (1.5, 0.5, 0.0), 'status': 'status 6', 'time_s': 347.3, 'path_m': 1.72, 'final_err_m': 1.907, 'recoveries': 21, 'max_stall_s': 84.0, 'reached_0.25': False}

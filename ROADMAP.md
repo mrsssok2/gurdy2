@@ -117,6 +117,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 ---
 
 ## Phase 3 — Mapping + navigation
+> Gazebo run 2026-11-16 (`docs/results/phase3_gazebo_results.md`): lidar SLAM with GT odom maps well (tripod 2.4 cm / policy 3.1 cm mean error, RTF 0.99); Nav2 with the policy deadlocks at start (MPPI first step 0.04 m/s < new 0.05 deadband); EKF-odometry map distorted despite accurate odometry (open). Checkboxes below not ticked until fixed.
 - [~] Demo world with obstacles, rooms and coloured objects — `flat_lab` world written (generator + test); not yet run in Gazebo
 - [~] Depth → laser scan (or 3D) for SLAM; slam_toolbox mapping (RTAB-Map optional) — code done (gz lidar + depth→scan, slam_toolbox params); **untested in sim** (`docs/results/phase3_test_plan.md`)
 - [~] Nav2 configured for a legged base (velocity limits, footprint, controller tuning) driving `/cmd_vel` — MPPI/Omni params + launch done; **untested in sim**

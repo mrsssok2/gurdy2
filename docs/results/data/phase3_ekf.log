@@ -1,0 +1,5 @@
+{'sim_s': 416.0, 'path_m': 37.92, 'waypoints': 18, 'reached': [(0, 22.3), (1, 45.8), (2, 78.2), (3, 97.1), (4, 114.0), (5, 134.0), (6, 153.6), (7, 177.1), (8, 222.4), (9, 248.3), (10, 268.2), (11, 295.2), (12, 308.8), (13, 323.0), (14, 355.4), (15, 374.5), (16, 390.7), (17, 416.0)], 'stalls': [], 'final_xy': (0.013, -0.147), 'final_err_to_start_m': 0.148, 'complete': True}
+-rw-r--r-- 1 ubuntu ubuntu  9444282 Nov 16 04:13 maps/flat_lab_tripod_ekf.data
+-rw-r--r-- 1 ubuntu ubuntu    29009 Nov 16 04:13 maps/flat_lab_tripod_ekf.pgm
+-rw-r--r-- 1 ubuntu ubuntu 16355168 Nov 16 04:13 maps/flat_lab_tripod_ekf.posegraph
+-rw-r--r-- 1 ubuntu ubuntu      141 Nov 16 04:13 maps/flat_lab_tripod_ekf.yaml

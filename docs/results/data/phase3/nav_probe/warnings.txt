@@ -1,0 +1,20 @@
+      7 [gazebo-16] NodeShared::Publish() Error: Interrupted system call
+      1 [planner_server-7] [WARN] [1794801521.926929201] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 12.1951 Hz
+      1 [planner_server-7] [INFO] [1794801395.432111683] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Re
+      1 [planner_server-7] [INFO] [1794801394.932155390] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Re
+      1 [planner_server-7] [INFO] [1794801394.431967550] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Re
+      1 [opennav_docking-14] [WARN] [1794801389.478327029] [docking_server]: Dock database filepath nor dock parameters set. Docking actions can only be executed specifying the dock pose via the action request. Or update the doc
+      1 [controller_server-5] [WARN] [1794801618.557011756] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+      1 [controller_server-5] [WARN] [1794801574.538918263] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+      1 [controller_server-5] [WARN] [1794801521.683119940] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+      1 [controller_server-5] [WARN] [1794801471.985232347] [controller_server]: Control loop missed its desired rate of 10.0000 Hz. Current loop rate is 16.6667 Hz.
+      1 [controller_server-5] [WARN] [1794801471.849036408] [controller_server]: [follow_path] [ActionServer] Aborting handle.
+      1 [controller_server-5] [WARN] [1794801418.247905800] [controller_server]: No progress checker was specified in parameter 'current_progress_checker'. Server will use only plugin loaded progress_checker . This warning will 
+      1 [controller_server-5] [WARN] [1794801418.247792336] [controller_server]: No goal checker was specified in parameter 'current_goal_checker'. Server will use only plugin loaded general_goal_checker . This warning will appe
+      1 [controller_server-5] [WARN] [1794801394.188012089] [controller_server]: Parameter controller_server.verbose not found
+      1 [controller_server-5] [INFO] [1794801393.483566358] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794801392.983610610] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794801392.483524934] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794801391.983547708] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794801391.483499891] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794801390.983605067] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu

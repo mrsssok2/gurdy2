@@ -1,0 +1,16 @@
+[INFO] [1794802395.210229934] [map_saver]: 
+	map_saver lifecycle node launched. 
+	Waiting on external lifecycle transitions to activate
+	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[INFO] [1794802395.210765245] [map_saver]: Creating
+[INFO] [1794802395.211631358] [map_saver]: Configuring
+[INFO] [1794802395.580328108] [map_saver]: Saving map from 'map' topic to '/home/ubuntu/gurdy2/maps/flat_lab_tripod_ekf' file
+[WARN] [1794802395.580802940] [map_saver]: Free threshold unspecified. Setting it to default value: 0.250000
+[WARN] [1794802395.580829486] [map_saver]: Occupied threshold unspecified. Setting it to default value: 0.650000
+[WARN] [1794802396.320199534] [map_io]: Image format unspecified. Setting it to: pgm
+[INFO] [1794802396.322470008] [map_io]: Received a 218 X 133 map @ 0.05 m/pix
+[INFO] [1794802396.381414904] [map_io]: Writing map occupancy data to /home/ubuntu/gurdy2/maps/flat_lab_tripod_ekf.pgm
+[INFO] [1794802396.389722503] [map_io]: Writing map metadata to /home/ubuntu/gurdy2/maps/flat_lab_tripod_ekf.yaml
+[INFO] [1794802396.390107233] [map_io]: Map saved
+[INFO] [1794802396.390199570] [map_saver]: Map saved successfully
+[INFO] [1794802396.391544969] [map_saver]: Destroying

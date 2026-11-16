@@ -38,3 +38,5 @@ Thumbs.db
 # deployable policy exports (small, needed by the ROS node)
 !models/*.onnx
 docs/results/data/diag/*.npz
+maps/*.data
+maps/*.posegraph

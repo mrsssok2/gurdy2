@@ -1,0 +1,20 @@
+      1 [planner_server-7] [INFO] [1794800152.867199524] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Re
+      1 [planner_server-7] [INFO] [1794800152.367091498] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Re
+      1 [opennav_docking-14] [WARN] [1794800147.932772106] [docking_server]: Dock database filepath nor dock parameters set. Docking actions can only be executed specifying the dock pose via the action request. Or update the doc
+      1 [controller_server-5] [WARN] [1794800164.189511496] [controller_server]: No progress checker was specified in parameter 'current_progress_checker'. Server will use only plugin loaded progress_checker . This warning will 
+      1 [controller_server-5] [WARN] [1794800164.189480508] [controller_server]: No goal checker was specified in parameter 'current_goal_checker'. Server will use only plugin loaded general_goal_checker . This warning will appe
+      1 [controller_server-5] [WARN] [1794800152.141909971] [controller_server]: Parameter controller_server.verbose not found
+      1 [controller_server-5] [INFO] [1794800151.435356205] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794800150.935351276] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794800150.435440719] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794800149.935345185] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794800149.435414745] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794800148.935400495] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794800148.435492688] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [controller_server-5] [INFO] [1794800147.935280961] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argu
+      1 [bt_navigator-10] [WARN] [1794800165.398086598] [bt_navigator]: [navigate_to_pose] [ActionServer] Aborting handle.
+      1 [bt_navigator-10] [WARN] [1794800165.390274634] [bt_navigator_navigate_to_pose_rclcpp_node]: Timed out while waiting for action server to acknowledge goal request for compute_path_to_pose
+      1 [bt_navigator-10] [WARN] [1794800165.364690047] [bt_navigator]: [navigate_to_pose] [ActionServer] Aborting handle.
+      1 [bt_navigator-10] [WARN] [1794800165.355370575] [bt_navigator_navigate_to_pose_rclcpp_node]: Timed out while waiting for action server to acknowledge goal request for compute_path_to_pose
+      1 [bt_navigator-10] [WARN] [1794800165.332692248] [bt_navigator]: [navigate_to_pose] [ActionServer] Aborting handle.
+      1 [bt_navigator-10] [WARN] [1794800165.326419144] [bt_navigator_navigate_to_pose_rclcpp_node]: Timed out while waiting for action server to acknowledge goal request for compute_path_to_pose

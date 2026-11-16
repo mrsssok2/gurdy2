@@ -1,0 +1,9 @@
+t=   10 pos=(+0.01,-0.00) moved=0.01 | cmd_vel_nav:n=194 mean=(+0.024,+0.004,+0.011) | cmd_vel_smoothed:n=386 mean=(+0.000,+0.000,+0.000) | cmd_vel:n=82 mean=(+0.000,+0.000,+0.000) | cmd:n=124 mean=(+0.000,+0.000,+0.000)
+t=   20 pos=(+0.01,-0.00) moved=0.00 | cmd_vel_nav:n=325 mean=(+0.024,+0.004,+0.011) | cmd_vel_smoothed:n=651 mean=(+0.000,+0.000,+0.000) | cmd_vel:n=0 | cmd:n=0
+t=   30 pos=(+0.01,-0.00) moved=0.00 | cmd_vel_nav:n=242 mean=(+0.023,+0.004,+0.010) | cmd_vel_smoothed:n=483 mean=(+0.000,+0.000,+0.000) | cmd_vel:n=0 | cmd:n=0
+t=   40 pos=(+0.01,-0.00) moved=0.00 | cmd_vel_nav:n=250 mean=(+0.024,+0.004,+0.010) | cmd_vel_smoothed:n=500 mean=(+0.000,+0.000,+0.000) | cmd_vel:n=0 | cmd:n=0
+t=   50 pos=(+0.01,-0.00) moved=0.00 | cmd_vel_nav:n=279 mean=(+0.024,+0.004,+0.010) | cmd_vel_smoothed:n=561 mean=(+0.000,+0.000,+0.000) | cmd_vel:n=0 | cmd:n=0
+t=   60 pos=(+0.01,-0.00) moved=0.00 | cmd_vel_nav:n=247 mean=(+0.024,+0.004,+0.009) | cmd_vel_smoothed:n=493 mean=(+0.000,+0.000,+0.000) | cmd_vel:n=0 | cmd:n=0
+t=   70 pos=(+0.01,-0.00) moved=0.00 | cmd_vel_nav:n=238 mean=(+0.024,+0.004,+0.010) | cmd_vel_smoothed:n=476 mean=(+0.000,+0.000,+0.000) | cmd_vel:n=0 | cmd:n=0
+t=   80 pos=(+0.01,-0.00) moved=0.00 | cmd_vel_nav:n=206 mean=(+0.024,+0.004,+0.012) | cmd_vel_smoothed:n=411 mean=(+0.000,+0.000,+0.000) | cmd_vel:n=0 | cmd:n=0
+t=   90 pos=(-0.05,+0.01) moved=0.05 | cmd_vel_nav:n=226 mean=(+0.002,+0.001,+0.450) | cmd_vel_smoothed:n=450 mean=(+0.000,+0.000,+0.446) | cmd_vel:n=294 mean=(+0.000,+0.000,+0.036) | cmd:n=388 mean=(+0.000,+0.000,+0.033)

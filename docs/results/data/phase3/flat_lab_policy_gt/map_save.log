@@ -1,0 +1,16 @@
+[INFO] [1794800108.394939316] [map_saver]: 
+	map_saver lifecycle node launched. 
+	Waiting on external lifecycle transitions to activate
+	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[INFO] [1794800108.395104845] [map_saver]: Creating
+[INFO] [1794800108.395178076] [map_saver]: Configuring
+[INFO] [1794800108.397975303] [map_saver]: Saving map from 'map' topic to '/home/ubuntu/gurdy2/maps/flat_lab_policy_gt' file
+[WARN] [1794800108.398044233] [map_saver]: Free threshold unspecified. Setting it to default value: 0.250000
+[WARN] [1794800108.398051454] [map_saver]: Occupied threshold unspecified. Setting it to default value: 0.650000
+[WARN] [1794800111.677657724] [map_io]: Image format unspecified. Setting it to: pgm
+[INFO] [1794800111.677751925] [map_io]: Received a 172 X 125 map @ 0.05 m/pix
+[INFO] [1794800111.705319402] [map_io]: Writing map occupancy data to /home/ubuntu/gurdy2/maps/flat_lab_policy_gt.pgm
+[INFO] [1794800111.706084693] [map_io]: Writing map metadata to /home/ubuntu/gurdy2/maps/flat_lab_policy_gt.yaml
+[INFO] [1794800111.710674562] [map_io]: Map saved
+[INFO] [1794800111.710800886] [map_saver]: Map saved successfully
+[INFO] [1794800111.711883442] [map_saver]: Destroying
