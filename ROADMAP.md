@@ -152,22 +152,109 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 
 ---
 
-## Phase 5 — Gurdy Brain (LLM post-training)
-- [ ] Tool schema: walk, turn, go_to, find_object, explore, stop, report
-- [ ] Synthetic dataset: Hindi/Hinglish/Kannada/English; noisy-STT variants; multi-step missions; ambiguous and unsafe requests
+## Phase 5 — Gurdy Brain (LLM post-training + assistant)
+
+### 5.1 Core: tools, data, training
+- [ ] Tool schema: walk, turn, go_to, find_object, explore, patrol, inspect, return_home, stop, pause/resume/cancel, schedule, query_map, query_status, query_memory, query_incidents, describe_view, report
+- [ ] Synthetic dataset: Hindi/Hinglish/Kannada/English; noisy-STT variants; multi-step missions; multi-turn dialogues; ambiguous and unsafe requests
 - [ ] Held-out test split (incl. "baayen"/"haan ye" style confusions)
-- [ ] SFT (LoRA, PEFT/TRL) on Qwen3-0.6B locally (RTX 4050, 6 GB); Qwen3-1.7B with QLoRA 4-bit if it fits — Colab/Kaggle notebooks as fallback
-- [ ] DPO: prefer clarification over guessing; refuse unsafe actions
-- [ ] Eval harness: tool-call exact match, argument accuracy, direction errors, safety refusal rate, clarification rate — vs keyword parser and base model
-- [ ] GGUF quantization, Ollama Modelfile; latency measured on local GPU and CPU
+- [ ] SFT (LoRA, PEFT/TRL) on Qwen3-0.6B locally (RTX 4050, 6 GB); Qwen3-1.7B with QLoRA 4-bit if it fits — Colab/Kaggle fallback
+- [ ] DPO: prefer clarification over guessing; refuse unsafe actions; prefer tool results over invented facts
+- [ ] GGUF quantization, Ollama Modelfile; latency on local GPU and CPU
 - [ ] Hugging Face model card (with eval table)
-- [ ] LangGraph mission agent calling ROS 2 tools
+- [ ] LangGraph agent calling ROS 2 tools
 
 **AC**
-- Fine-tuned model beats keyword parser and base model on tool-call accuracy and direction errors (numbers in model card).
+- Fine-tuned model beats keyword parser and base model on tool-call exact match, argument accuracy and direction errors (numbers in model card).
+- Runs offline via Ollama on GPU and CPU-only; latency per command reported for both.
+
+### 5.2 Talking
+- [ ] English/Hindi/Hinglish text + voice (Gnani STT/TTS, local Whisper + local TTS fallback); replies start with "Main ek AI assistant hoon" where required
+- [ ] Multi-turn memory (pronouns/ellipsis: "aur wahan se left" , "wapas jao")
+- [ ] Clarification questions on low confidence/ambiguity
+- [ ] Confirmation step for risky actions (long trips, rough terrain, leaving mapped area)
+
+**AC**
+- Multi-turn test set (≥ 20 dialogues) ≥ 90 % correct reference resolution.
+- Clarification asked on ≥ 90 % of ambiguous prompts; unnecessary clarification on clear prompts ≤ 10 %.
+- Risky actions never execute without confirmation (0 violations in test set).
+- Works with network off (Whisper fallback); STT/TTS latency measured for both paths.
+
+### 5.3 Spatial awareness (tool-grounded)
+- [ ] Answers "what's nearby / where is X / left-right-behind of Y / which room / how far / what's blocking" via semantic map, costmap and TF tools
+- [ ] Every spatial claim traceable to a tool call (logged); "I don't know / not seen yet" when the tool has no answer
+
+**AC**
+- Spatial QA set (≥ 30 questions in a sim world with ground truth): answer accuracy and distance error reported.
+- Hallucination check: 0 objects/places stated that are not in the tool output (reported over the whole set).
+
+### 5.4 Proactive alerts
+- [ ] Event → speech/text alerts: path blocked, new object seen, stuck, fall, leg failure detected, low battery, map changed
+- [ ] Rate limiting/dedup so alerts are not spammed; severity levels
+
+**AC**
+- Each alert type triggered in sim by a scripted cause; detection-to-alert latency measured.
+- False-alert rate over a 10-minute normal run reported (target 0 repeats of the same alert within the cooldown).
+
+### 5.5 Vision
+- [ ] "What do you see?" via a small VLM that fits 6 GB VRAM (e.g. ~2B class, 4-bit); one GPU workload at a time (unload LLM/detector as needed)
+- [ ] Change detection vs earlier visits to the same place (objects added/removed/moved)
+- [ ] Optional: OCR for signs/labels
+
+**AC**
+- VLM VRAM and latency measured; answers on a ≥ 30-image sim test set scored against ground truth.
+- Change detection: precision/recall on scripted scene changes reported.
+
+### 5.6 Tasks and missions
+- [ ] go to, find, explore, patrol, inspect, return home, multi-step missions
+- [ ] Pause / resume / cancel mid-mission; schedules ("5 minute baad patrol karo")
+
+**AC**
+- Spoken multi-step mission ("kitchen jao, red box dhundo, wapas aao") executed end-to-end in sim.
+- Pause/resume/cancel work in every mission state (state-machine test).
+- Scheduled task fires within ±2 s of its time.
+
+### 5.7 Memory
+- [ ] Last-seen objects and places persist across sessions (SQLite/JSON)
+- [ ] Mission history; Incident Graph queries (Phase 6 hook, stubbed until then)
+
+**AC**
+- After a restart, "red box last kahan dekha tha?" answers correctly from memory with timestamp.
+- Memory answers carry their age; stale entries flagged.
+
+### 5.8 Self-awareness
+- [ ] Status: battery, leg health, mode, speed, current task
+- [ ] Explains decisions ("why did you stop?") from logged events/state, not invention
+
+**AC**
+- Status values match telemetry exactly (test).
+- "Why" questions (≥ 20 cases) cite a real logged cause; unsupported cause = fail.
+
+### 5.9 Safety
+- [ ] Voice e-stop ("ruko"/"stop"/"ro-ko" noisy variants) bypasses the LLM (keyword fast-path) and stops the robot
+- [ ] No-go zones (set by voice, enforced in costmap)
+- [ ] Refuses unsafe commands (stairs/edge, humans too close, outside zone)
+
+**AC**
+- E-stop: command-to-zero-velocity latency measured (target < 0.5 s sim time), ≥ 98 % recall on STT-variant set, works with LLM stopped.
 - Unsafe-request refusal ≥ 95 %, with low over-refusal on safe commands (both reported).
-- Runs offline via Ollama on local GPU and on CPU only; latency per command reported for both.
-- End-to-end demo: spoken multi-step mission executed in sim.
+- Robot never enters a no-go zone in 10 navigation runs.
+
+### 5.10 Reports
+- [ ] End-of-mission summary: duration, distance, map snapshot, object photos with positions, alerts raised
+- [ ] Spoken short version + saved HTML/Markdown report
+
+**AC**
+- Report generated for each demo mission; all listed objects match the semantic map; photos present.
+
+### 5.11 Evaluation
+- [ ] ~100-command test set (English + Hindi/Hinglish), incl. noisy STT, multi-step, ambiguous, unsafe
+- [ ] Metrics: task success rate, tool-call exact match, latency (p50/p95), hallucination checks, refusal/over-refusal, clarification rate
+- [ ] Compare keyword parser vs base vs SFT vs SFT+DPO
+
+**AC**
+- One results table (docs/results/phase5_eval.md) with all four systems; SFT+DPO best on success rate and hallucination rate, or the gap is reported honestly.
+- End-to-end demo video: spoken mission, alert, spatial question, report.
 
 ---
 
