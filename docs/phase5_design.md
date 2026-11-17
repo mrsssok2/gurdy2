@@ -1,6 +1,7 @@
 # Phase 5 design — Gurdy Brain
 
-Status: **design only** (2026-11-17). No code written, nothing installed, nothing measured.
+Status (2026-11-17): design, plus **5.2 part 1 built** (`brain/tools`, `brain/mock`, 48 tests: tool layer,
+`RobotBackend`, mock world; agent graph, safety checker and mission executor still to do). Nothing measured yet.
 Every VRAM / RAM / latency / training-time number in this file is an **estimate** unless it says
 "measured"; milestone 5.1 replaces the estimates with measurements before anything else is built.
 
@@ -533,19 +534,21 @@ graph — same `GZ_PARTITION` / discovery settings as the Phase 1 lesson), `brai
 
 ---
 
-## 8. Open decisions and main risks
+## 8. Decisions and main risks
 
-Decisions for the user:
+Decisions (user, 2026-11-17):
 
-1. **GPU rule** (3.4): allow the measured runtime set (detector + LLM + Whisper + Gazebo) together,
-   keeping "one training job, never next to a simulation". Recommended: yes — Phase 5 cannot be
-   demoed otherwise; set C is the fallback.
-2. **WSL memory** (3.5): raise to 10 GB before 5.6. Recommended: yes, confirmed or dropped by the
-   5.1 measurement.
-3. **TTS**: Piper (fast, GPL fork as a separate process) vs Kokoro-82M (Apache-2.0, slower on CPU).
-   Recommended: measure both in 5.1, default Piper.
-4. **Cloud voice** (Gnani Prisma / Timbre, still open in Phase 4): proposed to keep it optional
-   behind the same STT / TTS interface and build the local path first.
+1. **GPU rule: allowed.** The runtime set (detector + LLM + Whisper + Gazebo) may run together **if the
+   measured peak is <= 5.0 GB VRAM** (5.1 measures it). Training (SFT / DPO) still runs alone, never next
+   to a simulation. If set A does not fit: set C (3.4). This replaces "one GPU workload at a time" for
+   Phase 5 inference only.
+2. **WSL memory: raise to 10 GB before 5.6** (the user edits the file; swap stays 8 GB). In
+   `C:\Users\mahadev\.wslconfig`: `memory=8GB` -> `memory=10GB`, keep `swap=8GB`; then run
+   `wsl --shutdown` in PowerShell and restart Docker Desktop. 5.1 still reports the real peak.
+3. **TTS: measure both Piper and Kokoro-82M in 5.1.** Prefer Kokoro (Apache-2.0, better voice) if its
+   time-to-first-audio is under about 1 s on this machine; otherwise Piper.
+4. **Cloud voice (Gnani Prisma / Timbre): optional**, behind the same STT / TTS interface; the local path
+   is built first and must work with the network off.
 
 Risks, in order of expected trouble:
 

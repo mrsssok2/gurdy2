@@ -325,3 +325,8 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   (every stated fact must be in a tool result of the turn), Ollama + Qwen3-1.7B Q4 (0.6B fallback), faster-whisper, Piper, on-demand ~2B VLM, SQLite memory per `map_id`, event bus `/gurdy/events`,
   3-level safety (gate node, e-stop fast path, rule check), 100-command eval, SFT 12k + DPO 3k plan. ROADMAP Phase 5: feature areas renamed 5.A–5.K, build milestones 5.1–5.11. All budget numbers there are
   ESTIMATES until 5.1 measures them. **Pending user decisions** (design §8): runtime GPU set allowed together (changes the "one GPU workload" rule), WSL memory 8 → 10 GB, TTS choice, cloud voice optional.
+- 2026-11-17 (Phase 5 decisions + 5.2 part 1): decisions recorded in `docs/phase5_design.md` §8 (runtime GPU set allowed together if measured peak <= 5 GB, training alone;
+  WSL 8 -> 10 GB before 5.6, user edits `.wslconfig`; measure Piper + Kokoro, prefer Kokoro if first audio < ~1 s; Gnani optional). Built `brain/tools` (24 tool specs as plain JSON schema,
+  stdlib validator — no pydantic, `RobotBackend` protocol, `ToolLayer`) and `brain/mock` (`MockBackend`, flat_lab world, virtual clock; nominal speeds 0.10 m/s / 0.3 rad/s and camera cone
+  3.5 m / 90° are ASSUMPTIONS). Tests: `docker run --rm -v $PWD:/w -w /w --entrypoint python3 gurdy2/rl:cpu -m pytest -q brain/tests` (48 pass). Safety checker, executor, LangGraph graph,
+  grounding check, keyword baseline still to do in 5.2. `no_go_zone remove` confirmation belongs to the safety checker, not the backend.
