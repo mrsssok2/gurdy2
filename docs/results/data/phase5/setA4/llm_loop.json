@@ -1,0 +1,1 @@
+{"model": "qwen3:1.7b", "calls": 20, "ttft_median": 0.925, "ttft_max": 1.453, "decode_tps_median": 87.6}

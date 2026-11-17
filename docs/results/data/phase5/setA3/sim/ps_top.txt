@@ -1,0 +1,10 @@
+  RSS CMD
+515484 gz sim -r -v 2 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_gazebo/share/gurdy_gazebo/worlds/semantic_lab.sdf -s --headless-rendering
+100444 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_policy/lib/gurdy_policy/policy_node --ros-args --params-file /tmp/launch_params_d_xa7avw
+96324 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_navigation/lib/gurdy_navigation/frontier_explorer_node --ros-args -p log_path:=docs/results/data/phase5/setA3/sim/explore_log.json -p done_path:=docs/results/data/phase5/setA3/sim/explore.done
+92304 /usr/bin/python3 /opt/ros/jazzy/bin/ros2 launch gurdy_bringup sim.launch.py gui:=false world:=semantic_lab nav:=slam navigation:=true controller:=policy odom_source:=ground_truth
+84036 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_navigation/lib/gurdy_navigation/odom_tf_node --ros-args
+81112 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_navigation/lib/gurdy_navigation/scan_self_filter_node --ros-args --params-file /tmp/launch_params_guoo63y0
+81004 /opt/ros/jazzy/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator -p use_sim_time:=True --params-file /tmp/launch_params_0c06jm1o -r /tf:=tf -r /tf_static:=tf_static
+79508 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_navigation/lib/gurdy_navigation/cmd_vel_min_speed_node --ros-args
+79140 /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 42 --rmw-implementation rmw_fastrtps_cpp

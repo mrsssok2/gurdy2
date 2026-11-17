@@ -1,0 +1,2 @@
+detector provider CUDAExecutionProvider
+detector frames 2939 median latency ms 15.0

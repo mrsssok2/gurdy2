@@ -1,0 +1,15 @@
+[INFO] [1794910963.274969801] [frontier_explorer]: frontier explorer up; waiting for /map, TF and navigate_to_pose
+[INFO] [1794910964.240433903] [frontier_explorer]: start pose -0.00,0.00; exploring
+[INFO] [1794910964.269924323] [frontier_explorer]: goal 1: [-0.353, 0.045] (frontier), path 0.37 m, size 31.45 m
+[INFO] [1794910968.284437040] [frontier_explorer]: goal 1 CANCELED frontier resolved after 2.4 s
+[INFO] [1794910969.321556012] [frontier_explorer]: goal 2: [-0.803, -0.655] (frontier), path 0.92 m, size 7.3 m
+[INFO] [1794910972.287378885] [frontier_explorer]: goal 2 CANCELED frontier resolved after 1.5 s
+[INFO] [1794910973.360981854] [frontier_explorer]: goal 3: [-0.311, -1.505] (frontier), path 1.44 m, size 1.9 m
+[INFO] [1794911064.406829805] [frontier_explorer]: goal 3 CANCELED close enough after 43.0 s
+[INFO] [1794911065.560959588] [frontier_explorer]: goal 4: [-0.524, -1.464] (frontier), path 0.33 m, size 2.35 m
+[INFO] [1794911079.315901345] [frontier_explorer]: goal 4 CANCELED close enough after 4.4 s
+[INFO] [1794911080.407197950] [frontier_explorer]: goal 5: [0.676, -1.915] (frontier), path 1.19 m, size 1.05 m
+[INFO] [1794911107.310083813] [frontier_explorer]: goal 5 CANCELED close enough after 11.9 s
+[INFO] [1794911108.300076555] [frontier_explorer]: goal 6: [-1.174, -2.165] (frontier), path 1.72 m, size 0.6 m
+[INFO] [1794911208.416252925] [frontier_explorer]: goal 6 CANCELED frontier resolved after 49.8 s
+[INFO] [1794911209.400063143] [frontier_explorer]: goal 7: [2.026, -0.225] (frontier), path 3.99 m, size 0.7 m
