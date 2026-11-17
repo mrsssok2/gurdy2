@@ -46,7 +46,7 @@ def test_val_and_train_use_different_templates():
 def test_prompt_prefix_of_examples_matches_the_served_model():
     # the system prompt is stored once; user messages carry only per-turn content, never tool specs
     ex, _ = _examples(10)
-    assert all('"name":"' not in e["user"] for e in ex) and len(build_system()) > 5000
+    assert all('"name":"' not in e["user"] for e in ex) and len(build_system("json")) > 5000
 
 
 def test_meaning_kept_rules():

@@ -32,13 +32,25 @@ Examples:
   user: go to the kitchen -> {"calls": [{"tool": "go_to", "args": {"place": "kitchen"}}], "continue": false}
   user: where is the red box -> {"calls": [{"tool": "where_is", "args": {"object": {"class": "box", "color": "red"}}}], "continue": false}
   user: turn left ninety degrees -> {"calls": [{"tool": "turn", "args": {"direction": "left", "angle_deg": 90}}], "continue": false}
-Tools (JSON schema of each):
 """
+_HEADER_JSON = "Tools (JSON schema of each):\n"
+_HEADER_COMPACT = ("Tools, one per line: name(params) -- description. In params `?` = optional, `a|b` = one of, `str>=1` = non-empty string, "
+                   "`num[lo,hi]` / `int[lo,hi]` = bounds, `list<T>[min,max]`, `{...}` = object, `obj` = free-form object; "
+                   "`exactly_one_of(a,b)` = exactly one of those keys. CLASS is the object class enum defined on the first line.\n")
+
+PROMPT_STYLES = ("compact", "json")   # compact = default everywhere (decision 2026-11-17); json = the old prompt, kept for reference runs
 
 
-def build_system() -> str:
-    tools = [s.as_llm_tool() for s in TOOLS.values()]
-    return SYSTEM_RULES + "\n".join(json.dumps(t, separators=(",", ":")) for t in tools)
+def build_system(style: str = "compact") -> str:
+    """The one stable system message. `compact`: lossless compact tool block + CLASS alias (brain/train/compact_tools.py, -59 % tool tokens).
+    `json`: the original JSON schema block (base-model baseline of 5.3, phase5_eval_base.md)."""
+    if style == "json":
+        tools = [s.as_llm_tool() for s in TOOLS.values()]
+        return SYSTEM_RULES + _HEADER_JSON + "\n".join(json.dumps(t, separators=(",", ":")) for t in tools)
+    if style == "compact":
+        from ..train.compact_tools import build_compact_block
+        return SYSTEM_RULES + _HEADER_COMPACT + build_compact_block(alias=True)
+    raise ValueError(f"prompt style {style!r}, expected one of {PROMPT_STYLES}")
 
 
 def plan_schema(with_results: bool = False) -> dict:
@@ -60,12 +72,13 @@ def _results(entries: list[dict]) -> str:
 
 class OllamaLLM:
     def __init__(self, model: str, host: str | None = None, num_ctx: int = 4096, num_predict: int = 400,
-                 keep_alive: str = "30m", timeout: float = 120.0):
+                 keep_alive: str = "30m", timeout: float = 120.0, prompt_style: str = "compact"):
         self.model = model
         self.host = host or os.environ.get("OLLAMA_URL") or "http://127.0.0.1:11435"
         self.options = {"temperature": 0, "num_ctx": num_ctx, "num_predict": num_predict}
         self.keep_alive, self.timeout = keep_alive, timeout
-        self.system = build_system()
+        self.prompt_style = prompt_style
+        self.system = build_system(prompt_style)
         self.schema, self.schema_results = plan_schema(), plan_schema(True)
         self.stats: list[dict] = []
         self.parse_failures = 0

@@ -160,9 +160,22 @@ def decode_tool(line: str) -> tuple[str, str, dict]:
     return name, desc, _P("{" + body + "}").obj()
 
 
-def build_compact_block() -> str:
+def build_compact_block(alias: bool = False) -> str:
+    """alias=True: the repeated 7-class enum is replaced by `CLASS` and defined on the first line (plain, reversible text substitution)."""
     from ..tools import TOOLS
-    return "\n".join(encode_tool(s.name, s.description, s.parameters) for s in TOOLS.values())
+    block = "\n".join(encode_tool(s.name, s.description, s.parameters) for s in TOOLS.values())
+    if not alias:
+        return block
+    from ..tools.specs import _CLASSES
+    enum_s = "|".join(_CLASSES)
+    assert "CLASS" not in block and enum_s in block
+    return f"CLASS={enum_s}\n" + block.replace(enum_s, "CLASS")
+
+
+def expand_alias(block: str) -> str:
+    head, rest = block.split("\n", 1)
+    assert head.startswith("CLASS=")
+    return rest.replace("CLASS", head[len("CLASS="):])
 
 
 def check_roundtrip() -> int:
@@ -172,6 +185,7 @@ def check_roundtrip() -> int:
         name, desc, params = decode_tool(encode_tool(s.name, s.description, s.parameters))
         assert (name, desc, params) == (s.name, s.description, s.parameters), s.name
         n += 1
+    assert expand_alias(build_compact_block(alias=True)) == build_compact_block()
     return n
 
 

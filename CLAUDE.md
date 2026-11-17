@@ -353,3 +353,5 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   (`scripts/p5_datagen.sh brain/data/full 8400 420`, ~3.4 h, resumable, status in `brain/data/full/status.txt`) — check `docker ps` before any GPU work. System prompt = ~2.4k tokens, so SFT sequence length >= 3.1k.
   GGUF decision: official tagged llama.cpp release, pinned, in a container (tag recorded at 5.5).
 
+- 2026-11-17 (compact prompt decision): the tool block is the lossless compact notation + `CLASS` alias everywhere (`build_system()` default, Ollama client, SFT `system.txt`); old JSON prompt selectable
+  (`build_system("json")`, agent `qwen3-1.7b-json`). 5.3 base numbers (53 / 36) are JSON-prompt; compact baseline + SFT start are chained in `scripts/p5_tonight.sh` (re-runnable; waits for datagen DONE + empty `docker ps`).

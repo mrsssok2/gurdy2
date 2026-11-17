@@ -47,13 +47,15 @@ def oracle(b: MockBackend, case: dict) -> Agent:
 _LLMS: dict = {}
 
 
-def _ollama(model: str):
+def _ollama(model: str, style: str = "compact"):
     def make(b: MockBackend, case: dict) -> Agent:
         from ..agent.ollama_llm import OllamaLLM
-        llm = _LLMS.setdefault(model, OllamaLLM(model))     # one client (stats accumulate over the run)
+        llm = _LLMS.setdefault((model, style), OllamaLLM(model, prompt_style=style))     # one client (stats accumulate over the run)
         return Agent(ToolLayer(b), llm)
     return make
 
 
 AGENTS = {"keyword": keyword, "oracle": oracle,
-          "qwen3-1.7b": _ollama("qwen3:1.7b"), "qwen3-0.6b": _ollama("qwen3:0.6b")}
+          "qwen3-1.7b": _ollama("qwen3:1.7b"), "qwen3-0.6b": _ollama("qwen3:0.6b"),
+          # old JSON-schema prompt, for reference runs (phase5_eval_base.md)
+          "qwen3-1.7b-json": _ollama("qwen3:1.7b", "json"), "qwen3-0.6b-json": _ollama("qwen3:0.6b", "json")}

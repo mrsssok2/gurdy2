@@ -25,10 +25,13 @@ compared for equality for all 24 tools. Eval prompt NOT changed.
 | descriptions removed (upper bound, loses information) | 720 | — |
 
 System prompt 2423 → 1377 tokens (−43 %): every training example gets ~40 % shorter, so SFT time drops roughly in proportion and
-the 3.1k length limit becomes ~2k. Cost: the data's `system.txt` and the Ollama prompt must use the same text (SFT would learn the
-compact format; the base-model comparison on the old prompt stays valid). Decide before starting if you want it; it is one `--system-file`.
+the 3.1k length limit becomes ~2k. **Decided 2026-11-17: compact + CLASS alias everywhere** (`build_system()` default; `build_system("json")` / agent `qwen3-1.7b-json` keep the old prompt for reference;
+`python3 -m brain.train.render_system brain/data/full` writes `system.txt` (compact) + `system_json.txt`). The 5.3 base numbers (1.7B 53, 0.6B 36) used the JSON prompt;
+the fair base baseline with the compact prompt is run by `scripts/p5_tonight.sh` (`docs/results/phase5_eval_base_compact.txt`).
 
-## Start (after `brain/data/full/status.txt` says DONE and `docker ps` is empty)
+## Overnight chain: `nohup scripts/p5_tonight.sh > brain/runs/tonight.log 2>&1 &` (waits for DONE + empty docker ps, renders prompt, base eval, starts SFT; re-runnable)
+
+## Start by hand (after `brain/data/full/status.txt` says DONE and `docker ps` is empty)
     scripts/p5_sft.sh --epochs 2                 # detached container gurdy2-sft, checks both conditions itself
 Check first that the final files are `train.jsonl` / `val.jsonl` (else pass `--train-file`, `--val-file`).
 
