@@ -1,3 +1,4 @@
-# Agent runtime (milestone 5.2). Tool layer, mock world, safety, executor, grounding need only PyYAML.
+# Agent runtime (milestones 5.2-5.3). Installed in docker/brain (copy: docker/brain/requirements.txt, keep in sync).
+# Tool layer, mock world, safety, executor, grounding, eval harness need only PyYAML; the agent graph needs langgraph.
 pyyaml
-langgraph>=1.0        # agent graph (brain/agent/graph.py); not in the rl image yet -> tests use a pip --target dir
+langgraph>=1.0        # agent graph (brain/agent/graph.py)

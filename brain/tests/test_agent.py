@@ -155,7 +155,10 @@ def test_estop_cancels_running_mission():
 @pytest.mark.parametrize("text,expect", [("stop", True), ("Stop!", True), ("stap", True), ("top", True), ("freeze", True),
                                          ("please stop now", True), ("emergency stop", True),
                                          ("go to the top shelf", False), ("don't stop", False),
-                                         ("walk until I say stop", False), ("go to room B", False)])
+                                         ("walk until I say stop", False), ("go to room B", False),
+                                         ("why did you stop", False), ("when did you stop", False),
+                                         ("disable the emergency stop", False), ("turn off the e-stop", False),
+                                         ("can you stop", True), ("stop now please", True)])
 def test_estop_phrase(text, expect):
     assert is_estop_phrase(text) is expect
 
@@ -229,3 +232,108 @@ def test_keyword_baseline_end_to_end():
     r = a.say("where am i")
     assert "room A" in r.reply or "home" in r.reply
     assert a.say("blah blah").reply.startswith("Sorry")
+
+
+def test_planned_calls_are_kept_when_safety_refuses_or_asks():
+    """TurnResult.calls = what the planner proposed; the verdict says what happened (the evaluation needs both)."""
+    llm = ScriptedLLM(plans=[{"calls": [call("walk", direction="forward", distance_m=2.0)]},
+                             {"calls": [call("go_to", object={"class": "box"})]}])
+    b, l, a = agent_for(llm)
+    b.fail_leg("front_left")
+    r = a.say("walk forward 2 metres")
+    assert [c["tool"] for c in r.calls] == ["walk"] and r.verdicts[-1]["outcome"] == "refuse" and b.task is None
+    b2, l2, a2 = agent_for(ScriptedLLM(plans=[{"calls": [call("go_to", object={"class": "box"})]}]))
+    r = a2.say("go to the box")
+    assert [c["tool"] for c in r.calls] == ["go_to"] and r.verdicts[-1]["outcome"] == "clarify" and b2.task is None
+
+
+def test_question_about_stopping_is_answered_not_executed():
+    llm = ScriptedLLM(plans=[{"calls": [call("why", about="stop")]}], responses=["Nothing is logged about that."])
+    b, l, a = agent_for(llm)
+    r = a.say("why did you stop")
+    assert len(llm.plan_calls) == 1 and [c["tool"] for c in r.calls] == ["why"]
+
+
+# ---------------------------------------------------------------- re-plan after a failed mission step
+from brain.mock.world import Rect
+
+
+def _fail_goto(llm, **kw):
+    """go to room B, then drop an obstacle into the path so the step fails with 'blocked'."""
+    b, l, a = agent_for(llm, **kw)
+    a.say("go to room B")
+    b.advance(5)
+    b.add_obstacle(Rect(0.9, -0.3, 1.4, 0.3))
+    msgs = []
+    for _ in range(60):
+        b.advance(1.0)
+        msgs += a.pump()
+        if a.executor.state != "running":
+            break
+    return b, l, a, msgs
+
+
+def test_replan_runs_once_and_executes_a_safe_plan():
+    llm = ScriptedLLM(plans=[{"calls": [call("go_to", place="room B")]}],
+                      replans=[{"calls": [call("return_home")]}])
+    b, l, a, msgs = _fail_goto(llm)
+    assert len(llm.replan_calls) == 1
+    ctx = llm.replan_calls[0]["failure"]
+    assert ctx["failed_step"]["tool"] == "go_to" and ctx["failed_step"]["reason"] == "blocked"
+    assert any("try this instead" in m and "home" in m for m in msgs)
+    assert a.replans[0]["outcome"] == "started" and a.replans[0]["llm_calls"] == 1
+    b.advance(1)
+    for _ in range(200):
+        b.advance(1.0)
+        a.pump()
+        if a.executor.state != "running":
+            break
+    assert a.executor.state == "done" and b.world.place_at(b.x, b.y) == "room A"
+
+
+def test_replan_that_fails_again_is_only_reported():
+    llm = ScriptedLLM(plans=[{"calls": [call("go_to", place="room B")]}],
+                      replans=[{"calls": [call("walk", direction="forward", distance_m=3.0)]},
+                               {"calls": [call("return_home")]}])      # the walk runs into the obstacle again
+    b, l, a, msgs = _fail_goto(llm)
+    b.advance(1)
+    for _ in range(100):
+        b.advance(1.0)
+        msgs += a.pump()
+        if a.executor.state != "running":
+            break
+    assert len(llm.replan_calls) == 1 and a.executor.state == "failed"      # no second re-plan
+    assert any("blocked" in m for m in msgs)
+
+
+def test_replan_calls_pass_the_safety_checker():
+    llm = ScriptedLLM(plans=[{"calls": [call("go_to", place="room B")]}],
+                      replans=[{"calls": [call("go_to", object={"class": "mannequin"})]}])
+    b, l, a, msgs = _fail_goto(llm)
+    assert a.replans[0]["outcome"] == "blocked:person_distance" and a.executor.state == "failed"
+    assert any("person" in m or "metre" in m for m in msgs) and b.task is None
+
+
+def test_replan_reply_is_grounded_and_falls_back_to_the_failure_text():
+    llm = ScriptedLLM(plans=[{"calls": [call("go_to", place="room B")]}],
+                      replans=[{"reply": "The way is blocked, 9.9 metres away."},
+                               {"reply": "I could not get there, it is 7.7 metres."}])
+    b, l, a, msgs = _fail_goto(llm)
+    assert len(llm.replan_calls) == 2 and "9.9" in llm.replan_calls[1]["feedback"]
+    assert all("9.9" not in m and "7.7" not in m for m in msgs) and any("blocked" in m for m in msgs)
+    llm2 = ScriptedLLM(plans=[{"calls": [call("go_to", place="room B")]}],
+                       replans=[{"reply": "The way is blocked, so I stopped."}])
+    b, l, a, msgs = _fail_goto(llm2)
+    assert len(llm2.replan_calls) == 1 and "The way is blocked, so I stopped." in msgs
+
+
+def test_user_cancel_and_keyword_baseline_do_not_replan():
+    llm = ScriptedLLM(plans=[{"calls": [call("go_to", place="room B")]}], replans=[{"calls": [call("return_home")]}])
+    b, l, a = agent_for(llm)
+    a.say("go to room B")
+    b.advance(5)
+    a.say("stop")
+    a.pump()
+    assert llm.replan_calls == []
+    kw = KeywordLLM(lambda: [])
+    assert kw.replan("", "", [], {}, []) == {}

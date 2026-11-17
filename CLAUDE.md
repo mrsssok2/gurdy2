@@ -333,6 +333,12 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
 - 2026-11-17 (5.2 done): `brain/agent` — `safety.py` (+`safety.yaml`; refuse / confirm / clarify rules, `ConfirmationGate`: holds the exact plan, clear yes only, 30 s expiry), `executor.py` (mission state machine, re-checks each step
   before it starts), `graph.py` (LangGraph: route / plan / safety_check / execute / respond / finish; e-stop regex + unsafe-request check before the LLM; motion acks are templates so a command costs 1 LLM call; max 4 per turn),
   `grounding.py` (names, colours, places, numbers+units, ids, directions must come from this turn's tool results / user words; regenerate once, then template fallback), `templates.py`, `llm.py` (`LLM` protocol, `ScriptedLLM`, `KeywordLLM`),
-  `cli.py`; `brain/eval/keyword_parser.py` = baseline. langgraph is NOT in any image: tests run via `pip install --target DIR langgraph` in the rl image + `PYTHONPATH=DIR` (`brain/requirements.txt`; add it to an image in 5.3/5.6).
-  Test command: `docker run --rm -v $PWD:/w -v DIR:/lg -e PYTHONPATH=/lg -w /w --entrypoint python3 gurdy2/rl:cpu -m pytest -q brain/tests` (156 pass). Mock bug fixed: `World.line_free` sampled 5 cm, path corners clipped (return from room B blocked).
-  Not done: LLM re-plan after a failed mission step (agent only announces it), real LLM client (5.3), eval harness (5.3).
+  `cli.py`; `brain/eval/keyword_parser.py` = baseline. (langgraph now lives in the `brain` image, see 5.3 part 1 below.)
+  Test command: `docker compose run --rm brain python3 -m pytest -q brain/tests` (156 pass then; 174 now). Mock bug fixed: `World.line_free` sampled 5 cm, path corners clipped (return from room B blocked).
+  Not done then: LLM re-plan after a failed mission step, real LLM client, eval harness (all but the client done in 5.3 part 1).
+- 2026-11-17 (5.3 part 1, no GPU used; det_v2_s was training): `docker/brain` image (336 MB, Ubuntu 24.04 + pyyaml + langgraph + pytest, compose profile `brain`, image `gurdy2/brain:cpu`; no scratch PYTHONPATH).
+  `brain/eval`: `testset_v1.yaml` (100 cases, 9 categories; category 9 errors are HAND-WRITTEN `noise: synthetic`, replace with real Whisper later), `harness.py` (observed behaviour class per turn, trace / arg / direction /
+  clarify / refuse / confirm / grounding / latency metrics), `agents.py` (`keyword` baseline, `oracle` = upper bound, must stay 100 % — `brain/tests/test_eval.py`), `run.py`:
+  `docker compose run --rm brain python3 -m brain.eval.run --agent keyword|oracle [--cat N] [--failures]`. **Keyword baseline 55/100** (per category 75 / 75 / 50 / 37.5 / 80 / 12.5 / 12.5 / 80 / 30 %), 1 risky action executed
+  (loop count unparsed); `docs/results/phase5_eval_baseline.md`. Bugs found + fixed: "why did you stop" and "disable the emergency stop" hit the e-stop fast path; `TurnResult.calls` now keeps the planned calls when safety refuses.
+  Re-plan: `Agent._on_mission_failed` + `llm.replan(...)` (one call, safety-checked, grounded, once per user request; ScriptedLLM tests). Open: Ollama client + base-model runs (needs GPU), testset v2 hook for a mid-path block.

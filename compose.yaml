@@ -51,6 +51,17 @@ services:
     # terminal:  docker compose exec sim bash  ->  ros2 run teleop_twist_keyboard ...
     command: ["/home/ubuntu/gurdy2/scripts/start_sim.sh"]
 
+  # Phase 5 brain: agent + tool layer + mock world + eval harness (no ROS / GPU).
+  #   docker compose run --rm brain python3 -m pytest -q brain/tests
+  #   docker compose run --rm brain python3 -m brain.eval.run --agent keyword
+  brain:
+    profiles: [brain]
+    image: gurdy2/brain:cpu
+    build:
+      context: docker/brain
+    volumes:
+      - .:/home/ubuntu/gurdy2
+
   # RL training (Phase 2): headless MuJoCo + SB3. Never run together with `sim` (RAM rule).
   #   docker compose run --rm rl python3 rl/bench.py
   #   docker compose run --rm --service-ports rl tensorboard --logdir runs --bind_all   # :6006

@@ -2,6 +2,8 @@
 
 plan(...)    -> {"calls": [{"tool", "args"}...], "continue": bool}   or   {"reply": "text"}
 respond(...) -> text, phrased from tool results only (checked by the grounding check afterwards)
+replan(...)  -> like plan(), asked ONCE after a mission step failed (`failure` = executor.failure_context());
+                {} means "no recovery, just report". Its calls pass the safety checker like any other plan.
 The real implementation (Ollama, JSON-schema-constrained output) comes in 5.3; it only has to match this protocol.
 """
 from __future__ import annotations
@@ -12,16 +14,19 @@ from typing import Any, Protocol
 class LLM(Protocol):
     def plan(self, system: str, state: str, tools: list[dict], utterance: str, tool_results: list[dict]) -> dict: ...
     def respond(self, system: str, utterance: str, tool_results: list[dict], feedback: str | None = None) -> str: ...
+    def replan(self, system: str, state: str, tools: list[dict], failure: dict, tool_results: list[dict],
+               feedback: str | None = None) -> dict: ...
 
 
 class ScriptedLLM:
     """Returns pre-written outputs in order and records every prompt it was given. A callable output is
     invoked with the keyword arguments of the call (to react to tool results)."""
 
-    def __init__(self, plans: list | None = None, responses: list | None = None):
-        self.plans, self.responses = list(plans or []), list(responses or [])
+    def __init__(self, plans: list | None = None, responses: list | None = None, replans: list | None = None):
+        self.plans, self.responses, self.replans = list(plans or []), list(responses or []), list(replans or [])
         self.plan_calls: list[dict] = []
         self.respond_calls: list[dict] = []
+        self.replan_calls: list[dict] = []
 
     def plan(self, system, state, tools, utterance, tool_results):
         self.plan_calls.append({"system": system, "state": state, "n_tools": len(tools), "utterance": utterance,
@@ -33,6 +38,12 @@ class ScriptedLLM:
         self.respond_calls.append({"utterance": utterance, "tool_results": tool_results, "feedback": feedback})
         out = self.responses.pop(0)
         return out(**self.respond_calls[-1]) if callable(out) else out
+
+
+    def replan(self, system, state, tools, failure, tool_results, feedback=None):
+        self.replan_calls.append({"state": state, "failure": failure, "tool_results": tool_results, "feedback": feedback})
+        out = self.replans.pop(0)
+        return out(**self.replan_calls[-1]) if callable(out) else out
 
 
 class KeywordLLM:
@@ -48,3 +59,6 @@ class KeywordLLM:
     def respond(self, system, utterance, tool_results, feedback=None):
         from .templates import summarize_results
         return summarize_results(tool_results)
+
+    def replan(self, system, state, tools, failure, tool_results, feedback=None):
+        return {}          # the baseline cannot recover from a failed step; the agent just reports it

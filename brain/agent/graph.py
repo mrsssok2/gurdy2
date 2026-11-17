@@ -18,7 +18,7 @@ from langgraph.graph import END, StateGraph
 from ..tools import TOOLS, ToolLayer
 from . import templates
 from .executor import MissionExecutor
-from .grounding import GroundedReply, grounded_reply
+from .grounding import GroundedReply, collect_facts, grounded_reply, violations
 from .llm import LLM
 from .safety import ConfirmationGate, SafetyChecker, Verdict, is_unsafe_request
 
@@ -28,6 +28,8 @@ SYSTEM_PROMPT = ("You are Gurdy, a hexapod robot. Turn the user's request into t
                  "that a tool did not return.")
 _STRONG_STOP = re.compile(r"\b(stop|halt|freeze|emergency)\b", re.I)
 _WEAK_STOP = re.compile(r"^\W*(stap|stob|stup|top|stopp?)\W*$", re.I)     # STT confusions, only as a whole utterance
+# a question about stopping ("why did you stop") or a request to switch the e-stop off is not a stop command
+_NOT_A_COMMAND = re.compile(r"^\W*(why|what|when|where|how|which|who)\b|\b(did|have|had|was|were)\s+(you|it)\b", re.I)
 
 
 def is_estop_phrase(text: str) -> bool:
@@ -35,7 +37,8 @@ def is_estop_phrase(text: str) -> bool:
     t = text.strip()
     if _WEAK_STOP.match(t):
         return True
-    return bool(_STRONG_STOP.search(t)) and len(t.split()) <= 6 and not re.search(r"\b(don'?t|do not|never|until)\b", t, re.I)
+    return (bool(_STRONG_STOP.search(t)) and len(t.split()) <= 6 and not _NOT_A_COMMAND.search(t)
+            and not is_unsafe_request(t) and not re.search(r"\b(don'?t|do not|never|until)\b", t, re.I))
 
 
 class TurnState(TypedDict, total=False):
@@ -72,6 +75,8 @@ class Agent:
         self.safety = safety or SafetyChecker(layer)
         self.executor = executor or MissionExecutor(layer, self.safety)
         self.gate = ConfirmationGate(layer, self.safety.cfg["confirmation_timeout_s"])
+        self.replan_used = False        # at most one re-plan per user request (a re-plan's own failure is only reported)
+        self.replans: list[dict] = []   # log of re-plan attempts (evaluation / debugging)
         self.graph = self._build()
 
     # ------------------------------------------------------------------ public API
@@ -88,7 +93,67 @@ class Agent:
         if self.executor.state == "awaiting_confirmation" and self.executor.waiting and not self.gate.pending:
             w = self.executor.waiting
             self.gate.hold("mission_step", {"calls": self.executor.remaining_calls(), "resume": True}, w.reason)
-        return [m for m in (templates.describe_event(e) for e in evs) if m]
+        return self._announce(evs)
+
+    def _announce(self, evs: list[dict]) -> list[str]:
+        out: list[str] = []
+        for e in evs:
+            if e["type"] == "mission_failed":
+                out += self._on_mission_failed(e)
+            elif (m := templates.describe_event(e)):
+                out.append(m)
+        return out
+
+    # ---- re-plan after a failed mission step (one LLM call, safety-checked like any plan)
+    def _on_mission_failed(self, ev: dict) -> list[str]:
+        failure_text = templates.describe_event(ev) or "The mission failed."
+        replan = getattr(self.llm, "replan", None)
+        if replan is None or self.replan_used:
+            return [failure_text]
+        self.replan_used = True
+        ctx = self.executor.failure_context()
+        entries = self.layer.log[self.executor.log_start:]
+        facts = collect_facts(entries, "", [self.layer.state_block(), failure_text, ctx.get("error") or ""])
+        record = {"failure": ctx, "calls": None, "reply": None, "llm_calls": 0, "outcome": None}
+        self.replans.append(record)
+        out: dict = {}
+        for attempt in (1, 2):                      # the second attempt only if the first reply was ungrounded
+            fb = None if attempt == 1 else record.get("feedback")
+            out = replan(SYSTEM_PROMPT, self.layer.state_block(), self.layer.schemas(), ctx, entries, fb) or {}
+            record["llm_calls"] += 1
+            if out.get("calls") or not out.get("reply"):
+                break
+            bad = violations(out["reply"], facts, self.layer.backend.known_places())
+            if not bad:
+                break
+            record["feedback"] = "Your answer contained unsupported claims: " + ", ".join(
+                f"{x['kind']} '{x['text']}'" for x in bad) + ". Use only values from the tool results."
+            out = {"reply": ""}
+        if out.get("calls"):
+            return [failure_text] + self._start_replan(out["calls"], record)
+        if out.get("reply"):
+            record["reply"], record["outcome"] = out["reply"], "reply"
+            return [out["reply"]]
+        record["outcome"] = "none"
+        return [failure_text]
+
+    def _start_replan(self, calls: list[dict], record: dict) -> list[str]:
+        record["calls"] = calls
+        for c in calls:
+            v = self.safety.check(c["tool"], c.get("args", {}))
+            if v.outcome == "refuse" or v.outcome == "clarify":
+                record["outcome"] = f"blocked:{v.rule}"
+                return [v.reason]
+            if v.outcome == "confirm":
+                self.gate.hold(c["tool"], {"calls": calls}, v.reason)
+                record["outcome"] = f"confirm:{v.rule}"
+                return [v.reason]
+        record["outcome"] = "started"
+        evs = self.executor.submit(calls)
+        acks = [templates.ack(st.tool, st.args, st.result) for st in self.executor.steps
+                if st.status in ("running", "done") and st.result is not None]
+        msgs = ["I will try this instead: " + " ".join(acks)] if acks else []
+        return msgs + self._announce([e for e in evs if e["type"] == "mission_failed"])
 
     # ------------------------------------------------------------------ graph
     def _build(self):
@@ -156,11 +221,11 @@ class Agent:
             v = self.safety.check(c["tool"], c.get("args", {}), s["stt_confidence"])
             verdicts.append({"tool": c["tool"], "outcome": v.outcome, "rule": v.rule, "reason": v.reason})
             if v.outcome == "refuse":
-                return {"reply_parts": [v.reason], "verdicts": s["verdicts"] + verdicts, "next": "finish", "calls": []}
+                return {"reply_parts": [v.reason], "verdicts": s["verdicts"] + verdicts, "next": "finish"}
             if v.outcome == "clarify":
                 q = v.reason + (f" ({', '.join(v.options)})" if v.options else "")
                 self.layer.call("ask_user", {"question": v.reason, **({"options": v.options[:6]} if v.options else {})})
-                return {"reply_parts": [q], "verdicts": s["verdicts"] + verdicts, "next": "finish", "calls": []}
+                return {"reply_parts": [q], "verdicts": s["verdicts"] + verdicts, "next": "finish"}
             if v.outcome == "confirm":
                 self.gate.hold(c["tool"], {"calls": pending_calls}, v.reason)
                 return {"reply_parts": [v.reason], "verdicts": s["verdicts"] + verdicts, "next": "finish"}
@@ -204,6 +269,7 @@ class Agent:
             if self.executor.active:
                 parts.append(f"I am busy with {self.executor.steps[0].tool}; say stop first.")
             else:
+                self.replan_used = False
                 events = self.executor.submit(motion, approved=s["approved"])
                 for step in self.executor.steps:
                     if step.status in ("running", "done") and step.result is not None and step.tool not in ("stop",):

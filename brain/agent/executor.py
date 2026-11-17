@@ -40,6 +40,7 @@ class MissionExecutor:
         self.approved = False                  # the user confirmed this plan: confirm-level verdicts pass
         self.waiting: Verdict | None = None    # set while awaiting_confirmation
         self.history: list[dict] = []          # finished missions (state, steps)
+        self.log_start = 0                     # index into layer.log where the current mission began
 
     # ------------------------------------------------------------------ public
     @property
@@ -54,6 +55,7 @@ class MissionExecutor:
         if self.active:
             raise RuntimeError("a mission is already active; cancel it first")
         self.steps = [Step(c["tool"], c.get("args", {})) for c in calls]
+        self.log_start = len(self.layer.log)
         self.approved, self.waiting, self.state = approved, None, "running"
         events = [self._ev("mission_started", "info", f"Mission with {len(self.steps)} step(s) started.")]
         return events + self._advance()
@@ -67,6 +69,14 @@ class MissionExecutor:
             if s.status in ("pending", "running"):
                 s.status = "cancelled"
         return [self._finish("cancelled", "Mission cancelled.")] + self._drain()
+
+    def failure_context(self) -> dict:
+        """What the planner needs to re-plan a failed mission: every step with its outcome, the failed step and why."""
+        steps = [{"tool": s.tool, "args": s.args, "status": s.status, "reason": s.reason} for s in self.steps]
+        failed = next((s for s in steps if s["status"] == "failed"), None)
+        err = next((s.result["error"]["message"] for s in self.steps
+                    if s.status == "failed" and s.result and s.result.get("error")), None)
+        return {"steps": steps, "failed_step": failed, "error": err}
 
     def pause(self) -> None:
         if self.state == "running":
