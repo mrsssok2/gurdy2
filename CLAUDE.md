@@ -321,4 +321,7 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   confirms tracks by hits + span + mean score + scatter (defaults 5 / 2 s / 0.5 / 0.5; `log_path` writes sightings for `vision/replay_semantic_map.py`): semantic_lab 11/11 found incl. mannequin (0.056 m), 6 false tracks left, all
   with many hits = detector errors (table / cylinder -> box, toolbox on red box...), not removable by confirmation. Dataset v1 ALREADY had random distractors (box-like ones = the `box` class, hence the confusion); v2 (`--profile v2`) uses
   distinct families. `det_v2_s` training (v1+v2, `datasets/synth_v12.yaml`, log `vision/runs/train_det_v2_s.log`, container `gurdy2-train-det2`) started 06:02 UTC: check `docker ps` before any heavy work; evaluate on BOTH test splits afterwards.
-
+- 2026-11-17 (Phase 5 design, docs only): `docs/phase5_design.md` — LangGraph agent + typed tool layer over a `RobotBackend` protocol (ROS backend / fast mock world), 24 tools, grounding check
+  (every stated fact must be in a tool result of the turn), Ollama + Qwen3-1.7B Q4 (0.6B fallback), faster-whisper, Piper, on-demand ~2B VLM, SQLite memory per `map_id`, event bus `/gurdy/events`,
+  3-level safety (gate node, e-stop fast path, rule check), 100-command eval, SFT 12k + DPO 3k plan. ROADMAP Phase 5: feature areas renamed 5.A–5.K, build milestones 5.1–5.11. All budget numbers there are
+  ESTIMATES until 5.1 measures them. **Pending user decisions** (design §8): runtime GPU set allowed together (changes the "one GPU workload" rule), WSL memory 8 → 10 GB, TTS choice, cloud voice optional.

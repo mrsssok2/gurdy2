@@ -170,8 +170,23 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 
 ## Phase 5 — Gurdy Brain (LLM post-training + assistant)
 
-### 5.1 Core: tools, data, training
-- [ ] Tool schema: walk, turn, go_to, find_object, explore, patrol, inspect, return_home, stop, pause/resume/cancel, schedule, query_map, query_status, query_memory, query_incidents, describe_view, report
+Design (2026-11-17, plan only — nothing built or measured): **`docs/phase5_design.md`**. Feature areas with their acceptance
+criteria are 5.A–5.K below (formerly numbered 5.1–5.11); the build order is milestones 5.1–5.11:
+
+- [ ] 5.1 Serving + VRAM/RAM/latency measurement (Ollama, Whisper, TTS, VLM candidates; runtime set, WSL limit) — after det_v2_s training
+- [ ] 5.2 Tool layer + mock world + agent core (LangGraph, safety checker, mission executor, grounding check, keyword baseline) → 5.A
+- [ ] 5.3 Evaluation harness + 100-command test set; keyword parser vs base models → 5.K
+- [ ] 5.4 Automatic data generation + SFT (0.6B, 1.7B QLoRA) → 5.A
+- [ ] 5.5 DPO + GGUF/Ollama + four-system comparison, model card → 5.A
+- [ ] 5.6 ROS backend `gurdy_agent` (Nav2/explorer actions, places), typed missions in Gazebo → 5.C, 5.F
+- [ ] 5.7 Status, event bus, alerts, safety (e-stop gate, no-go zones) in ROS → 5.D, 5.H, 5.I
+- [ ] 5.8 Voice (VAD, Whisper, TTS, streaming e-stop) → 5.B
+- [ ] 5.9 Memory (SQLite, per map) + mission reports → 5.G, 5.J
+- [ ] 5.10 VLM `describe_view` → 5.E
+- [ ] 5.11 Full evaluation (mock + Gazebo subset) + demo video → 5.K
+
+### 5.A Core: tools, data, training
+- [ ] Tool schema (24 tools, exact inputs/outputs in `docs/phase5_design.md` §2): walk, turn, go_to, find, explore, patrol, inspect, return_home, stop, mission_control (pause/resume/cancel), schedule, where_is, whats_nearby, where_am_i, relation, path_check, status, why, recall, describe_view, report, no_go_zone, save_place, ask_user
 - [ ] Synthetic dataset (English); noisy-STT variants; multi-step missions; multi-turn dialogues; ambiguous and unsafe requests
 - [ ] Held-out test split (incl. noisy-STT confusions)
 - [ ] SFT (LoRA, PEFT/TRL) on Qwen3-0.6B locally (RTX 4050, 6 GB); Qwen3-1.7B with QLoRA 4-bit if it fits — Colab/Kaggle fallback
@@ -184,9 +199,9 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - Fine-tuned model beats keyword parser and base model on tool-call exact match, argument accuracy and direction errors (numbers in model card).
 - Runs offline via Ollama on GPU and CPU-only; latency per command reported for both.
 
-### 5.2 Talking
+### 5.B Talking
 - [ ] English text + voice (cloud STT/TTS, local Whisper + local TTS fallback)
-- [ ] Multi-turn memory (pronouns/ellipsis: "aur wahan se left" , "wapas jao")
+- [ ] Multi-turn memory (pronouns/ellipsis: "and then left from there", "go back")
 - [ ] Clarification questions on low confidence/ambiguity
 - [ ] Confirmation step for risky actions (long trips, rough terrain, leaving mapped area)
 
@@ -196,7 +211,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - Risky actions never execute without confirmation (0 violations in test set).
 - Works with network off (Whisper fallback); STT/TTS latency measured for both paths.
 
-### 5.3 Spatial awareness (tool-grounded)
+### 5.C Spatial awareness (tool-grounded)
 - [ ] Answers "what's nearby / where is X / left-right-behind of Y / which room / how far / what's blocking" via semantic map, costmap and TF tools
 - [ ] Every spatial claim traceable to a tool call (logged); "I don't know / not seen yet" when the tool has no answer
 
@@ -204,7 +219,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - Spatial QA set (≥ 30 questions in a sim world with ground truth): answer accuracy and distance error reported.
 - Hallucination check: 0 objects/places stated that are not in the tool output (reported over the whole set).
 
-### 5.4 Proactive alerts
+### 5.D Proactive alerts
 - [ ] Event → speech/text alerts: path blocked, new object seen, stuck, fall, leg failure detected, low battery, map changed
 - [ ] Rate limiting/dedup so alerts are not spammed; severity levels
 
@@ -212,7 +227,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - Each alert type triggered in sim by a scripted cause; detection-to-alert latency measured.
 - False-alert rate over a 10-minute normal run reported (target 0 repeats of the same alert within the cooldown).
 
-### 5.5 Vision
+### 5.E Vision
 - [ ] "What do you see?" via a small VLM that fits 6 GB VRAM (e.g. ~2B class, 4-bit); one GPU workload at a time (unload LLM/detector as needed)
 - [ ] Change detection vs earlier visits to the same place (objects added/removed/moved)
 - [ ] Optional: OCR for signs/labels
@@ -221,7 +236,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - VLM VRAM and latency measured; answers on a ≥ 30-image sim test set scored against ground truth.
 - Change detection: precision/recall on scripted scene changes reported.
 
-### 5.6 Tasks and missions
+### 5.F Tasks and missions
 - [ ] go to, find, explore, patrol, inspect, return home, multi-step missions
 - [ ] Pause / resume / cancel mid-mission; schedules ("patrol in 5 minutes")
 
@@ -230,7 +245,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - Pause/resume/cancel work in every mission state (state-machine test).
 - Scheduled task fires within ±2 s of its time.
 
-### 5.7 Memory
+### 5.G Memory
 - [ ] Last-seen objects and places persist across sessions (SQLite/JSON)
 - [ ] Mission history; Incident Graph queries (Phase 6 hook, stubbed until then)
 
@@ -238,7 +253,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - After a restart, "Where did you last see the red box?" answers correctly from memory with timestamp.
 - Memory answers carry their age; stale entries flagged.
 
-### 5.8 Self-awareness
+### 5.H Self-awareness
 - [ ] Status: battery, leg health, mode, speed, current task
 - [ ] Explains decisions ("why did you stop?") from logged events/state, not invention
 
@@ -246,7 +261,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - Status values match telemetry exactly (test).
 - "Why" questions (≥ 20 cases) cite a real logged cause; unsupported cause = fail.
 
-### 5.9 Safety
+### 5.I Safety
 - [ ] Voice e-stop ("stop"/"halt" and noisy variants) bypasses the LLM (keyword fast-path) and stops the robot
 - [ ] No-go zones (set by voice, enforced in costmap)
 - [ ] Refuses unsafe commands (stairs/edge, humans too close, outside zone)
@@ -256,14 +271,14 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - Unsafe-request refusal ≥ 95 %, with low over-refusal on safe commands (both reported).
 - Robot never enters a no-go zone in 10 navigation runs.
 
-### 5.10 Reports
+### 5.J Reports
 - [ ] End-of-mission summary: duration, distance, map snapshot, object photos with positions, alerts raised
 - [ ] Spoken short version + saved HTML/Markdown report
 
 **AC**
 - Report generated for each demo mission; all listed objects match the semantic map; photos present.
 
-### 5.11 Evaluation
+### 5.K Evaluation
 - [ ] ~100-command test set (English), incl. noisy STT, multi-step, ambiguous, unsafe
 - [ ] Metrics: task success rate, tool-call exact match, latency (p50/p95), hallucination checks, refusal/over-refusal, clarification rate
 - [ ] Compare keyword parser vs base vs SFT vs SFT+DPO
