@@ -888,3 +888,8 @@
 [controller_server-4] [INFO] [1794912545.289001153] [controller_server]: Passing new path to controller.
 [controller_server-4] [INFO] [1794912546.289012620] [controller_server]: Passing new path to controller.
 [planner_server-6] [INFO] [1794912546.609786811] [global_costmap.global_costmap]: StaticLayer: Resizing costmap to 171 X 121 at 0.050000 m/pix
+[controller_server-4] [INFO] [1794912547.289058291] [controller_server]: Passing new path to controller.
+[controller_server-4] [INFO] [1794912548.289311287] [controller_server]: Passing new path to controller.
+[controller_server-4] [INFO] [1794912549.388999124] [controller_server]: Passing new path to controller.
+[policy_node-20] [INFO] [1794912549.933267969] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.45 ms, max 1.50 ms over 500 ticks
+[controller_server-4] [INFO] [1794912550.389046186] [controller_server]: Passing new path to controller.
