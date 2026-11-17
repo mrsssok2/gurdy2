@@ -15,6 +15,7 @@ from typing import Any
 import yaml
 
 from ..tools import TOOLS, ToolLayer
+from ..tools.schema import validate
 from ..tools.types import Result
 
 DEFAULT_CONFIG = Path(__file__).with_name("safety.yaml")
@@ -58,6 +59,10 @@ class SafetyChecker:
         args = args or {}
         if tool not in TOOLS:
             return Verdict("refuse", "That is not something I can do.", rule="outside_tool_list")
+        if validate(args, TOOLS[tool].parameters):
+            # malformed arguments (LLM output is untrusted): nothing to judge here. The tool layer rejects the call
+            # (INVALID_ARGS) before any backend code runs, so nothing unsafe can execute.
+            return Verdict("allow", rule="invalid_args_rejected_by_tool_layer")
         if stt_confidence is not None and stt_confidence < self.cfg["stt_confidence_min"] and tool not in self.cfg["always_allowed"]:
             return Verdict("clarify", "I am not sure I heard that correctly. Could you say it again?", rule="low_confidence")
         if tool in ("stop", "mission_control", "ask_user"):

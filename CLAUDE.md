@@ -346,3 +346,10 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   5.1 measured: Ollama in `~/ollama` (cuda_v13 backend crashes → moved aside, cuda_v12 used; models in `~/ollama_models`; start with `OLLAMA_MODELS=~/ollama_models LD_LIBRARY_PATH=/usr/lib/wsl/lib ~/ollama/bin/ollama serve`), Qwen3-1.7B Q4 1.7 GiB VRAM / 93-100 tok/s, 0.6B 1.0 GiB / 141-156,
   Whisper turbo CT2 int8_float16 1.05 GiB / 0.3 s (CPU 5.7 s), Piper 0.08-0.16 s first audio (chosen; Kokoro CPU 0.7-1.3 s). Set A (Gazebo + detector + LLM + Whisper): **3.4 GiB VRAM, 4.4 GiB RAM peak → WSL stays at 8 GB**.
   Trap: unique prompt prefixes fill the llama.cpp host-RAM prompt cache (~0.3 GiB per 2.5k-token prompt) → keep the tool block byte-identical. Open: GGUF conversion tool for the fine-tuned model (llama.cpp converter run was blocked), prompt is 2550 tokens.
+- 2026-11-17 (5.3 done + 5.4 generator, `docs/results/phase5_eval_base.md`, `docs/results/phase5_datagen.md`): `brain/agent/ollama_llm.py` (one byte-identical system prompt for plan / respond / replan, JSON-schema output with `done`),
+  base Qwen3 prompt-only on the 100-set: **1.7B 53, 0.6B 36 vs keyword 55** (multi-step 0/10 for both; 0 risky actions executed; 0 final grounding violations; p50 0.4 s). Bugs fixed on the way: plan schema forced a call after results
+  (loop), safety checker crashed on malformed args, validator rejected all `schedule` calls. **Ollama of this project listens on 11435** (a Windows Ollama owns 11434 and answers from containers); containers use
+  `OLLAMA_URL=http://$(hostname -I|cut -d' ' -f1):11435`. Data generator `brain/data_gen` (44 families, gold by running the real agent, noise round trip Piper -> Whisper, validate); full run started 11:26 UTC
+  (`scripts/p5_datagen.sh brain/data/full 8400 420`, ~3.4 h, resumable, status in `brain/data/full/status.txt`) — check `docker ps` before any GPU work. System prompt = ~2.4k tokens, so SFT sequence length >= 3.1k.
+  GGUF decision: official tagged llama.cpp release, pinned, in a container (tag recorded at 5.5).
+

@@ -50,3 +50,4 @@ datasets/
 vision/runs/
 models/detector/*.pt
 *.pt
+brain/data/

@@ -168,3 +168,11 @@ def test_confirmation_anything_else_cancels_and_expires():
     g.hold("x", {"calls": []}, "r")
     b.advance(31)
     assert g.answer("yes")[0] == "expired"
+
+
+def test_malformed_args_do_not_crash_the_checker():
+    b, l, s = make()
+    for tool, args in [("go_to", {"object": None}), ("go_to", {}), ("patrol", {"places": 3}), ("find", {"object": "box"})]:
+        v = s.check(tool, args)
+        assert v.outcome == "allow" and v.rule == "invalid_args_rejected_by_tool_layer"
+        assert not l.call(tool, args).ok          # the tool layer is what rejects it

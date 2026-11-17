@@ -47,6 +47,8 @@ def validate(value: Any, schema: dict, path: str = "args") -> list[str]:
             if k not in value:
                 errs.append(f"{path}: missing required '{k}'")
         for k, v in value.items():
+            if "properties" not in schema:
+                continue                      # free-form object (e.g. schedule's inner args): checked when that call runs
             if k not in props:
                 errs.append(f"{path}: unknown argument '{k}'")
             else:

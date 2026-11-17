@@ -44,10 +44,10 @@ def load_cases(path: Path = TESTSET) -> list[dict]:
 
 
 # ====================================================================== scenario
-def build_world(spec: dict, seed: int = 0) -> MockBackend:
+def build_world(spec: dict, seed: int = 0, world=None) -> MockBackend:
     """explored (default true): every object seen, both rooms mapped, robot back home. `seen: [gid..]` instead marks
     only those objects as seen. `pose`, `battery`, `fail_leg`, `zones`, `pre` set up the rest."""
-    b = MockBackend(flat_lab(), seed=seed)
+    b = MockBackend(world if world is not None else flat_lab(), seed=seed)
     if spec.get("explored", True):
         b.explore()
         b.run_until_idle()

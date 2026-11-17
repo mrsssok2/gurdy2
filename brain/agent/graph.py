@@ -162,7 +162,7 @@ class Agent:
             g.add_node(name, getattr(self, "n_" + name))
         g.set_entry_point("route")
         g.add_conditional_edges("route", lambda s: s["next"], {"plan": "plan", "execute": "execute", "finish": "finish"})
-        g.add_conditional_edges("plan", lambda s: s["next"], {"safety_check": "safety_check", "finish": "finish"})
+        g.add_conditional_edges("plan", lambda s: s["next"], {"safety_check": "safety_check", "respond": "respond", "finish": "finish"})
         g.add_conditional_edges("safety_check", lambda s: s["next"], {"execute": "execute", "finish": "finish"})
         g.add_conditional_edges("execute", lambda s: s["next"], {"plan": "plan", "respond": "respond", "finish": "finish"})
         g.add_edge("respond", "finish")
@@ -205,6 +205,8 @@ class Agent:
         out = self.llm.plan(SYSTEM_PROMPT, self.layer.state_block(), self.layer.schemas(), s["utterance"],
                             self._entries(s))
         n += 1
+        if out.get("done") and s["has_query"]:      # the model says the results so far answer the request
+            return {"llm_calls": n, "next": "respond"}
         if "calls" in out and out["calls"]:
             return {"calls": s["calls"] + list(out["calls"]), "cont": bool(out.get("continue")), "llm_calls": n,
                     "next": "safety_check"}

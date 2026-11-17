@@ -57,6 +57,10 @@ services:
   brain:
     profiles: [brain]
     image: gurdy2/brain:cpu
+    environment:
+      # Ollama of the WSL distro, port 11435 (11434 may be a Windows Ollama!):
+      #   OLLAMA_HOST=0.0.0.0:11435 ollama serve ;  OLLAMA_URL=http://$(hostname -I | cut -d' ' -f1):11435 docker compose run ...
+      OLLAMA_URL: ${OLLAMA_URL:-}
     build:
       context: docker/brain
     volumes:

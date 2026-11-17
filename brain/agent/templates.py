@@ -13,6 +13,11 @@ def obj_name(o: dict) -> str:
     return f"{o.get('color') or ''} {_cls(o['class'])}".strip()
 
 
+def a_obj(o: dict) -> str:
+    n = obj_name(o)
+    return ("an " if n[:1] in "aeiou" else "a ") + n
+
+
 def obj_where(o: dict) -> str:
     return f"{obj_name(o)} in {o['place']}, {o['distance_m']:.1f} metres {o['bearing_word']}"
 
@@ -62,7 +67,7 @@ def summarize(tool: str, args: dict, res: dict) -> str:
     if tool == "where_is":
         return "; ".join(f"The {obj_where(o)}" for o in d["matches"]) + "."
     if tool == "whats_nearby":
-        parts = [f"a {obj_name(o)}, {o['distance_m']:.1f} metres {o['bearing_word']}" for o in d["objects"]]
+        parts = [f"{a_obj(o)}, {o['distance_m']:.1f} metres {o['bearing_word']}" for o in d["objects"]]
         obs = [f"obstacle {o['bearing_word']}, {o['distance_m']:.1f} metres" for o in d["obstacles"]]
         items = parts + obs
         return f"In {d['place']}: " + ("; ".join(items) if items else "nothing close by") + "."

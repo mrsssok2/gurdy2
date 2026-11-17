@@ -337,3 +337,13 @@ def test_user_cancel_and_keyword_baseline_do_not_replan():
     assert llm.replan_calls == []
     kw = KeywordLLM(lambda: [])
     assert kw.replan("", "", [], {}, []) == {}
+
+
+def test_done_after_query_goes_to_respond_without_another_call():
+    def resp(utterance, tool_results, feedback):
+        o = tool_results[0]["result"]["data"]["matches"][0]
+        return f"The red box is in {o['place']}."
+    llm = ScriptedLLM(plans=[{"calls": [call("where_is", object=RED)], "continue": True}, {"done": True}], responses=[resp])
+    b, l, a = agent_for(llm)
+    r = a.say("where is the red box?")
+    assert [c["tool"] for c in r.calls] == ["where_is"] and r.llm_calls == 3 and r.reply.startswith("The red box is in")

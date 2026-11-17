@@ -68,3 +68,9 @@ def test_ask_user_has_no_backend_call():
     L = ToolLayer(MockBackend())
     r = L.call("ask_user", {"question": "Which red box?", "options": ["left", "right"]})
     assert r.ok and r.data["awaiting_user"]
+
+
+def test_schedule_with_inner_args_validates():
+    from brain.tools.schema import validate
+    assert validate({"delay_s": 10, "call": {"tool": "turn", "args": {"direction": "left", "angle_deg": 90}}},
+                    TOOLS["schedule"].parameters) == []

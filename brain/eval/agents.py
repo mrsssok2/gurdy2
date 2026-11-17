@@ -44,4 +44,16 @@ def oracle(b: MockBackend, case: dict) -> Agent:
     return Agent(ToolLayer(b), OracleLLM(case))
 
 
-AGENTS = {"keyword": keyword, "oracle": oracle}
+_LLMS: dict = {}
+
+
+def _ollama(model: str):
+    def make(b: MockBackend, case: dict) -> Agent:
+        from ..agent.ollama_llm import OllamaLLM
+        llm = _LLMS.setdefault(model, OllamaLLM(model))     # one client (stats accumulate over the run)
+        return Agent(ToolLayer(b), llm)
+    return make
+
+
+AGENTS = {"keyword": keyword, "oracle": oracle,
+          "qwen3-1.7b": _ollama("qwen3:1.7b"), "qwen3-0.6b": _ollama("qwen3:0.6b")}

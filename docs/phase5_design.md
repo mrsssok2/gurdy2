@@ -563,3 +563,7 @@ Risks, in order of expected trouble:
 | Mock results too optimistic | Gazebo subset + agreement rate reported next to every mock number |
 | Remaining detector false tracks (6 in semantic_lab with det_v1_s) end up as "facts" | grounding guarantees tool-faithful, not world-true answers; replies carry score / age; `inspect` re-verifies; det_v2_s result decides how much this matters |
 | Dynamic keepout mask not picked up by a running Nav2 | verify in 5.7; gate-node pose check is independent |
+
+### Decision 2026-11-17: GGUF conversion tool
+Convert with an **official tagged release of llama.cpp** from the ggml-org GitHub (clone at a pinned release tag, never master), run inside a container. The tag is recorded in
+`docs/results/` when 5.5 does the first conversion. (An earlier attempt with an unpinned download of the converter was blocked.)
