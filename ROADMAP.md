@@ -5,7 +5,12 @@ measured numbers before a phase is ticked). Each phase ends with a short demo (G
 
 RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 
-Order note: Phase 5b (VLN experiment) is done AFTER Phase 7 (core project complete), before Phase 8. Its number is kept so existing references stay valid.
+Structure (decided 2026-11-17): **Part 1 — CORE** = Phases 0–4, Phase 5 core, Phase 6, Phase 7; when it is done, **Gurdy 2.0 is complete**.
+**Part 2 — EXTRAS** (after the core, see the banner before Phase 5b) = DPO (5.5), VLM (5.10), Phase 5b VLN, Experiment B v2, YOLO retraining, Phases 8–10.
+Existing numbers are kept so references stay valid; extras that live inside a core phase are tagged **[EXTRA]** there.
+Core Phase 5 = milestones 5.1–5.4, 5.6–5.9 (memory/reports) and the evaluation + demo of 5.11, **without** VLM and DPO: the core comparison is keyword vs base vs SFT (three systems).
+
+# PART 1 — CORE (Gurdy 2.0)
 
 ---
 
@@ -114,7 +119,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
     in `docs/results/exp_B_leg_failure.md` (run after training)
   - Experiment B evaluated 2026-11-16: **criterion missed** (adapted policy 76 % limp / 50 % locked vs tripod 38 / 37 %, terrain_dr2 88 / 61 %); `leg_failure` not deployed;
     Gazebo part of Experiment A/B still open
-  - [ ] **Experiment B v2** (planned 2026-11-16, not started; later overnight run). Why: in v1 the actor sees only 3 frames (60 ms) and cannot tell which leg is dead.
+  - [ ] **[EXTRA]** **Experiment B v2** (planned 2026-11-16, not started; later overnight run). Why: in v1 the actor sees only 3 frames (60 ms) and cannot tell which leg is dead.
     - Option 1, longer history: actor gets ~0.5–1 s of proprioception (25–50 frames at 50 Hz; 1D-conv or GRU encoder instead of frame stacking).
     - Option 2, RMA-style teacher–student: teacher actor gets the privileged failure info (leg id, limp/locked, time since failure) through a small latent;
       student estimates that latent from the 0.5–1 s history (supervised, then optional joint fine-tune). Only the student is deployed (no ground truth in obs).
@@ -158,7 +163,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
   - [x] trained yolo11n + yolo11s (300 epochs each), exported ONNX 256x320, evaluated on the test split (`docs/results/phase4_detector.md`): **det_v1_s selected** (mAP50 0.916 / mAP50-95 0.855 vs 0.900 / 0.834; GPU 177 vs 197 FPS, CPU 35 vs 93 FPS)
   - [x] semantic_lab Gazebo test 2026-11-17 (explore + detector, `docs/results/phase4_detector.md`): 9/11 objects within 0.02-0.06 m (s run), mannequin never mapped (edge-truncated boxes are skipped by design), 2 unlabelled distractors detected as `box`; single runs
   - [x] Phase 4b (2026-11-17, `docs/results/phase4b.md`): vision image uses CUDA by default (Dockerfile `LD_LIBRARY_PATH`); truncated detections are mapped (position weight 0.25, edge-aware centre) -> mannequin found, 11/11 objects (was 9/11); track confirmation (hits + time span + mean score + scatter), 6 false tracks left (was 9 with the same sightings and the first rules; 4 with stricter rules)
-  - [ ] `det_v2_s`: yolo11s on v1 + `synth_v2` (240 scenes: 8 unlabelled distractor families, mannequin x3, 1563 mannequin boxes), training started 2026-11-17 06:02 UTC (`vision/runs/train_det_v2_s.log`); then evaluate on both test splits + semantic_lab, compare with `det_v1_s`
+  - [ ] **[EXTRA — YOLO retraining]** `det_v2_s`: yolo11s on v1 + `synth_v2` (240 scenes: 8 unlabelled distractor families, mannequin x3, 1563 mannequin boxes), training started 2026-11-17 06:02 UTC (`vision/runs/train_det_v2_s.log`); then evaluate on both test splits + semantic_lab, compare with `det_v1_s`
 - [ ] `find_object(name)` / `go_to(object)` behaviours
 - [ ] Cloud STT + TTS (Gnani Prisma / Timbre, key from env var only); offline Whisper fallback
 
@@ -183,20 +188,20 @@ criteria are 5.A–5.K below (formerly numbered 5.1–5.11); the build order is 
     (`docs/results/phase5_eval_baseline.md`), one-LLM re-plan after a failed mission step (ScriptedLLM tests), 3 agent bugs found by the set fixed; open: Ollama client + base-model runs (GPU), latency per stage, real Whisper transcripts for category 9
 - [ ] 5.4 Automatic data generation + SFT (0.6B, 1.7B QLoRA) → 5.A
   — data generator built + smoke-tested (2026-11-17, `docs/results/phase5_datagen.md`); full generation started 2026-11-17 (`scripts/p5_datagen.sh`, output `brain/data/full`); open: SFT training script, pilot, full SFT 0.6B / 1.7B, learning curve (sequence length must be >= 3.1k: the 24-tool system prompt alone is ~2.4k tokens)
-- [ ] 5.5 DPO + GGUF/Ollama + four-system comparison, model card → 5.A
+- [ ] 5.5 **[EXTRA]** DPO + GGUF/Ollama + four-system comparison, model card → 5.A  (core: GGUF/Ollama of the SFT model + model card is still needed for 5.6+)
 - [ ] 5.6 ROS backend `gurdy_agent` (Nav2/explorer actions, places), typed missions in Gazebo → 5.C, 5.F
 - [ ] 5.7 Status, event bus, alerts, safety (e-stop gate, no-go zones) in ROS → 5.D, 5.H, 5.I
 - [ ] 5.8 Voice (VAD, Whisper, TTS, streaming e-stop) → 5.B
 - [ ] 5.9 Memory (SQLite, per map) + mission reports → 5.G, 5.J
-- [ ] 5.10 VLM `describe_view` → 5.E
-- [ ] 5.11 Full evaluation (mock + Gazebo subset) + demo video → 5.K
+- [ ] 5.10 **[EXTRA]** VLM `describe_view` → 5.E
+- [ ] 5.11 Full evaluation (mock + Gazebo subset) + demo video → 5.K  (core: keyword vs base vs SFT, no VLM/DPO; the four-system table follows with the DPO extra)
 
 ### 5.A Core: tools, data, training
 - [ ] Tool schema (24 tools, exact inputs/outputs in `docs/phase5_design.md` §2): walk, turn, go_to, find, explore, patrol, inspect, return_home, stop, mission_control (pause/resume/cancel), schedule, where_is, whats_nearby, where_am_i, relation, path_check, status, why, recall, describe_view, report, no_go_zone, save_place, ask_user
 - [ ] Synthetic dataset (English); noisy-STT variants; multi-step missions; multi-turn dialogues; ambiguous and unsafe requests
 - [ ] Held-out test split (incl. noisy-STT confusions)
 - [ ] SFT (LoRA, PEFT/TRL) on Qwen3-0.6B locally (RTX 4050, 6 GB); Qwen3-1.7B with QLoRA 4-bit if it fits — Colab/Kaggle fallback
-- [ ] DPO: prefer clarification over guessing; refuse unsafe actions; prefer tool results over invented facts
+- [ ] **[EXTRA]** DPO: prefer clarification over guessing; refuse unsafe actions; prefer tool results over invented facts
 - [ ] GGUF quantization, Ollama Modelfile; latency on local GPU and CPU
 - [ ] Hugging Face model card (with eval table)
 - [ ] LangGraph agent calling ROS 2 tools
@@ -233,7 +238,7 @@ criteria are 5.A–5.K below (formerly numbered 5.1–5.11); the build order is 
 - Each alert type triggered in sim by a scripted cause; detection-to-alert latency measured.
 - False-alert rate over a 10-minute normal run reported (target 0 repeats of the same alert within the cooldown).
 
-### 5.E Vision
+### 5.E Vision  [EXTRA — needs the VLM, milestone 5.10]
 - [ ] "What do you see?" via a small VLM that fits 6 GB VRAM (e.g. ~2B class, 4-bit); one GPU workload at a time (unload LLM/detector as needed)
 - [ ] Change detection vs earlier visits to the same place (objects added/removed/moved)
 - [ ] Optional: OCR for signs/labels
@@ -320,6 +325,13 @@ criteria are 5.A–5.K below (formerly numbered 5.1–5.11); the build order is 
 **AC**
 - Fresh clone → each phase's demo starts with one documented command.
 - CI green on `main`.
+
+---
+
+# PART 2 — EXTRAS (after the core is complete)
+
+Index (content stays where it was written): 5.5 DPO and 5.10 VLM (Phase 5 milestones, 5.E), Experiment B v2 (step 2.10), YOLO retraining (`det_v2_s`, Phase 4),
+then Phase 5b VLN, Phase 8, Phase 9, Phase 10 below. Nothing in Part 2 blocks "Gurdy 2.0 complete".
 
 ---
 

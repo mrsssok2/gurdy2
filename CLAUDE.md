@@ -13,6 +13,8 @@ Predecessor (reference only, **never modify**): github.com/mrsssok2/gurdy_rl
 repo (e.g. into the scratchpad) if needed for reference.
 
 Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
+**Scope (decided 2026-11-17): Core = Phases 0–4, Phase 5 core (5.1–5.4, 5.6–5.9, eval + demo of 5.11, no VLM/DPO), Phase 6, Phase 7 → Gurdy 2.0 complete.
+Extras (after the core): 5.5 DPO, 5.10 VLM, Phase 5b VLN, Experiment B v2, YOLO retraining, Phases 8–10.** Work on the core first.
 
 ## The user
 - Final-year B.Tech AI & Data Science student. Comfortable with Python; new to ROS 2 and Claude Code.
@@ -315,7 +317,7 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   Not evaluated yet (`vision/eval_detector.py` on the test split, then semantic_lab). Check `docker ps` before heavy work. Experiment B v2 is planned in ROADMAP 2.10.
 - 2026-11-17 (detector done): det_v1_n/s trained, ONNX in `models/detector/` (gitignored `*.onnx`). Test split: s mAP50 0.916 / 0.855 vs n 0.900 / 0.834; CPU 35 vs 93 FPS, GPU 177 vs 197 FPS; **det_v1_s is the default**
   (`detector_node`). onnxruntime-gpu in the vision image needs `LD_LIBRARY_PATH` set to the pip `nvidia/*/lib` dirs (see `docs/results/phase4_detector.md`). Gazebo semantic_lab run (`scripts/phase4_semantic_run.sh NAME det.onnx`,
-  `vision/save_semantic_map.py`, `vision/render_semantic_map.py`): 9/11 found, ~0.03-0.04 m median error; mannequin never mapped (truncated boxes skipped in the node), distractors (table, green cylinder) become `box`. ROADMAP Phase 5/5b are now English only (order: Phase 5b is scheduled after Phase 7, once the core project is complete)
+  `vision/save_semantic_map.py`, `vision/render_semantic_map.py`): 9/11 found, ~0.03-0.04 m median error; mannequin never mapped (truncated boxes skipped in the node), distractors (table, green cylinder) become `box`. ROADMAP Phase 5/5b are now English only
   (Decided 2026-11-17: everything is English only — the "Main ek AI assistant hoon" rule and the Hindi/Hinglish items are removed everywhere.)
 - 2026-11-17 (Phase 4b, `docs/results/phase4b.md`): vision Dockerfile sets LD_LIBRARY_PATH (CUDA by default, verified). `detector_node` maps edge-truncated boxes (edge-aware centre `visible_centre_u`, weight 0.25) and
   confirms tracks by hits + span + mean score + scatter (defaults 5 / 2 s / 0.5 / 0.5; `log_path` writes sightings for `vision/replay_semantic_map.py`): semantic_lab 11/11 found incl. mannequin (0.056 m), 6 false tracks left, all
