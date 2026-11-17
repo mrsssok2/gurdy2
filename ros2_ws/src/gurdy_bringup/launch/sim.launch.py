@@ -81,6 +81,6 @@ def generate_launch_description():
            DeclareLaunchArgument("map", default_value="", description="localization: map yaml or name in maps/"),
            OpaqueFunction(function=_nav_setup),
            DeclareLaunchArgument("perception", default_value="false", description="Phase 4: detector + semantic map (camera on)"),
-           DeclareLaunchArgument("detector_model", default_value="", description="ONNX in models/detector/ (default det_v1.onnx)"),
+           DeclareLaunchArgument("detector_model", default_value="", description="ONNX in models/detector/ (default det_v1_s.onnx)"),
            DeclareLaunchArgument("target_frame", default_value="map", description="frame of the semantic map (odom without SLAM)"),
            DeclareLaunchArgument("model", default_value=""), sim, gait, policy, perception, rviz])

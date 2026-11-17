@@ -1,0 +1,8 @@
+  RSS CMD
+622856 gz sim -r -v 2 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_gazebo/share/gurdy_gazebo/worlds/semantic_lab.sdf -s --headless-rendering
+208632 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_perception/lib/gurdy_perception/detector_node --ros-args --params-file /tmp/launch_params_fix8ap21
+202160 python3 vision/save_semantic_map.py --frames docs/results/data/phase4/sem_s/frames models/detector/det_v1_s.onnx
+101064 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_policy/lib/gurdy_policy/policy_node --ros-args --params-file /tmp/launch_params_zvz84kbs
+92996 /usr/bin/python3 /opt/ros/jazzy/bin/ros2 launch gurdy_bringup sim.launch.py gui:=false world:=semantic_lab perception:=true detector_model:=det_v1_s.onnx target_frame:=map nav:=slam navigation:=true controller:=policy odom_source:=ground_truth
+84860 /usr/bin/python3 /home/ubuntu/gurdy2/ros2_ws/install/gurdy_navigation/lib/gurdy_navigation/odom_tf_node --ros-args
+82424 /opt/ros/jazzy/lib/nav2_bt_navigator/bt_navigator --ros-args --log-level info --ros-args -r __node:=bt_navigator -p use_sim_time:=True --params-file /tmp/launch_params_aoyio_dr -r /tf:=tf -r /tf_static:=tf_static

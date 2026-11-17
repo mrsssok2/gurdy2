@@ -314,3 +314,7 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   (mannequins are mostly legs from the 0.29 m camera), not label errors. Training started 17:24 UTC in container `gurdy2-train-det`: `det_v1_n` (yolo11n) then
   `det_v1_s` (yolo11s), 300 epochs, patience 50, log `vision/runs/train_det.log`, exports to `models/detector/` (`*.onnx` there is gitignored — decide when selecting).
   Not evaluated yet (`vision/eval_detector.py` on the test split, then semantic_lab). Check `docker ps` before heavy work. Experiment B v2 is planned in ROADMAP 2.10.
+- 2026-11-17 (detector done): det_v1_n/s trained, ONNX in `models/detector/` (gitignored `*.onnx`). Test split: s mAP50 0.916 / 0.855 vs n 0.900 / 0.834; CPU 35 vs 93 FPS, GPU 177 vs 197 FPS; **det_v1_s is the default**
+  (`detector_node`). onnxruntime-gpu in the vision image needs `LD_LIBRARY_PATH` set to the pip `nvidia/*/lib` dirs (see `docs/results/phase4_detector.md`). Gazebo semantic_lab run (`scripts/phase4_semantic_run.sh NAME det.onnx`,
+  `vision/save_semantic_map.py`, `vision/render_semantic_map.py`): 9/11 found, ~0.03-0.04 m median error; mannequin never mapped (truncated boxes skipped in the node), distractors (table, green cylinder) become `box`. ROADMAP Phase 5/5b are now English only
+  (CLAUDE.md "Main ek AI assistant hoon" rule still stands for Phase 4 voice until decided).

@@ -153,7 +153,9 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
   - [x] prep code (2026-11-16, nothing run in Gazebo/GPU): 7 classes, synthetic dataset generator (Gazebo boundingbox_camera → YOLO labels + depth), `vision/train.py`, `vision/eval_detector.py`, `gurdy_core.vision` (decode/NMS/depth geometry/semantic map), `gurdy_perception` detector node (markers + JSON semantic map), `semantic_lab` world; tests 44 pass. Run commands: `docs/results/phase4_runbook.md`; license notes: `docs/vision_objects.md`
   - [x] 5-scene render trial 2026-11-16: `set_pose` on the static camera, `/cam/bbox`, shared stamps all OK; labels checked (`vision/check_labels.py`, `docs/results/phase4_trial/`)
   - [x] full dataset `datasets/synth_v1` rendered 2026-11-16: 180 scenes, 0 failed, 2136 images (1499/323/314), 3408 boxes; checked (`docs/results/phase4_dataset.md`)
-  - [ ] train (yolo11n then yolo11s, started 2026-11-16 17:24 UTC, container `gurdy2-train-det`), evaluate mAP, test in semantic_lab
+  - [x] trained yolo11n + yolo11s (300 epochs each), exported ONNX 256x320, evaluated on the test split (`docs/results/phase4_detector.md`): **det_v1_s selected** (mAP50 0.916 / mAP50-95 0.855 vs 0.900 / 0.834; GPU 177 vs 197 FPS, CPU 35 vs 93 FPS)
+  - [x] semantic_lab Gazebo test 2026-11-17 (explore + detector, `docs/results/phase4_detector.md`): 9/11 objects within 0.02-0.06 m (s run), mannequin never mapped (edge-truncated boxes are skipped by design), 2 unlabelled distractors detected as `box`; single runs
+  - [ ] fix: map truncated mannequins, hard-negative distractors in the dataset
 - [ ] `find_object(name)` / `go_to(object)` behaviours
 - [ ] Gnani Prisma STT + Timbre TTS (key from env var only); offline Whisper fallback
 - [ ] Replies always start with "Main ek AI assistant hoon"
@@ -170,8 +172,8 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 
 ### 5.1 Core: tools, data, training
 - [ ] Tool schema: walk, turn, go_to, find_object, explore, patrol, inspect, return_home, stop, pause/resume/cancel, schedule, query_map, query_status, query_memory, query_incidents, describe_view, report
-- [ ] Synthetic dataset: Hindi/Hinglish/Kannada/English; noisy-STT variants; multi-step missions; multi-turn dialogues; ambiguous and unsafe requests
-- [ ] Held-out test split (incl. "baayen"/"haan ye" style confusions)
+- [ ] Synthetic dataset (English); noisy-STT variants; multi-step missions; multi-turn dialogues; ambiguous and unsafe requests
+- [ ] Held-out test split (incl. noisy-STT confusions)
 - [ ] SFT (LoRA, PEFT/TRL) on Qwen3-0.6B locally (RTX 4050, 6 GB); Qwen3-1.7B with QLoRA 4-bit if it fits — Colab/Kaggle fallback
 - [ ] DPO: prefer clarification over guessing; refuse unsafe actions; prefer tool results over invented facts
 - [ ] GGUF quantization, Ollama Modelfile; latency on local GPU and CPU
@@ -183,7 +185,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - Runs offline via Ollama on GPU and CPU-only; latency per command reported for both.
 
 ### 5.2 Talking
-- [ ] English/Hindi/Hinglish text + voice (Gnani STT/TTS, local Whisper + local TTS fallback); replies start with "Main ek AI assistant hoon" where required
+- [ ] English text + voice (cloud STT/TTS, local Whisper + local TTS fallback)
 - [ ] Multi-turn memory (pronouns/ellipsis: "aur wahan se left" , "wapas jao")
 - [ ] Clarification questions on low confidence/ambiguity
 - [ ] Confirmation step for risky actions (long trips, rough terrain, leaving mapped area)
@@ -245,7 +247,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - "Why" questions (≥ 20 cases) cite a real logged cause; unsupported cause = fail.
 
 ### 5.9 Safety
-- [ ] Voice e-stop ("ruko"/"stop"/"ro-ko" noisy variants) bypasses the LLM (keyword fast-path) and stops the robot
+- [ ] Voice e-stop ("stop"/"halt" and noisy variants) bypasses the LLM (keyword fast-path) and stops the robot
 - [ ] No-go zones (set by voice, enforced in costmap)
 - [ ] Refuses unsafe commands (stairs/edge, humans too close, outside zone)
 
@@ -262,7 +264,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - Report generated for each demo mission; all listed objects match the semantic map; photos present.
 
 ### 5.11 Evaluation
-- [ ] ~100-command test set (English + Hindi/Hinglish), incl. noisy STT, multi-step, ambiguous, unsafe
+- [ ] ~100-command test set (English), incl. noisy STT, multi-step, ambiguous, unsafe
 - [ ] Metrics: task success rate, tool-call exact match, latency (p50/p95), hallucination checks, refusal/over-refusal, clarification rate
 - [ ] Compare keyword parser vs base vs SFT vs SFT+DPO
 
@@ -274,7 +276,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 
 ## Phase 5b — End-to-end Vision-Language-Navigation experiment (planned, not started)
 Question: can a small end-to-end policy distilled from the modular system (LLM brain + Nav2 + YOLO) match it?
-- [ ] Record the modular system completing English / Hindi / Hinglish missions as demonstrations (camera frames + instruction + `/cmd_vel`, plus outcome labels)
+- [ ] Record the modular system completing English missions as demonstrations (camera frames + instruction + `/cmd_vel`, plus outcome labels)
 - [ ] Train a small VLN policy (camera + instruction → `/cmd_vel`) by imitation / distillation
 - [ ] Compare modular vs end-to-end: success rate, time, collisions, unseen rooms, unseen phrasings
 - [ ] Publish dataset and model on Hugging Face (with dataset/model cards)

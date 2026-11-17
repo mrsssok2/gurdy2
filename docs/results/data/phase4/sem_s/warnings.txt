@@ -1,0 +1,20 @@
+      6 [gazebo-16] NodeShared::Publish() Error: Interrupted system call
+      1 [planner_server-6] [WARN] [1794890086.810971630] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 1.7422 Hz
+      1 [planner_server-6] [WARN] [1794890085.889198584] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+      1 [planner_server-6] [WARN] [1794890085.889126267] [planner_server]: GridBased plugin failed to plan from (5.19, -0.64) to (-0.00, 0.00): "Failed to create plan with tolerance of: 0.300000"
+      1 [planner_server-6] [WARN] [1794890081.810568958] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 1.6584 Hz
+      1 [planner_server-6] [WARN] [1794890080.839547265] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+      1 [planner_server-6] [WARN] [1794890080.839454326] [planner_server]: GridBased plugin failed to plan from (5.41, -0.89) to (-0.00, 0.00): "Failed to create plan with tolerance of: 0.300000"
+      1 [planner_server-6] [WARN] [1794890079.811257006] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 2.0080 Hz
+      1 [planner_server-6] [WARN] [1794890078.970055420] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+      1 [planner_server-6] [WARN] [1794890078.969971283] [planner_server]: GridBased plugin failed to plan from (5.42, -1.00) to (-0.00, 0.00): "Failed to create plan with tolerance of: 0.300000"
+      1 [planner_server-6] [WARN] [1794890072.813364969] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 18.5185 Hz
+      1 [planner_server-6] [WARN] [1794890072.683476580] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+      1 [planner_server-6] [WARN] [1794890072.683375146] [planner_server]: GridBased plugin failed to plan from (5.28, -1.36) to (-0.00, 0.00): "Failed to create plan with tolerance of: 0.300000"
+      1 [planner_server-6] [INFO] [1794889554.345430706] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation at time 0.200000, 
+      1 [opennav_docking-13] [WARN] [1794889547.408550668] [docking_server]: Dock database filepath nor dock parameters set. Docking actions can only be executed specifying the dock pose via the action request. Or update the doc
+      1 [detector_node-21] [WARN] [1794889837.863633753] [detector_node]: TF map <- camera_optical_frame unavailable: Lookup would require extrapolation into the future.  Requested time 163.746000 but the latest data is at time 
+      1 [detector_node-21] [WARN] [1794889573.822917443] [detector_node]: TF map <- camera_optical_frame unavailable: Lookup would require extrapolation into the future.  Requested time 13.267000 but the latest data is at time 1
+      1 [detector_node-21] [WARN] [1794889553.948265386] [detector_node]: TF map <- camera_optical_frame unavailable: "map" passed to lookupTransform argument target_frame does not exist. 
+      1 [controller_server-4] [WARN] [1794890044.426615478] [controller_server]: Optimizer fail to compute path
+      1 [controller_server-4] [WARN] [1794890044.333270859] [controller_server]: Optimizer fail to compute path

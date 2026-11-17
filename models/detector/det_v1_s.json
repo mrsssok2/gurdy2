@@ -1,0 +1,19 @@
+{
+ "input_hw": [
+  256,
+  320
+ ],
+ "classes": {
+  "0": "box",
+  "1": "barrel",
+  "2": "fire_extinguisher",
+  "3": "traffic_cone",
+  "4": "toolbox",
+  "5": "mannequin",
+  "6": "chair"
+ },
+ "trainer": "ultralytics (AGPL-3.0)",
+ "data": "/home/ubuntu/gurdy2/datasets/synth_v1/dataset.yaml",
+ "epochs": 300,
+ "base": "yolo11s.pt"
+}

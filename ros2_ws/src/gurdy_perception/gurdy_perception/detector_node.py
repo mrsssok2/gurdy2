@@ -37,7 +37,7 @@ from gurdy_core.vision.detector import OnnxDetector
 from gurdy_core.vision.geometry import K_from_camera_info, backproject, box_depth, surface_to_centre, transform_point
 from gurdy_core.vision.semantic_map import SemanticMap
 
-DEFAULT_MODEL = "det_v1.onnx"
+DEFAULT_MODEL = "det_v1_s.onnx"
 
 
 def image_to_numpy(m: Image) -> np.ndarray:
