@@ -5,6 +5,8 @@ measured numbers before a phase is ticked). Each phase ends with a short demo (G
 
 RAM rule: Gazebo, RL training and the ops stack never run at the same time.
 
+Order note: Phase 5b (VLN experiment) is done AFTER Phase 7 (core project complete), before Phase 8. Its number is kept so existing references stay valid.
+
 ---
 
 ## Phase 0 — Project setup
@@ -293,18 +295,6 @@ criteria are 5.A–5.K below (formerly numbered 5.1–5.11); the build order is 
 
 ---
 
-## Phase 5b — End-to-end Vision-Language-Navigation experiment (planned, not started)
-Question: can a small end-to-end policy distilled from the modular system (LLM brain + Nav2 + YOLO) match it?
-- [ ] Record the modular system completing English missions as demonstrations (camera frames + instruction + `/cmd_vel`, plus outcome labels)
-- [ ] Train a small VLN policy (camera + instruction → `/cmd_vel`) by imitation / distillation
-- [ ] Compare modular vs end-to-end: success rate, time, collisions, unseen rooms, unseen phrasings
-- [ ] Publish dataset and model on Hugging Face (with dataset/model cards)
-
-**AC**
-- One results table (docs/results/phase5b_vln.md), real measured numbers over a fixed mission set, incl. unseen rooms and unseen phrasings; gaps reported honestly.
-
----
-
 ## Phase 6 — Robot Incident Graph (robot-ops)
 - [ ] Telemetry/log exporter: ROS 2 → Redpanda (also from rosbag replay)
 - [ ] Event normalizer (schema), fingerprinting, embeddings → Qdrant
@@ -330,6 +320,18 @@ Question: can a small end-to-end policy distilled from the modular system (LLM b
 **AC**
 - Fresh clone → each phase's demo starts with one documented command.
 - CI green on `main`.
+
+---
+
+## Phase 5b — End-to-end Vision-Language-Navigation experiment (planned, not started)
+Question: can a small end-to-end policy distilled from the modular system (LLM brain + Nav2 + YOLO) match it?
+- [ ] Record the modular system completing English missions as demonstrations (camera frames + instruction + `/cmd_vel`, plus outcome labels)
+- [ ] Train a small VLN policy (camera + instruction → `/cmd_vel`) by imitation / distillation
+- [ ] Compare modular vs end-to-end: success rate, time, collisions, unseen rooms, unseen phrasings
+- [ ] Publish dataset and model on Hugging Face (with dataset/model cards)
+
+**AC**
+- One results table (docs/results/phase5b_vln.md), real measured numbers over a fixed mission set, incl. unseen rooms and unseen phrasings; gaps reported honestly.
 
 ---
 
