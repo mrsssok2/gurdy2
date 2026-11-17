@@ -198,3 +198,24 @@ def test_rpy_to_quat_matches_pose_convention():
     assert rpy_to_quat(0, 0, math.pi) == pytest.approx((0, 0, 1, 0), abs=1e-9)
     q = rpy_to_quat(0.1, 0.2, 0.3)
     assert sum(v * v for v in q) == pytest.approx(1.0)
+
+
+def test_v1_profile_is_unchanged_and_v2_adds_distractors_and_mannequins():
+    a, b = S.sample_scene(5, 8), S.sample_scene(5, 8, profile="v1")
+    assert a == b and a["profile"] == "v1"
+    scs = [S.sample_scene(1000 + i, 12, profile="v2") for i in range(80)]
+    assert all(1 <= len(s["distractors"]) <= 10 for s in scs)
+    assert {d["kind"] for s in scs for d in s["distractors"]} == set(O.DISTRACTOR_KINDS)
+    n_m = sum(o["cls"] == "mannequin" for s in scs for o in s["objects"])
+    n_o = sum(len(s["objects"]) for s in scs)
+    assert n_m / n_o > 0.25                                      # v1: ~1/7
+    # no distractor is a cube-ish box of the `box` class (every dimension within 0.25-0.50 m and a plain solid box)
+    for s in scs:
+        for d in s["distractors"]:
+            for p in d["parts"]:
+                if len(d["parts"]) == 1 and p["kind"] == "box":
+                    sx, sy, sz = p["size"]
+                    assert not (0.25 <= sx <= 0.5 and 0.25 <= sy <= 0.5 and 0.2 <= sz <= 0.45), d
+    sdf = S.world_sdf(S.sample_scene(1001, 4, profile="v2"), "/tmp", None)
+    ET.fromstring(sdf.replace('<?xml version="1.0"?>', ""))
+    assert "label" not in "".join(O.model_sdf("x", S.sample_scene(1001, 4, profile="v2")["distractors"][0]["parts"], 0, 0, 0))

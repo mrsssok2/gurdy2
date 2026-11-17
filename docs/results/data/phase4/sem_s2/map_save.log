@@ -1,0 +1,16 @@
+[INFO] [1794892750.887119570] [map_saver]: 
+	map_saver lifecycle node launched. 
+	Waiting on external lifecycle transitions to activate
+	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[INFO] [1794892750.887467547] [map_saver]: Creating
+[INFO] [1794892750.887626864] [map_saver]: Configuring
+[INFO] [1794892750.902534255] [map_saver]: Saving map from 'map' topic to '/home/ubuntu/gurdy2/maps/sem_s2' file
+[WARN] [1794892750.902635631] [map_saver]: Free threshold unspecified. Setting it to default value: 0.250000
+[WARN] [1794892750.902652921] [map_saver]: Occupied threshold unspecified. Setting it to default value: 0.650000
+[WARN] [1794892752.954670376] [map_io]: Image format unspecified. Setting it to: pgm
+[INFO] [1794892752.954828216] [map_io]: Received a 171 X 122 map @ 0.05 m/pix
+[INFO] [1794892753.103854231] [map_io]: Writing map occupancy data to /home/ubuntu/gurdy2/maps/sem_s2.pgm
+[INFO] [1794892753.119483401] [map_io]: Writing map metadata to /home/ubuntu/gurdy2/maps/sem_s2.yaml
+[INFO] [1794892753.120050384] [map_io]: Map saved
+[INFO] [1794892753.120078825] [map_saver]: Map saved successfully
+[INFO] [1794892753.134656065] [map_saver]: Destroying

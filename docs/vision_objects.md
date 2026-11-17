@@ -5,18 +5,18 @@ All models are **self-made procedural models** (SDF primitives + one generated O
 `vision/objects.py` — no third-party assets, so they are licensed **MIT with this repo**. Gazebo Fuel was not used (per-model
 licenses to track, network dependency); if Fuel models are added later, record name + license here first.
 
-| id | class | built from | variants | Hinglish aliases (`resolve_class`) |
+| id | class | built from | variants | Aliases (`resolve_class`) |
 |---|---|---|---|---|
-| 0 | box | box (+ tape strip) | cardboard or plain saturated colour, 25–50 cm | dabba, carton, peti |
-| 1 | barrel | cylinder + 2 bands | 5 colours | drum, pipa |
-| 2 | fire_extinguisher | cylinder, neck, handle, hose, label band | – | extinguisher, aag |
+| 0 | box | box (+ tape strip) | cardboard or plain saturated colour, 25–50 cm | carton, crate |
+| 1 | barrel | cylinder + 2 bands | 5 colours | drum |
+| 2 | fire_extinguisher | cylinder, neck, handle, hose, label band | – | extinguisher |
 | 3 | traffic_cone | lathe mesh (OBJ) + white band + base plate | – | cone |
-| 4 | toolbox | box, handle, latch | 4 colours | auzaar |
-| 5 | mannequin | torso, head, neck, legs, arms | skin + 2 clothes colours | putla, insaan, aadmi, person |
-| 6 | chair | seat, back, 4 legs | 4 colours | kursi |
+| 4 | toolbox | box, handle, latch | 4 colours | tool |
+| 5 | mannequin | torso, head, neck, legs, arms | skin + 2 clothes colours | person, human, dummy |
+| 6 | chair | seat, back, 4 legs | 4 colours | – |
 
 `box` deliberately includes plain red/blue/yellow boxes: the coloured boxes of `flat_lab` are class `box`, and the colour is a
-separate attribute (HSV rule on the crop, `gurdy_core/vision/colors.py`) so "laal dabba" = class box + colour red.
+separate attribute (HSV rule on the crop, `gurdy_core/vision/colors.py`) so "red box" = class box + colour red.
 Gazebo label id = class id + 1 (0 = background). Distractors (unlabelled boxes/cylinders/spheres in random colours) occlude and
 confuse but have no label.
 

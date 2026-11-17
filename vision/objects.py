@@ -172,3 +172,69 @@ def model_sdf(name: str, part_list: list, x: float, y: float, yaw: float, label:
               if label else "")
     return (f'    <model name="{name}"><static>true</static><pose>{x:.3f} {y:.3f} {z:.3f} 0 0 {yaw:.4f}</pose>\n'
             f'{plugin}      <link name="link">\n{col}{"".join(vis)}      </link>\n    </model>\n')
+
+
+DISTRACTOR_KINDS = ("table", "bench", "stool", "pillar", "ball", "plank", "tall_crate", "stack")
+
+
+def _rc(rng):
+    return [float(x) for x in rng.uniform(0.1, 0.95, 3)]
+
+
+def distractor_parts(kind: str, rng) -> list:
+    """Unlabelled hard negatives (v2 dataset). Shapes are chosen so none is a cube-ish 0.25-0.5 m box (that is the `box`
+    class) and none looks like a labelled class; they do cover the things a robot meets in a lab: tables, benches (a solid
+    slab like flat_lab's table), stools / cylinders (any colour, like flat_lab's green cylinder), pillars, balls, planks."""
+    u = lambda a, b: float(rng.uniform(a, b))
+    P = []
+
+    def add(k, size, pos, rgb):
+        P.append({"kind": k, "size": list(size), "pos": list(pos), "rgb": list(rgb)})
+
+    if kind == "table":
+        w, d, h, c = u(0.5, 1.1), u(0.4, 0.8), u(0.45, 0.8), _rc(rng)
+        add("box", (w, d, 0.04), (0, 0, h), c)
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                add("box", (0.04, 0.04, h), (sx * (w / 2 - 0.03), sy * (d / 2 - 0.03), h / 2), [x * 0.7 for x in c])
+    elif kind == "bench":
+        w, d, h = u(0.55, 1.0), u(0.22, 0.36), u(0.28, 0.6)
+        add("box", (w, d, h), (0, 0, h / 2), _rc(rng))
+    elif kind == "stool":
+        r, h = u(0.1, 0.3), u(0.2, 0.55)
+        add("cylinder", (r, h), (0, 0, h / 2), _rc(rng))
+    elif kind == "pillar":
+        r, h = u(0.04, 0.18), u(0.6, 1.4)
+        add("cylinder", (r, h), (0, 0, h / 2), _rc(rng))
+    elif kind == "ball":
+        r = u(0.08, 0.3)
+        add("sphere", (r,), (0, 0, r), _rc(rng))
+    elif kind == "plank":
+        w, d, h = u(0.7, 1.4), u(0.06, 0.2), u(0.05, 0.5)
+        add("box", (w, d, h), (0, 0, h / 2), _rc(rng))
+    elif kind == "tall_crate":
+        w, d, h = u(0.15, 0.3), u(0.15, 0.3), u(0.6, 1.2)
+        add("box", (w, d, h), (0, 0, h / 2), _rc(rng))
+    elif kind == "stack":                                       # two or three random primitives on top of each other
+        z = 0.0
+        for _ in range(int(rng.integers(2, 4))):
+            if rng.random() < 0.5:
+                w, d, h = u(0.1, 0.45), u(0.1, 0.45), u(0.08, 0.25)
+                add("box", (w, d, h), (0, 0, z + h / 2), _rc(rng))
+            else:
+                r, h = u(0.05, 0.22), u(0.08, 0.3)
+                add("cylinder", (r, h), (0, 0, z + h / 2), _rc(rng))
+            z += h
+    else:
+        raise KeyError(kind)
+    return P
+
+
+def parts_radius(part_list: list) -> float:
+    """Horizontal half-extent (for placement spacing)."""
+    r = 0.0
+    for p in part_list:
+        px, py, _ = p["pos"]
+        e = max(p["size"][:2]) / 2 if p["kind"] == "box" else p["size"][0]
+        r = max(r, math.hypot(px, py) + e)
+    return r

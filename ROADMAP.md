@@ -155,14 +155,14 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
   - [x] full dataset `datasets/synth_v1` rendered 2026-11-16: 180 scenes, 0 failed, 2136 images (1499/323/314), 3408 boxes; checked (`docs/results/phase4_dataset.md`)
   - [x] trained yolo11n + yolo11s (300 epochs each), exported ONNX 256x320, evaluated on the test split (`docs/results/phase4_detector.md`): **det_v1_s selected** (mAP50 0.916 / mAP50-95 0.855 vs 0.900 / 0.834; GPU 177 vs 197 FPS, CPU 35 vs 93 FPS)
   - [x] semantic_lab Gazebo test 2026-11-17 (explore + detector, `docs/results/phase4_detector.md`): 9/11 objects within 0.02-0.06 m (s run), mannequin never mapped (edge-truncated boxes are skipped by design), 2 unlabelled distractors detected as `box`; single runs
-  - [ ] fix: map truncated mannequins, hard-negative distractors in the dataset
+  - [x] Phase 4b (2026-11-17, `docs/results/phase4b.md`): vision image uses CUDA by default (Dockerfile `LD_LIBRARY_PATH`); truncated detections are mapped (position weight 0.25, edge-aware centre) -> mannequin found, 11/11 objects (was 9/11); track confirmation (hits + time span + mean score + scatter), 6 false tracks left (was 9 with the same sightings and the first rules; 4 with stricter rules)
+  - [ ] `det_v2_s`: yolo11s on v1 + `synth_v2` (240 scenes: 8 unlabelled distractor families, mannequin x3, 1563 mannequin boxes), training started 2026-11-17 06:02 UTC (`vision/runs/train_det_v2_s.log`); then evaluate on both test splits + semantic_lab, compare with `det_v1_s`
 - [ ] `find_object(name)` / `go_to(object)` behaviours
-- [ ] Gnani Prisma STT + Timbre TTS (key from env var only); offline Whisper fallback
-- [ ] Replies always start with "Main ek AI assistant hoon"
+- [ ] Cloud STT + TTS (Gnani Prisma / Timbre, key from env var only); offline Whisper fallback
 
 **AC**
 - Detects each demo-world object by name; precision/recall measured on a recorded set.
-- "Laal dabba dhundo" style command finds and approaches the object in sim.
+- "Find the red box" style command finds and approaches the object in sim.
 - Works with network off (Whisper fallback); STT latency measured for both paths.
 - Detector runs on GPU and on the CPU/ONNX fallback; FPS reported for both.
 
@@ -223,10 +223,10 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 
 ### 5.6 Tasks and missions
 - [ ] go to, find, explore, patrol, inspect, return home, multi-step missions
-- [ ] Pause / resume / cancel mid-mission; schedules ("5 minute baad patrol karo")
+- [ ] Pause / resume / cancel mid-mission; schedules ("patrol in 5 minutes")
 
 **AC**
-- Spoken multi-step mission ("kitchen jao, red box dhundo, wapas aao") executed end-to-end in sim.
+- Spoken multi-step mission ("go to the kitchen, find the red box, come back") executed end-to-end in sim.
 - Pause/resume/cancel work in every mission state (state-machine test).
 - Scheduled task fires within ±2 s of its time.
 
@@ -235,7 +235,7 @@ joint pos/vel, previous action, command, gait clock) — no ground truth; asymme
 - [ ] Mission history; Incident Graph queries (Phase 6 hook, stubbed until then)
 
 **AC**
-- After a restart, "red box last kahan dekha tha?" answers correctly from memory with timestamp.
+- After a restart, "Where did you last see the red box?" answers correctly from memory with timestamp.
 - Memory answers carry their age; stale entries flagged.
 
 ### 5.8 Self-awareness

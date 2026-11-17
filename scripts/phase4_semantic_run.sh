@@ -10,7 +10,7 @@ export PYTHONPATH=$HOME/gurdy2/gurdy_core:$HOME/gurdy2/sim_mujoco:${PYTHONPATH:-
 OUT=docs/results/data/phase4/$NAME; rm -rf "$OUT"; mkdir -p "$OUT"
 DONE="$OUT/explore.done"
 source scripts/lib_nav_start.sh
-start_nav_stack "$OUT" gui:=false world:=semantic_lab perception:=true detector_model:=$DET target_frame:=map nav:=slam navigation:=true controller:=$CTL odom_source:=$ODOM ${MODEL:+model:=$MODEL} \
+start_nav_stack "$OUT" gui:=false world:=semantic_lab perception:=true detector_model:=$DET target_frame:=map detector_log:=$OUT/sightings.jsonl nav:=slam navigation:=true controller:=$CTL odom_source:=$ODOM ${MODEL:+model:=$MODEL} \
   || { echo "Nav2 never became ready" | tee "$OUT/FAILED.txt"; stop_nav_stack; exit 1; }
 python3 vision/save_semantic_map.py --frames "$OUT/frames" models/detector/$DET > "$OUT/frames.log" 2>&1 &
 FR=$!

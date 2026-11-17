@@ -52,3 +52,24 @@ def quat_to_R(q) -> np.ndarray:
 def transform_point(p, t, q) -> np.ndarray:
     """p in the child frame -> parent frame, given the child's translation t and quaternion q (x, y, z, w)."""
     return quat_to_R(q) @ np.asarray(p, float) + np.asarray(t, float)
+
+
+def truncation_flags(box, w: int, h: int, margin: float = 3.0) -> dict:
+    """Which image borders an xyxy box touches (the object continues outside the frame there)."""
+    return {"left": box[0] < margin, "right": box[2] > w - margin, "top": box[1] < margin, "bottom": box[3] > h - margin}
+
+
+def visible_centre_u(box, w: int, h: int, z: float, fx: float, radius: float, margin: float = 3.0):
+    """Horizontal pixel of the object centre for a possibly edge-truncated box.
+
+    Touching only the left border: the right edge is real, so the centre is one apparent radius (fx*radius/z) left of it;
+    only the right border: mirror. Top/bottom truncation does not move the horizontal centre. Both left and right
+    (object wider than the view): returns None (position along the ray is unknowable from the box)."""
+    f = truncation_flags(box, w, h, margin)
+    if f["left"] and f["right"]:
+        return None
+    if f["left"]:
+        return max(box[2] - fx * radius / max(z, 1e-3), 0.0)
+    if f["right"]:
+        return min(box[0] + fx * radius / max(z, 1e-3), float(w))
+    return (box[0] + box[2]) / 2

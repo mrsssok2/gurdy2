@@ -3,7 +3,7 @@
 Read this first in every session. Keep it up to date when decisions change.
 
 ## What this is
-Gurdy 2.0: an 18-DOF hexapod that takes Hindi/Hinglish voice commands, plans missions with an
+Gurdy 2.0: an 18-DOF hexapod that takes English voice commands, plans missions with an
 offline fine-tuned LLM ("Gurdy Brain"), walks with an RL gait over rough terrain, maps and navigates,
 finds objects by name, and has a robot-ops system ("Robot Incident Graph") that clusters failures
 into incidents and auto-diagnoses root causes. Every phase must be **independently demoable**.
@@ -57,7 +57,7 @@ Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
 | Tiny masses/inertias + high D-gains → chatter | Realistic masses; inertias **computed from geometry**; moderate gains; joint damping; automated chatter metric |
 | Knees bent backwards | One-sided knee limits in URDF *and* MJCF *and* IK; unit test for it |
 | Reward paid more for standing than walking | Reward dominated by command tracking; test that a standing policy scores lower than a walking one when commanded to move |
-| Keyword parser misheard "baayen" → "haan ye" | LLM parser trained on noisy-STT variants; prefers clarification over guessing on low confidence |
+| Keyword parser misheard similar-sounding commands | LLM parser trained on noisy-STT variants; prefers clarification over guessing on low confidence |
 | Manual debugging from logs | Phase 6 incident graph + structured telemetry from day one |
 
 ## Tech stack (decided)
@@ -66,7 +66,6 @@ Full plan with checkboxes and acceptance criteria: **ROADMAP.md**.
 - MuJoCo + Gymnasium + Stable-Baselines3 PPO (CPU, `SubprocVecEnv`; GPU only for a CNN encoder).
 - SLAM: slam_toolbox (2D, light) first; RTAB-Map optional. Nav2.
 - Perception: YOLO (small) or small VLM; Voice: Gnani Prisma STT / Timbre TTS, Whisper fallback.
-  Spoken/text replies start with **"Main ek AI assistant hoon"**.
 - LLM: Qwen3-0.6B/1.7B, LoRA/QLoRA via PEFT/TRL (SFT → DPO) on local RTX 4050 (Colab/Kaggle
   fallback), GGUF → Ollama (local GPU inference), LangGraph agent.
 - Ops: Redpanda, Qdrant, HDBSCAN, PostgreSQL, Redis/Celery, FastAPI, LangGraph investigator.
@@ -295,7 +294,7 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   ~2.2k steps/s ≈ 3.9 h) started 2026-11-16 11:50 UTC. Eval after training (plan in the doc); do not run Gazebo or anything heavy meanwhile.
 - 2026-11-16 (Phase 4 prep, code only; leg_failure was training): GPU works in Docker. 7 classes (box incl. plain colours, barrel, fire_extinguisher, traffic_cone,
   toolbox, mannequin, chair), self-made procedural models (MIT). `vision/` (scene sampler, SDF world writer, `generate_dataset.py plan|render|finalize`, textures, augment, `train.py`
-  Ultralytics yolo11n → ONNX 256x320, `eval_detector.py`, `make_test_world.py` → `semantic_lab` world + GT json, `compare_semantic_map.py`), `gurdy_core/vision/` (classes + Hinglish
+  Ultralytics yolo11n → ONNX 256x320, `eval_detector.py`, `make_test_world.py` → `semantic_lab` world + GT json, `compare_semantic_map.py`), `gurdy_core/vision/` (classes + English
   aliases, ONNX decode/NMS, depth→3D, SemanticMap de-dup, colours, AP metrics), ROS package `gurdy_perception` (`detector_node`; `sim.launch.py perception:=true`), compose profile `vision`
   (image NOT built yet). Ultralytics is AGPL-3.0: only in docker/vision; runtime uses ONNX + our decoder (`docs/vision_objects.md`). Tests: `vision/tests`, `gurdy_core/tests/test_vision.py`,
   `gurdy_perception/test` (run in the rl or ros image). Nothing rendered/trained yet; riskiest unverified assumptions listed in `docs/results/phase4_runbook.md`.
@@ -317,4 +316,9 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
 - 2026-11-17 (detector done): det_v1_n/s trained, ONNX in `models/detector/` (gitignored `*.onnx`). Test split: s mAP50 0.916 / 0.855 vs n 0.900 / 0.834; CPU 35 vs 93 FPS, GPU 177 vs 197 FPS; **det_v1_s is the default**
   (`detector_node`). onnxruntime-gpu in the vision image needs `LD_LIBRARY_PATH` set to the pip `nvidia/*/lib` dirs (see `docs/results/phase4_detector.md`). Gazebo semantic_lab run (`scripts/phase4_semantic_run.sh NAME det.onnx`,
   `vision/save_semantic_map.py`, `vision/render_semantic_map.py`): 9/11 found, ~0.03-0.04 m median error; mannequin never mapped (truncated boxes skipped in the node), distractors (table, green cylinder) become `box`. ROADMAP Phase 5/5b are now English only
-  (CLAUDE.md "Main ek AI assistant hoon" rule still stands for Phase 4 voice until decided).
+  (Decided 2026-11-17: everything is English only — the "Main ek AI assistant hoon" rule and the Hindi/Hinglish items are removed everywhere.)
+- 2026-11-17 (Phase 4b, `docs/results/phase4b.md`): vision Dockerfile sets LD_LIBRARY_PATH (CUDA by default, verified). `detector_node` maps edge-truncated boxes (edge-aware centre `visible_centre_u`, weight 0.25) and
+  confirms tracks by hits + span + mean score + scatter (defaults 5 / 2 s / 0.5 / 0.5; `log_path` writes sightings for `vision/replay_semantic_map.py`): semantic_lab 11/11 found incl. mannequin (0.056 m), 6 false tracks left, all
+  with many hits = detector errors (table / cylinder -> box, toolbox on red box...), not removable by confirmation. Dataset v1 ALREADY had random distractors (box-like ones = the `box` class, hence the confusion); v2 (`--profile v2`) uses
+  distinct families. `det_v2_s` training (v1+v2, `datasets/synth_v12.yaml`, log `vision/runs/train_det_v2_s.log`, container `gurdy2-train-det2`) started 06:02 UTC: check `docker ps` before any heavy work; evaluate on BOTH test splits afterwards.
+

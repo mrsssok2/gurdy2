@@ -64,7 +64,8 @@ def generate_launch_description():
     perception = Node(package="gurdy_perception", executable="detector_node", output="screen",
                       condition=IfCondition(LaunchConfiguration("perception")),
                       parameters=[{"model": LaunchConfiguration("detector_model"), "use_sim_time": False,
-                                   "target_frame": LaunchConfiguration("target_frame")}])
+                                   "target_frame": LaunchConfiguration("target_frame"),
+                                   "log_path": LaunchConfiguration("detector_log")}])
     rviz = Node(package="rviz2", executable="rviz2", condition=IfCondition(PythonExpression(
                     ["'", LaunchConfiguration("rviz"), "' == 'true' and '", LaunchConfiguration("nav"), "' == 'none'"])),
                 arguments=["-d", os.path.join(get_package_share_directory("gurdy_description"), "rviz", "display.rviz")],
@@ -82,5 +83,6 @@ def generate_launch_description():
            OpaqueFunction(function=_nav_setup),
            DeclareLaunchArgument("perception", default_value="false", description="Phase 4: detector + semantic map (camera on)"),
            DeclareLaunchArgument("detector_model", default_value="", description="ONNX in models/detector/ (default det_v1_s.onnx)"),
+           DeclareLaunchArgument("detector_log", default_value="", description="JSON-lines log of every detector sighting"),
            DeclareLaunchArgument("target_frame", default_value="map", description="frame of the semantic map (odom without SLAM)"),
            DeclareLaunchArgument("model", default_value=""), sim, gait, policy, perception, rviz])

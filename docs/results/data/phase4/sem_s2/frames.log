@@ -1,0 +1,3 @@
+/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py:121: UserWarning: Duplicate provider 'CPUExecutionProvider' encountered, ignoring.
+  warnings.warn(f"Duplicate provider '{name}' encountered, ignoring.")
+frames saved: 358

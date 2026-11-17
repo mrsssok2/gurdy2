@@ -34,7 +34,8 @@ from vision_msgs.msg import Detection3D, Detection3DArray, ObjectHypothesisWithP
 from gurdy_core.vision.classes import COLORS, SIZE_PRIOR, radius_prior
 from gurdy_core.vision.colors import color_name
 from gurdy_core.vision.detector import OnnxDetector
-from gurdy_core.vision.geometry import K_from_camera_info, backproject, box_depth, surface_to_centre, transform_point
+from gurdy_core.vision.geometry import (K_from_camera_info, backproject, box_depth, surface_to_centre, transform_point, truncation_flags,
+                                        visible_centre_u)
 from gurdy_core.vision.semantic_map import SemanticMap
 
 DEFAULT_MODEL = "det_v1_s.onnx"
@@ -62,7 +63,10 @@ class DetectorNode(Node):
         P = self.declare_parameter
         P("model", ""); P("providers", "auto"); P("conf", 0.40); P("iou", 0.5)
         P("target_frame", "map"); P("max_range", 4.0); P("min_range", 0.25); P("max_rate_hz", 5.0)
-        P("min_hits", 3); P("ttl", 10.0); P("edge_margin", 3.0); P("tf_timeout", 0.2)
+        P("min_hits", 5); P("ttl", 10.0); P("edge_margin", 3.0); P("tf_timeout", 0.2)
+        P("truncated_weight", 0.25)      # position weight of edge-truncated sightings (1 = like a full box, 0 = skip them)
+        P("min_span", 2.0); P("min_mean_score", 0.5); P("max_scatter", 0.5)   # track confirmation (semantic_map.py)
+        P("log_path", "")                # JSON-lines log of every sighting, for offline replay of the confirmation rules
         P("debug_image", False); P("save_path", "")
         model = self.get_parameter("model").value or DEFAULT_MODEL
         if not os.path.isabs(model) and not os.path.exists(model):
@@ -70,12 +74,14 @@ class DetectorNode(Node):
         g = lambda k: self.get_parameter(k).value
         self.det = OnnxDetector(model, g("providers"), conf=g("conf"), iou=g("iou"))
         self.get_logger().info(f"detector {os.path.basename(model)} on {self.det.provider}, input {self.det.hw}")
-        self.map = SemanticMap(min_hits=g("min_hits"), ttl=g("ttl"))
+        self.map = SemanticMap(min_hits=g("min_hits"), ttl=g("ttl"), min_span=g("min_span"), min_mean_score=g("min_mean_score"),
+                               max_scatter=g("max_scatter"))
+        self.log = open(g("log_path"), "w") if g("log_path") else None
         self.tf = Buffer()
         self.tfl = TransformListener(self.tf, self)
         self.K = None
         self.last_t = -1e9
-        self.n = {"frames": 0, "tf_fail": 0, "depth_fail": 0, "used": 0}
+        self.n = {"frames": 0, "tf_fail": 0, "depth_fail": 0, "used": 0, "truncated": 0}
         self.create_subscription(CameraInfo, "camera/camera_info", self.on_info, qos_profile_sensor_data)
         self.sync = ApproximateTimeSynchronizer([Subscriber(self, Image, "camera/image", qos_profile=qos_profile_sensor_data),
                                                  Subscriber(self, Image, "camera/depth_image", qos_profile=qos_profile_sensor_data)],
@@ -122,7 +128,11 @@ class DetectorNode(Node):
             if z is None or not rmin <= z <= rmax:
                 self.n["depth_fail"] += 1
                 continue
-            u, v = (x1 + x2) / 2, (y1 + y2) / 2
+            trunc = truncation_flags(d.box, W, H, em)
+            u = visible_centre_u(d.box, W, H, z, self.K[0], 0.5 * max(SIZE_PRIOR[d.name][:2]), em)
+            if u is None:                       # wider than the view: no usable position
+                continue
+            v = (y1 + y2) / 2
             p_opt = surface_to_centre(backproject(u, v, z, self.K), radius_prior(d.name))
             p = transform_point(p_opt, t_xyz, q)
             det = Detection3D()
@@ -134,11 +144,17 @@ class DetectorNode(Node):
             det.bbox.center.position = hyp.pose.pose.position
             det.bbox.size.x, det.bbox.size.y, det.bbox.size.z = SIZE_PRIOR[d.name]
             out.detections.append(det)
-            touches = x1 < em or y1 < em or x2 > W - em or y2 > H - em
-            if not touches:
+            truncated = any(trunc.values())
+            wscale = self.get_parameter("truncated_weight").value if truncated else 1.0
+            if wscale > 0:
                 crop = rgb[int(y1 + 0.25 * (y2 - y1)):int(y2 - 0.25 * (y2 - y1)) + 1, int(x1 + 0.25 * (x2 - x1)):int(x2 - 0.25 * (x2 - x1)) + 1]
-                self.map.update(d.name, p, d.score, t, range_m=float(np.linalg.norm(p_opt)), color=color_name(crop))
+                col = color_name(crop)
+                self.map.update(d.name, p, d.score, t, range_m=float(np.linalg.norm(p_opt)), color=col, weight_scale=wscale)
                 self.n["used"] += 1
+                self.n["truncated"] += int(truncated)
+                if self.log:
+                    self.log.write(json.dumps({"t": t, "cls": d.name, "score": round(float(d.score), 4), "p": [round(float(c), 4) for c in p],
+                                               "range": round(float(np.linalg.norm(p_opt)), 3), "color": col, "truncated": truncated}) + "\n")
         self.pub_det.publish(out)
         self.publish_map(rgb_m.header.stamp, frame)
 
@@ -168,10 +184,12 @@ class DetectorNode(Node):
         self.pub_json.publish(String(data=self.map.to_json()))
 
     def log_stats(self):
-        self.get_logger().info(f"frames {self.n['frames']}, map updates {self.n['used']}, depth rejects {self.n['depth_fail']}, "
+        self.get_logger().info(f"frames {self.n['frames']}, map updates {self.n['used']} ({self.n['truncated']} truncated), depth rejects {self.n['depth_fail']}, "
                                f"tf failures {self.n['tf_fail']}, confirmed objects {len(self.map.confirmed())}")
 
     def save(self):
+        if self.log:
+            self.log.close()
         path = self.get_parameter("save_path").value
         if path:
             with open(path, "w") as fh:

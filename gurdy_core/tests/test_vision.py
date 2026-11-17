@@ -7,6 +7,7 @@ from gurdy_core.vision.colors import color_name, resolve_color
 from gurdy_core.vision.detector import decode_yolo, iou_xyxy, letterbox, nms, preprocess
 from gurdy_core.vision.geometry import K_from_camera_info, backproject, box_depth, quat_to_R, surface_to_centre, transform_point
 from gurdy_core.vision.metrics import average_precision, evaluate, match
+from gurdy_core.vision.geometry import truncation_flags, visible_centre_u
 from gurdy_core.vision.semantic_map import SemanticMap, obs_sigma
 
 
@@ -16,11 +17,11 @@ def test_class_tables_consistent():
         assert c in C.ALIASES and c in C.SIZE_PRIOR and c in C.COLORS and C.radius_prior(c) > 0
 
 
-def test_resolve_class_hinglish():
-    assert C.resolve_class("laal dabba dhundo") == "box"
-    assert C.resolve_class("fire extinguisher dhundo") == "fire_extinguisher"
-    assert C.resolve_class("kursi ke paas jao") == "chair"
-    assert C.resolve_class("kuch bhi") is None
+def test_resolve_class():
+    assert C.resolve_class("find the red box") == "box"
+    assert C.resolve_class("fire extinguisher") == "fire_extinguisher"
+    assert C.resolve_class("go to the chair") == "chair"
+    assert C.resolve_class("anything") is None
 
 
 def test_colors():
@@ -28,7 +29,7 @@ def test_colors():
     assert color_name(np.full((4, 4, 3), (20, 40, 210))) == "blue"
     assert color_name(np.full((4, 4, 3), (230, 210, 30))) == "yellow"
     assert color_name(np.full((4, 4, 3), (10, 10, 10))) == "black"
-    assert resolve_color("laal dabba") == "red" and resolve_color("neela barrel") == "blue" and resolve_color("dabba") is None
+    assert resolve_color("red box") == "red" and resolve_color("blue barrel") == "blue" and resolve_color("box") is None
 
 
 def test_letterbox_roundtrip_geometry():
@@ -164,3 +165,49 @@ def test_evaluate_precision_recall():
             {"pred": [], "gt": [(0, (5, 5, 15, 15))]}]
     r = evaluate(imgs, 2)
     assert r[0]["recall"] == 0.5 and r[0]["precision"] == 1.0 and r[1]["n_gt"] == 0 and np.isnan(r[1]["ap"])
+
+
+def test_visible_centre_u_truncation():
+    W, H, fx, r, z = 320, 240, 277.0, 0.2, 2.0
+    half = fx * r / z                                           # 27.7 px apparent radius
+    assert visible_centre_u((100, 50, 160, 150), W, H, z, fx, r) == 130           # not truncated: box centre
+    assert abs(visible_centre_u((0, 50, 40, 150), W, H, z, fx, r) - (40 - half)) < 1e-9     # cut on the left
+    assert abs(visible_centre_u((280, 50, 320, 150), W, H, z, fx, r) - (280 + half)) < 1e-9  # cut on the right
+    assert visible_centre_u((100, 0, 160, 150), W, H, z, fx, r) == 130            # top-cut: horizontal centre unchanged
+    assert visible_centre_u((0, 50, 320, 150), W, H, z, fx, r) is None
+    assert truncation_flags((0, 0, 50, 240), W, H) == {"left": True, "right": False, "top": True, "bottom": True}
+
+
+def test_truncated_sighting_weighs_less():
+    m = SemanticMap(min_hits=1)
+    m.update("box", [1.0, 0.0, 0.2], 0.9, 0.0, range_m=1.0)
+    m.update("box", [1.2, 0.0, 0.2], 0.9, 1.0, range_m=1.0, weight_scale=0.25)
+    assert 1.0 < m.tracks[0].pos[0] < 1.05                      # pulled 1/5 of the way, not halfway
+
+
+def test_confirmation_needs_span_score_and_consistency():
+    kw = dict(min_hits=3, ttl=30.0, min_span=1.0, min_mean_score=0.5, max_scatter=0.5)
+    # three sightings in 0.4 s (consecutive frames of one artefact) -> not confirmed; a later one completes the span
+    m = SemanticMap(**kw)
+    for k in range(3):
+        m.update("chair", [2.0, 1.0, 0.3], 0.9, 0.2 * k)
+    assert m.confirmed() == []
+    m.update("chair", [2.0, 1.0, 0.3], 0.9, 1.3)
+    assert len(m.confirmed()) == 1
+    # low mean score -> never confirmed however often it is seen
+    m = SemanticMap(**kw)
+    for k in range(10):
+        m.update("box", [0.0, 0.0, 0.1], 0.4, 0.5 * k)
+    assert m.confirmed() == []
+    # sightings that wander inside the gate (inconsistent position) are not confirmed
+    m = SemanticMap(**kw, gates={"toolbox": 0.5})
+    for k, x in enumerate([0.0, 0.45, -0.1, 0.4, 0.0, 0.45]):
+        m.update("toolbox", [x, 0.0, 0.1], 0.9, 0.5 * k)
+    assert m.confirmed() == []
+    # once confirmed it stays confirmed
+    m = SemanticMap(**kw)
+    for k in range(4):
+        m.update("barrel", [1.0, 1.0, 0.4], 0.9, 0.5 * k)
+    assert len(m.confirmed()) == 1
+    m.update("barrel", [1.2, 1.0, 0.4], 0.3, 9.0)
+    assert len(m.confirmed()) == 1

@@ -1,6 +1,6 @@
 # Gurdy 2.0
 
-An 18-DOF hexapod robot in simulation: Hindi/Hinglish voice commands, an offline fine-tuned LLM
+An 18-DOF hexapod robot in simulation: English voice commands, an offline fine-tuned LLM
 mission planner, an RL gait for rough terrain, mapping + navigation, object finding by name, and a
 robot-ops system that clusters failures into incidents and diagnoses root causes.
 ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL2). License: MIT.

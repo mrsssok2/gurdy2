@@ -14,7 +14,7 @@ import shutil
 from pathlib import Path
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--data", required=True, help="dataset dir with dataset.yaml (vision/generate_dataset.py finalize)")
+ap.add_argument("--data", default=".", help="dataset dir with dataset.yaml (vision/generate_dataset.py finalize)")
 ap.add_argument("--name", default="det_v1")
 ap.add_argument("--model", default="yolo11n.pt", help="Ultralytics weights/config (downloaded on first use)")
 ap.add_argument("--epochs", type=int, default=60)
@@ -23,12 +23,13 @@ ap.add_argument("--imgsz", type=int, default=320)
 ap.add_argument("--batch", type=int, default=32)
 ap.add_argument("--workers", type=int, default=4)
 ap.add_argument("--device", default="0", help="'0' = first GPU, 'cpu'")
+ap.add_argument("--data-yaml", default="", help="use this dataset yaml instead of <data>/dataset.yaml (e.g. several datasets merged)")
 ap.add_argument("--export-only", action="store_true")
 a = ap.parse_args()
 
 from ultralytics import YOLO  # noqa: E402  (import late: --help works without it)
 
-data = str(Path(a.data).resolve() / "dataset.yaml")
+data = str(Path(a.data_yaml).resolve()) if a.data_yaml else str(Path(a.data).resolve() / "dataset.yaml")
 runs = Path("vision/runs").resolve()
 if not a.export_only:
     YOLO(a.model).train(data=data, epochs=a.epochs, imgsz=a.imgsz, batch=a.batch, device=a.device, workers=a.workers,

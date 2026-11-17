@@ -1,4 +1,4 @@
-"""Object classes of the inspection-robot detector (Phase 4): ids, names, Hinglish aliases, size priors."""
+"""Object classes of the inspection-robot detector (Phase 4): ids, names, English aliases, size priors."""
 from __future__ import annotations
 
 import re
@@ -8,15 +8,15 @@ CLASS_ID = {n: i for i, n in enumerate(CLASSES)}
 # Gazebo label-system id = class id + 1 (label 0 is "background / unlabelled" in the boundingbox camera).
 GZ_LABEL_OFFSET = 1
 
-# find_object("laal dabba") style lookup: English + Hinglish words -> class
+# find_object("red box") style lookup: English words -> class
 ALIASES = {
-    "box": ("box", "boxes", "carton", "cardboard", "dabba", "dabbe", "dibba", "peti"),
-    "barrel": ("barrel", "drum", "pipa", "tanki"),
-    "fire_extinguisher": ("extinguisher", "fire", "agni", "aag"),
-    "traffic_cone": ("cone", "traffic", "coan"),
-    "toolbox": ("toolbox", "tool", "auzaar", "aujar"),
-    "mannequin": ("mannequin", "person", "putla", "insaan", "aadmi", "admi", "human", "dummy"),
-    "chair": ("chair", "kursi", "stool"),
+    "box": ("box", "boxes", "carton", "cardboard", "crate"),
+    "barrel": ("barrel", "drum"),
+    "fire_extinguisher": ("extinguisher", "fire"),
+    "traffic_cone": ("cone", "traffic"),
+    "toolbox": ("toolbox", "tool"),
+    "mannequin": ("mannequin", "person", "human", "dummy"),
+    "chair": ("chair",),
 }
 # approximate real size (w, d, h) metres, the radius used to push a front-surface depth point to the object centre
 SIZE_PRIOR = {
@@ -38,7 +38,7 @@ def radius_prior(name: str) -> float:
 
 
 def resolve_class(text: str) -> str | None:
-    """'laal dabba dhundo' -> 'box'; 'fire extinguisher' -> 'fire_extinguisher'; unknown -> None."""
+    """'find the red box' -> 'box'; 'fire extinguisher' -> 'fire_extinguisher'; unknown -> None."""
     words = re.findall(r"[a-z]+", text.lower())
     hits = [c for c, al in ALIASES.items() if any(w in al for w in words)]
     return hits[0] if len(hits) == 1 else None

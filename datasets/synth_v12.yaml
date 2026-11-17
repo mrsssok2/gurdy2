@@ -1,0 +1,13 @@
+# v1 (180 scenes) + v2 (hard negatives, more mannequins), scene-disjoint splits inside each. Test sets stay separate:
+# evaluate on synth_v1/images/test (comparable with det_v1_*) and synth_v2/images/test.
+path: /home/ubuntu/gurdy2/datasets
+train: [synth_v1/images/train, synth_v2/images/train]
+val: [synth_v1/images/val, synth_v2/images/val]
+names:
+  0: box
+  1: barrel
+  2: fire_extinguisher
+  3: traffic_cone
+  4: toolbox
+  5: mannequin
+  6: chair

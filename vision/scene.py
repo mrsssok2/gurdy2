@@ -56,11 +56,13 @@ def project(p_opt, hfov: float, w: int, h: int):
     return f * p_opt[0] / p_opt[2] + w / 2, f * p_opt[1] / p_opt[2] + h / 2
 
 
-def sample_scene(seed: int, n_views: int = 12, camera: dict | None = None) -> dict:
+def sample_scene(seed: int, n_views: int = 12, camera: dict | None = None, profile: str = "v1") -> dict:
+    """profile "v1": the first dataset. "v2": more mannequins (class weight 3, one in half the scenes), views aimed at
+    mannequins and at distractors, 2-10 distractors from distinct shape families (objects.DISTRACTOR_KINDS)."""
     cam = {**DEFAULT_CAMERA, **(camera or {})}
     rng = np.random.default_rng(seed)
     W, D = float(rng.uniform(4.0, 8.0)), float(rng.uniform(4.0, 8.0))
-    sc = {"seed": seed, "room": {"w": W, "d": D, "h": float(rng.uniform(1.8, 3.0))}, "camera": cam}
+    sc = {"seed": seed, "profile": profile, "room": {"w": W, "d": D, "h": float(rng.uniform(1.8, 3.0))}, "camera": cam}
     tex = lambda: (int(rng.integers(N_TEXTURES)) if rng.random() < 0.65 else None)
     sc["floor"] = {"rgb": _rand_rgb(rng, 0.2, 0.85), "texture": tex()}
     sc["wall"] = {"rgb": _rand_rgb(rng, 0.3, 0.95), "texture": tex()}
@@ -82,8 +84,16 @@ def sample_scene(seed: int, n_views: int = 12, camera: dict | None = None) -> di
         return None
 
     sc["objects"] = []
-    for _ in range(int(rng.integers(1, 7))):
-        cls = CLASSES[int(rng.integers(len(CLASSES)))]
+    v2 = profile == "v2"
+    weights = np.array([3.0 if c == "mannequin" else 1.0 for c in CLASSES]) if v2 else np.ones(len(CLASSES))
+    force_mannequin = v2 and rng.random() < 0.5
+    for k in range(int(rng.integers(1, 7))):
+        if force_mannequin and k == 0:
+            cls = "mannequin"
+        elif v2:
+            cls = CLASSES[int(rng.choice(len(CLASSES), p=weights / weights.sum()))]
+        else:                                                    # v1: the original random-number stream (reproducible dataset)
+            cls = CLASSES[int(rng.integers(len(CLASSES)))]
         scale = float(rng.uniform(0.8, 1.2))
         var = O.random_variant(cls, rng)
         fp = O.footprint(cls, scale, var)
@@ -93,7 +103,15 @@ def sample_scene(seed: int, n_views: int = 12, camera: dict | None = None) -> di
                                   "yaw": float(rng.uniform(-math.pi, math.pi)), "scale": scale, "variant": var,
                                   "height": fp[2]})
     sc["distractors"] = []
-    for i in range(int(rng.integers(0, 9))):
+    if v2:
+        for i in range(int(rng.integers(2, 11))):
+            kind = O.DISTRACTOR_KINDS[int(rng.integers(len(O.DISTRACTOR_KINDS)))]
+            pl = O.distractor_parts(kind, rng)
+            xy = place(O.parts_radius(pl))
+            if xy:
+                sc["distractors"].append({"name": f"dis{i}", "kind": kind, "x": xy[0], "y": xy[1], "yaw": float(rng.uniform(-3.1, 3.1)),
+                                          "parts": pl, "part": pl[0]})
+    for i in range(0 if v2 else int(rng.integers(0, 9))):
         kind = ("box", "cylinder", "sphere")[int(rng.integers(3))]
         size = {"box": [float(rng.uniform(0.1, 0.6)) for _ in range(3)], "cylinder": [float(rng.uniform(0.05, 0.3)), float(rng.uniform(0.2, 1.2))],
                 "sphere": [float(rng.uniform(0.08, 0.3))]}[kind]
@@ -115,8 +133,17 @@ def sample_views(sc: dict, rng, n: int) -> list:
     views = []
     for _ in range(n):
         for _try in range(40):
-            if sc["objects"] and rng.random() < 0.85:
-                o = sc["objects"][int(rng.integers(len(sc["objects"])))]
+            if sc.get("profile") == "v2" and sc["distractors"] and rng.random() < 0.25:
+                o = sc["distractors"][int(rng.integers(len(sc["distractors"])))]
+                th, dist = float(rng.uniform(-math.pi, math.pi)), float(rng.uniform(0.5, 3.0))
+                x, y = o["x"] - dist * math.cos(th), o["y"] - dist * math.sin(th)
+                yaw = th + float(rng.uniform(-0.35, 0.35))
+            elif sc["objects"] and rng.random() < 0.85:
+                mann = [q for q in sc["objects"] if q["cls"] == "mannequin"]
+                if sc.get("profile") == "v2" and mann and rng.random() < 0.4:
+                    o = mann[int(rng.integers(len(mann)))]
+                else:
+                    o = sc["objects"][int(rng.integers(len(sc["objects"])))]
                 th, dist = float(rng.uniform(-math.pi, math.pi)), float(rng.uniform(0.5, 3.5))
                 x, y = o["x"] - dist * math.cos(th), o["y"] - dist * math.sin(th)
                 yaw = th + float(rng.uniform(-0.35, 0.35))
@@ -208,7 +235,7 @@ def world_sdf(sc: dict, mesh_dir: str, tex_dir: str | None = None, with_camera: 
         cid = CLASSES.index(o["cls"]) + GZ_LABEL_OFFSET
         parts.append(O.model_sdf(o["name"], O.parts(o["cls"], o["scale"], o["variant"]), o["x"], o["y"], o["yaw"], label=cid, mesh_dir=mesh_dir))
     for d in sc["distractors"]:
-        parts.append(O.model_sdf(d["name"], [d["part"]], d["x"], d["y"], d["yaw"], label=None, mesh_dir=mesh_dir))
+        parts.append(O.model_sdf(d["name"], d.get("parts") or [d["part"]], d["x"], d["y"], d["yaw"], label=None, mesh_dir=mesh_dir))
     if with_camera:
         v0 = sc["views"][0] if sc["views"] else {"pos": [0, 0, 0.2], "rpy": [0, 0.17, 0]}
         parts.append(camera_model_sdf(sc["camera"], [*v0["pos"], *v0["rpy"]]))

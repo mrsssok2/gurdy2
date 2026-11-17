@@ -53,7 +53,7 @@ def cmd_plan(a):
         d = yaml.safe_load(open(a.robot_yaml))["sensors"]["depth_camera"]
         cam = {k: d[k] for k in ("width", "height", "hfov", "range", "pitch_down")}
     for i in range(a.scenes):
-        sc = S.sample_scene(a.seed * 100003 + i, a.views, cam)
+        sc = S.sample_scene(a.seed * 100003 + i, a.views, cam, a.profile)
         sc["index"], sc["split"] = i, S.split_for_scene(i)
         (out / "worlds" / f"scene_{i:04d}.json").write_text(json.dumps(sc))
         mesh_dir = out / "assets" / "meshes" / f"s{i:04d}"
@@ -295,6 +295,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("plan"); p.add_argument("--out", required=True); p.add_argument("--scenes", type=int, default=200)
     p.add_argument("--views", type=int, default=12); p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--profile", default="v1", choices=["v1", "v2"], help="scene sampler profile (v2: distractor families, more mannequins)")
     p.add_argument("--robot-yaml", default=str(Path(__file__).resolve().parents[1] / "ros2_ws/src/gurdy_description/config/robot.yaml"), help="camera intrinsics source")
     p.set_defaults(fn=cmd_plan)
     p = sub.add_parser("render"); p.add_argument("--out", required=True); p.add_argument("--start", type=int, default=0)

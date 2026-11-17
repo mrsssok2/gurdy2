@@ -1,0 +1,12 @@
+barrel_a        barrel             found, error 0.017 m
+extinguisher    fire_extinguisher  found, error 0.016 m
+cone            traffic_cone       found, error 0.033 m
+toolbox         toolbox            found, error 0.053 m
+mannequin       mannequin          found, error 0.056 m
+chair           chair              found, error 0.107 m
+barrel_b        barrel             found, error 0.015 m
+cardboard_box   box                found, error 0.022 m
+red_box         box                found, error 0.030 m, colour ok
+blue_box        box                found, error 0.070 m, colour ok
+yellow_box      box                found, error 0.053 m, colour ok
+recall 1.00, false/duplicate tracks 9, median error 0.03276673960361551

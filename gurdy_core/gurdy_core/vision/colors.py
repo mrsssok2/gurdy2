@@ -1,12 +1,11 @@
-"""Colour naming for a detected object crop (for 'laal dabba' = red box). English + Hinglish names."""
+"""Colour naming for a detected object crop (for 'red box'). English names."""
 from __future__ import annotations
 
 import colorsys
 
 import numpy as np
 
-HINGLISH = {"red": "laal", "orange": "narangi", "yellow": "peela", "green": "hara", "blue": "neela",
-            "purple": "baingani", "pink": "gulabi", "brown": "bhura", "black": "kaala", "white": "safed", "gray": "dhusar"}
+NAMES = ("red", "orange", "yellow", "green", "blue", "purple", "pink", "brown", "black", "white", "gray")
 
 
 def color_name(rgb_crop: np.ndarray) -> str:
@@ -36,7 +35,7 @@ def color_name(rgb_crop: np.ndarray) -> str:
 
 def resolve_color(text: str) -> str | None:
     words = text.lower().split()
-    for en, hi in HINGLISH.items():
-        if en in words or hi in words:
+    for en in NAMES:
+        if en in words:
             return en
     return None
