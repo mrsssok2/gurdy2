@@ -56,6 +56,28 @@ def lm_loss(model, ids, n_ans, device):
     return F.cross_entropy(logits, target, reduction="sum")
 
 
+def lm_loss_batch(model, items, device):
+    """Summed CE over answer tokens of several examples at once (left-padded, explicit position_ids)."""
+    import torch
+    import torch.nn.functional as F
+    if len(items) == 1:
+        return lm_loss(model, items[0][0], items[0][1], device)
+    L = max(len(i) for i, _ in items)
+    x = torch.zeros(len(items), L, dtype=torch.long)
+    m = torch.zeros(len(items), L, dtype=torch.long)
+    for b, (ids, _) in enumerate(items):
+        x[b, L - len(ids):] = torch.tensor(ids)
+        m[b, L - len(ids):] = 1
+    pos = (m.cumsum(1) - 1).clamp(min=0)
+    x, m, pos = x.to(device), m.to(device), pos.to(device)
+    K = max(n for _, n in items) + 1
+    logits = model(input_ids=x, attention_mask=m, position_ids=pos, logits_to_keep=K, use_cache=False).logits
+    tot = 0.0
+    for b, (_, n) in enumerate(items):
+        tot = tot + F.cross_entropy(logits[b, K - n - 1:-1].float(), x[b, -n:], reduction="sum")
+    return tot
+
+
 @__import__("torch").no_grad()
 def evaluate(model, data, device, limit=None):
     model.eval()
@@ -80,8 +102,10 @@ def build_model(args):
                                bnb_4bit_compute_dtype=torch.bfloat16)
         model = AutoModelForCausalLM.from_pretrained(args.model, quantization_config=q, torch_dtype=torch.bfloat16,
                                                      device_map={"": 0}, attn_implementation="sdpa")
-        model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True,
+        model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=not args.no_gc,
                                                 gradient_checkpointing_kwargs={"use_reentrant": False})
+    if args.no_gc and not args.tiny:
+        model.enable_input_require_grads = lambda: None
     if args.tiny:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
         model.enable_input_require_grads()
@@ -103,6 +127,8 @@ def main(argv=None):
     ap.add_argument("--epochs", type=float, default=2.0)
     ap.add_argument("--max-len", type=int, default=3328)
     ap.add_argument("--accum", type=int, default=16)
+    ap.add_argument("--micro", type=int, default=1, help="micro-batch (examples per forward); effective batch stays --accum")
+    ap.add_argument("--no-gc", action="store_true", help="disable gradient checkpointing")
     ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--warmup", type=float, default=0.03)
     ap.add_argument("--lora-r", type=int, default=32)
@@ -110,7 +136,7 @@ def main(argv=None):
     ap.add_argument("--lora-dropout", type=float, default=0.05)
     ap.add_argument("--eval-every", type=int, default=100)
     ap.add_argument("--eval-n", type=int, default=100, help="val examples per periodic eval (full val at the end)")
-    ap.add_argument("--save-every", type=int, default=100)
+    ap.add_argument("--save-every", type=int, default=50)
     ap.add_argument("--max-examples", type=int, default=0)
     ap.add_argument("--max-steps", type=int, default=0)
     ap.add_argument("--seed", type=int, default=0)
@@ -187,11 +213,12 @@ def main(argv=None):
         loss_sum = 0.0
         for g in opt.param_groups:
             g["lr"] = lr_at(step)
-        for ids, n_ans in batch:
-            l = lm_loss(model, ids, n_ans, device)
+        for k in range(0, len(batch), args.micro):
+            mb = batch[k:k + args.micro]
+            l = lm_loss_batch(model, mb, device)
             (l / ntok).backward()
             loss_sum += l.item()
-            tok_seen += len(ids)
+            tok_seen += sum(len(i) for i, _ in mb)
         gn = torch.nn.utils.clip_grad_norm_(params, 1.0).item()
         opt.step()
         opt.zero_grad(set_to_none=True)
