@@ -123,7 +123,15 @@ class OllamaLLM:
         if feedback:
             u += f"Your previous answer was rejected: {feedback}\n"
         u += "Answer:"
-        return self._chat("respond", u, None).strip()
+        text = self._chat("respond", u, None).strip()
+        if text.startswith("{"):   # free-text request answered as {"reply": "..."}: use the text
+            try:
+                d = json.loads(text)
+                if isinstance(d, dict) and isinstance(d.get("reply"), str):
+                    text = d["reply"].strip()
+            except json.JSONDecodeError:
+                pass
+        return text
 
     def replan(self, system, state, tools, failure, tool_results, feedback=None):
         u = (f"TASK: plan (a mission step failed; recover or give up)\n{state}\nFAILURE: {json.dumps(failure, separators=(',', ':'))}\n"

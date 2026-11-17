@@ -15,6 +15,7 @@ Observed behaviour classes (one per turn, first match wins):
 from __future__ import annotations
 
 import math
+import json
 import re
 import statistics
 import time
@@ -184,7 +185,36 @@ def check_state(pred: dict, b: MockBackend, agent: Agent, start: tuple, missions
     return bad
 
 
+def unwrap_reply(text: str) -> str:
+    """A model sometimes answers a free-text request with a JSON object {"reply": "..."}; use the text inside."""
+    t = text.strip()
+    if t.startswith("{"):
+        try:
+            d = json.loads(t)
+            if isinstance(d, dict) and isinstance(d.get("reply"), str):
+                return d["reply"]
+        except json.JSONDecodeError:
+            pass
+    return text
+
+
+_NOT_SEEN = re.compile(r"\b(?:(?:has|have|had|is|are|was|were|did|do|does)\s*(?:not|n't)|(?:has|have|had|is|are|was|were|did|do|does)n't|never)"
+                       r"\s+(?:been\s+|yet\s+|ever\s+)*(?:seen|found|detected|observed)\b", re.I)
+
+
+def normalize_reply(reply: str) -> str:
+    """Spelling / unit variants of the same fact map to one form. Numbers, names and directions are NOT touched."""
+    t = unwrap_reply(reply).replace("\u2019", "'")
+    t = re.sub(r"\bmet(?:er|re)s?\b", "metres", t, flags=re.I)
+    t = re.sub(r"(\d(?:\.\d+)?)\s*m\b(?![a-z/])", r"\1 metres", t)           # "4.7 m" / "4.7m"
+    t = re.sub(r"(\d(?:\.\d+)?)\s*(?:%|per cent\b)", r"\1 percent", t, flags=re.I)  # "81.8%" -> "81.8 percent"
+    t = _NOT_SEEN.sub("not seen", t)
+    t = re.sub(r"\bnot\s+(?:yet\s+)?(?:been\s+)?(?:seen|found)\b", "not seen", t, flags=re.I)
+    return t
+
+
 def check_reply(exp: dict, reply: str, b: MockBackend) -> list[str]:
+    reply = normalize_reply(reply)
     bad, low = [], reply.lower()
     for s in exp.get("reply_has", []):
         if s.lower() not in low:

@@ -50,3 +50,13 @@ def test_direction_errors_count_swapped_pairs_only():
     assert direction_errors(exp, [{"tool": "turn", "args": {"direction": "right", "angle_deg": 90}}]) == 1
     assert direction_errors(exp, [{"tool": "turn", "args": {"direction": "left", "angle_deg": 45}}]) == 0
     assert trace_match(exp, [{"tool": "ask_user", "args": {}}])[0] is False
+
+
+def test_reply_normalisation_accepts_variants_but_not_wrong_facts():
+    from brain.eval.harness import normalize_reply as n
+    assert "4.7 metres" in n("about 4.7 meters") and "4.7 metres" in n("4.7 m away")
+    assert "81.8 percent" in n('{"reply": "Battery 81.8%"}') and "82 percent" in n("82 per cent")
+    for s in ("The toolbox has not been seen", "I haven't seen it", "not seen yet", "it was never seen"):
+        assert "not seen" in n(s)
+    assert "not seen" not in n("I do not see anything")          # different statement, not rewritten
+    assert "left" in n("it is to the left") and "right" not in n("it is to the left")

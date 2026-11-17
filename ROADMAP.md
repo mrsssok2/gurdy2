@@ -301,6 +301,7 @@ criteria are 5.A–5.K below (formerly numbered 5.1–5.11); the build order is 
 ---
 
 ## Phase 6 — Robot Incident Graph (robot-ops)
+Design (2026-11-17, plan only): **`docs/phase6_design.md`** (incident definition, data flow, storage, root-cause linking, brain queries, stack budget, milestones 6.1–6.9, ~19 working days estimated).
 - [ ] Telemetry/log exporter: ROS 2 → Redpanda (also from rosbag replay)
 - [ ] Event normalizer (schema), fingerprinting, embeddings → Qdrant
 - [ ] HDBSCAN clustering into incidents → PostgreSQL

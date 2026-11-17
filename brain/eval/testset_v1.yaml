@@ -74,7 +74,7 @@ cases:
 - {id: c3_14, cat: 3, turns: [{say: "what objects have you found", expect: {behaviour: answer, calls: [[{tool: recall, args: {what: object}}]], reply_has: [red box, blue box, yellow box, green barrel, fire extinguisher, mannequin]}}], end_state: {not_moved: true}}
 
 # ======================================================================== 4. status, why, memory (8)
-- {id: c4_01, cat: 4, turns: [{say: "how is your battery", expect: {behaviour: answer, calls: [[{tool: status}]], reply_re: "\\d+ percent"}}], end_state: {not_moved: true}}
+- {id: c4_01, cat: 4, turns: [{say: "how is your battery", expect: {behaviour: answer, calls: [[{tool: status}]], reply_re: "\\d+(\\.\\d+)? percent"}}], end_state: {not_moved: true}}
 - {id: c4_02, cat: 4, scenario: {fail_legs: [middle_left]}, turns: [{say: "are your legs okay", expect: {behaviour: answer, calls: [[{tool: status}]], reply_has: [middle left]}}], end_state: {not_moved: true}}
 - {id: c4_03, cat: 4, turns: [{say: "go to room B", advance_s: 5, expect: {behaviour: execute, calls: [[{tool: go_to, args: {place: room B}}]]}}, {say: "what are you doing", settle: false, expect: {behaviour: answer, calls: [[{tool: status}]], reply_has_any: [moving, go_to, going]}}]}
 - {id: c4_04, cat: 4, scenario: {pre: [{tool: go_to, args: {place: room B}, run_s: 20, then_stop: true}]}, turns: [{say: "why did you stop", expect: {behaviour: answer, calls: [[{tool: why, args: {about: stop}}]], reply_has_any: [cancelled, stopped]}}], end_state: {not_moved: true}}
