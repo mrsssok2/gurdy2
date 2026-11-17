@@ -2,3 +2,4 @@
 # Tool layer, mock world, safety, executor, grounding, eval harness need only PyYAML; the agent graph needs langgraph.
 pyyaml
 langgraph>=1.0        # agent graph (brain/agent/graph.py)
+numpy

@@ -27,7 +27,7 @@ SYSTEM_PROMPT = ("You are Gurdy, a hexapod robot. Turn the user's request into t
                  "You know no facts about the world: use tools. Never state a name, number or direction "
                  "that a tool did not return.")
 _STRONG_STOP = re.compile(r"\b(stop|halt|freeze|emergency)\b", re.I)
-_WEAK_STOP = re.compile(r"^\W*(stap|stob|stup|top|stopp?)\W*$", re.I)     # STT confusions, only as a whole utterance
+_WEAK_STOP = re.compile(r"^\W*(stap|stob|stup|top|stopp?|holt|hault|hallt)\W*$", re.I)     # STT confusions, only as a whole utterance
 # a question about stopping ("why did you stop") or a request to switch the e-stop off is not a stop command
 _NOT_A_COMMAND = re.compile(r"^\W*(why|what|when|where|how|which|who)\b|\b(did|have|had|was|were)\s+(you|it)\b", re.I)
 

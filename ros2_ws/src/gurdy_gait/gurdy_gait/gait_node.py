@@ -11,14 +11,19 @@ sim time has advanced by one gait period. This avoids use_sim_time in rclpy, who
 subscription (1 kHz from Gazebo) cost ~50 % CPU while the gait math itself costs ~2 %.
 
 If /cmd_vel is silent for `cmd_timeout` seconds of sim time the command drops to zero (robot stops).
+/estop (std_msgs/Bool, latched, same contract as policy_node): true -> ramp to the stand pose (joint speed limited by
+`stand_speed`, no jump), ignore /cmd_vel, hold until /estop is false again; after a release the gait restarts from rest
+and stands until a fresh /cmd_vel arrives.
+
 Everything above this node only speaks /cmd_vel, so teleop / Nav2 / the LLM agent are swappable.
 """
 import numpy as np
 import rclpy
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Bool, Float64MultiArray
 
 from gurdy_core.gait import TripodGait
 from gurdy_core.robot import load_robot
@@ -29,6 +34,7 @@ class GaitNode(Node):
         super().__init__("gait_node")
         self.declare_parameter("robot_yaml", "")
         self.declare_parameter("cmd_timeout", 0.5)
+        self.declare_parameter("stand_speed", 1.0)      # rad/s joint speed limit while going to the stand pose (e-stop)
         path = self.get_parameter("robot_yaml").value or None
         self.robot = load_robot(path)
         self.gait = TripodGait(self.robot)
@@ -37,8 +43,13 @@ class GaitNode(Node):
         self.last_cmd_time = None      # sim time (s) of the last /cmd_vel
         self.sim_now = None            # latest /joint_states stamp (s)
         self.last_tick = None
+        self.estop = False
+        self.q_stance = np.asarray(self.gait.joint_targets(), float).copy()   # 18 targets of the freshly reset gait = stand pose
+        self.q_out = self.q_stance.copy()      # last published targets (the stand ramp starts here)
         self.pub = self.create_publisher(Float64MultiArray, "/joint_pd_controller/commands", 10)
         self.pub_cmd = self.create_publisher(Twist, "/gait/cmd", 10)
+        latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE)
+        self.create_subscription(Bool, "/estop", self.on_estop, latched)
         self.create_subscription(Twist, "/cmd_vel", self.on_cmd, 10)
         self.create_subscription(JointState, "/joint_states", self.on_joint_states, 10)
         self.failures_reported = 0
@@ -47,7 +58,17 @@ class GaitNode(Node):
             f"tripod gait at {1 / self.gait.dt:.0f} Hz, cycle {self.gait.cycle} s, "
             f"limits vx={self.gait.cmd_limits[0]} vy={self.gait.cmd_limits[1]} wz={self.gait.cmd_limits[2]}")
 
+    def on_estop(self, msg: Bool):
+        if bool(msg.data) != self.estop:
+            self.get_logger().warn("E-STOP engaged: standing" if msg.data else "e-stop released")
+            self.estop = bool(msg.data)
+            self.cmd = np.zeros(3)
+            self.last_cmd_time = None          # after a release: stand until a fresh /cmd_vel arrives
+            self.gait.reset()
+
     def on_cmd(self, msg: Twist):
+        if self.estop:
+            return
         self.cmd = np.array([msg.linear.x, msg.linear.y, msg.angular.z])
         self.last_cmd_time = self.sim_now
 
@@ -72,10 +93,17 @@ class GaitNode(Node):
             self.tick(min(n, 10))
 
     def tick(self, n_steps: int):
+        if self.estop:                         # safe stand pose, rate-limited, no stride
+            step = float(self.get_parameter("stand_speed").value) * self.gait.dt
+            q = self.q_out + np.clip(self.q_stance - self.q_out, -step, step)
+            self.q_out = q
+            self.pub.publish(Float64MultiArray(data=q.tolist()))
+            return
         if self.last_cmd_time is None or self.sim_now - self.last_cmd_time > self.timeout:
             self.cmd = np.zeros(3)
         for _ in range(n_steps):
             q = self.gait.step(self.cmd)
+        self.q_out = q
         self.pub.publish(Float64MultiArray(data=q.tolist()))
         c = self.gait.cmd
         t = Twist()
