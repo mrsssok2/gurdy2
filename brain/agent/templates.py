@@ -82,7 +82,8 @@ def summarize(tool: str, args: dict, res: dict) -> str:
     if tool == "status":
         legs = [n.replace("_", " ") for n, s in d["legs"].items() if s != "ok"]
         leg_txt = "; leg problem: " + ", ".join(legs) if legs else ""
-        return f"Battery {d['battery_pct']:.0f} percent (simulated), mode {d['mode']}{leg_txt}."
+        batt = "Battery unknown" if d["battery_pct"] is None else f"Battery {d['battery_pct']:.0f} percent (simulated)"
+        return f"{batt}, mode {d['mode']}{leg_txt}."
     if tool == "why":
         return " ".join(e["text"] for e in d["events"]) or "I have nothing logged about that."
     if tool == "recall":

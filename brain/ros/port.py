@@ -1,0 +1,43 @@
+"""RosPort: everything RosBackend needs from ROS, as plain Python types (no rclpy import here).
+
+Two implementations: `rclpy_port.RclpyPort` (real topics / actions / TF) and `fake_port.FakePort` (tests).
+All positions are metres in the `map` frame, all times sim seconds (/clock). A method that returns None means
+"this fact has no source right now" - the backend turns that into UNAVAILABLE or an explicit 'unknown'.
+"""
+from __future__ import annotations
+
+from typing import Any, Protocol
+
+NAV_RUNNING, NAV_OK, NAV_ABORTED, NAV_CANCELED = "running", "succeeded", "aborted", "canceled"
+
+
+class RosPort(Protocol):
+    # ---- facts (topics / TF)
+    def now(self) -> float: ...                                   # /clock
+    def pose(self) -> tuple[float, float, float] | None: ...      # TF map -> base_link: x, y, yaw
+    def speed(self) -> float | None: ...                          # |v| from odometry, m/s
+    def tilt_deg(self) -> float | None: ...                       # from the IMU
+    def policy_status(self) -> str | None: ...                    # /policy/status: policy | stand:<reason> | tripod
+    def semantic_objects(self) -> list[dict] | None: ...          # semantic_map/objects JSON "objects" list
+    def map_id(self) -> str: ...
+    def map_cell(self, x: float, y: float) -> str | None: ...     # "free" | "occupied" | "unknown" (/map)
+    def mapped_fraction(self) -> float | None: ...                # known share of the interior, 0..1 (frontier.map_stats)
+    def obstacle_sectors(self, radius_m: float) -> list[dict]: ...  # [{bearing_deg, distance_m}], from /scan
+    def battery_pct(self) -> float | None: ...                    # NEW battery_sim_node; None until it exists
+    def leg_states(self) -> dict[str, str] | None: ...            # NEW leg_health_node; None until it exists
+    def drain_alerts(self) -> list[dict]: ...                     # alert / event topic, since last call
+    # ---- Nav2
+    def nav_ready(self) -> bool: ...
+    def nav_send(self, x: float, y: float, yaw: float | None) -> int | None: ...    # navigate_to_pose -> handle
+    def nav_state(self, handle: int) -> dict[str, Any]: ...       # {state, distance_remaining, recoveries}
+    def nav_cancel(self, handle: int) -> None: ...
+    def compute_path(self, x: float, y: float) -> dict | None: ...  # compute_path_to_pose -> {length_m, points} | None
+    # ---- exploration (NEW action; the node today is run-to-completion)
+    def explore_available(self) -> bool: ...
+    def explore_start(self, max_time_s: float, area: str | None) -> int | None: ...
+    def explore_state(self, handle: int) -> dict[str, Any]: ...   # {state}
+    def explore_cancel(self, handle: int) -> None: ...
+    # ---- actuation / safety
+    def send_cmd(self, vx: float, vy: float, wz: float) -> None: ...   # cmd_vel_smoothed (min-speed lift + collision monitor stay in the path)
+    def set_estop(self, active: bool) -> None: ...                # /estop (latched) - gate node is NEW
+    def estop_active(self) -> bool: ...

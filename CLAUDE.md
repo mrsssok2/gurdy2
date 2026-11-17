@@ -355,3 +355,6 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
 
 - 2026-11-17 (compact prompt decision): the tool block is the lossless compact notation + `CLASS` alias everywhere (`build_system()` default, Ollama client, SFT `system.txt`); old JSON prompt selectable
   (`build_system("json")`, agent `qwen3-1.7b-json`). 5.3 base numbers (53 / 36) are JSON-prompt; compact baseline + SFT start are chained in `scripts/p5_tonight.sh` (re-runnable; waits for datagen DONE + empty `docker ps`).
+- 2026-11-17 (5.6 prep, code only, nothing run in Gazebo; stage B was using the GPU): `brain/ros` = `RosBackend` (all 23 backend tools + `estop()`) over a `RosPort` (`rclpy_port.RclpyPort` real, `fake_port.FakePort` tests, 35 tests, no ROS),
+  `relmotion.py` closed-loop walk/turn, `run_text.py`, `maps/flat_lab.places.yaml`. **Gaps:** no explore action (explore / live find -> UNAVAILABLE), no battery / leg-health / event producers / gate node / keepout filter;
+  battery None is handled in agent (safety, templates, state block). Mapping, gaps and the exact Gazebo test commands: `docs/results/phase5_ros_backend.md`. Found: `MockBackend.return_home` is refused after a leg failure (calls go_to), not fixed.

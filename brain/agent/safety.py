@@ -26,6 +26,13 @@ _UNSAFE_REQUEST = re.compile(
     r"|\b(hit|ram|crash into|push|knock over|kick|smash|run over)\b", re.I)
 
 
+def _batt(st: dict) -> float:
+    """Battery percent; unknown (None, no battery node yet) counts as full: no rule fires on a number we do not have."""
+    b = st.get("battery_pct")
+    return 100.0 if b is None else b
+
+
+
 @dataclass
 class Verdict:
     outcome: str                      # allow | confirm | refuse | clarify
@@ -95,14 +102,14 @@ class SafetyChecker:
         if st.get("estop"):
             return Verdict("refuse", "The emergency stop is active; release it first.", rule="estop_active")
         failed = [n for n, s in st.get("legs", {}).items() if s == "failed"]
-        critical = st.get("battery_pct", 100) < self.cfg["critical_battery_pct"]
+        critical = _batt(st) < self.cfg["critical_battery_pct"]
         if (failed or critical) and tool != "return_home":
             why = "a leg has failed" if failed else "the battery is critical"
             return Verdict("refuse", f"I will only go home because {why}.", rule="degraded_motion")
         return None
 
     def _low_battery(self) -> bool:
-        return self.backend.status().data.get("battery_pct", 100) < self.cfg["confirm_battery_pct"]
+        return _batt(self.backend.status().data) < self.cfg["confirm_battery_pct"]
 
     def _check_target(self, tool: str, args: dict, allow_hazard_zone_check: bool = False) -> Verdict:
         target = {k: args[k] for k in ("place", "object", "object_id", "point") if k in args}
