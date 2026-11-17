@@ -174,7 +174,7 @@ Design (2026-11-17, plan only — nothing built or measured): **`docs/phase5_des
 criteria are 5.A–5.K below (formerly numbered 5.1–5.11); the build order is milestones 5.1–5.11:
 
 - [ ] 5.1 Serving + VRAM/RAM/latency measurement (Ollama, Whisper, TTS, VLM candidates; runtime set, WSL limit) — after det_v2_s training
-- [ ] 5.2 Tool layer + mock world + agent core (LangGraph, safety checker, mission executor, grounding check, keyword baseline) → 5.A
+- [x] 5.2 Tool layer + mock world + agent core (LangGraph, safety checker, mission executor, grounding check, keyword baseline) → 5.A  (done 2026-11-17; tested with a scripted LLM, 156 tests; real model comes in 5.3)
   — part 1 done (2026-11-17): `brain/tools` (24 specs, strict validator, `RobotBackend`, `ToolLayer` + FOCUS/state block), `brain/mock` (flat_lab world, A*, virtual clock, all 24 tools), 48 tests; still open: safety checker, mission executor, LangGraph graph, grounding check, keyword baseline
 - [ ] 5.3 Evaluation harness + 100-command test set; keyword parser vs base models → 5.K
 - [ ] 5.4 Automatic data generation + SFT (0.6B, 1.7B QLoRA) → 5.A

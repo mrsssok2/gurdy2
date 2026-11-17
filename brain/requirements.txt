@@ -1,0 +1,3 @@
+# Agent runtime (milestone 5.2). Tool layer, mock world, safety, executor, grounding need only PyYAML.
+pyyaml
+langgraph>=1.0        # agent graph (brain/agent/graph.py); not in the rl image yet -> tests use a pip --target dir

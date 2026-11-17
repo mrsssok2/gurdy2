@@ -330,3 +330,9 @@ Training start/monitor/stop/resume commands: README.md ("RL training").
   stdlib validator — no pydantic, `RobotBackend` protocol, `ToolLayer`) and `brain/mock` (`MockBackend`, flat_lab world, virtual clock; nominal speeds 0.10 m/s / 0.3 rad/s and camera cone
   3.5 m / 90° are ASSUMPTIONS). Tests: `docker run --rm -v $PWD:/w -w /w --entrypoint python3 gurdy2/rl:cpu -m pytest -q brain/tests` (48 pass). Safety checker, executor, LangGraph graph,
   grounding check, keyword baseline still to do in 5.2. `no_go_zone remove` confirmation belongs to the safety checker, not the backend.
+- 2026-11-17 (5.2 done): `brain/agent` — `safety.py` (+`safety.yaml`; refuse / confirm / clarify rules, `ConfirmationGate`: holds the exact plan, clear yes only, 30 s expiry), `executor.py` (mission state machine, re-checks each step
+  before it starts), `graph.py` (LangGraph: route / plan / safety_check / execute / respond / finish; e-stop regex + unsafe-request check before the LLM; motion acks are templates so a command costs 1 LLM call; max 4 per turn),
+  `grounding.py` (names, colours, places, numbers+units, ids, directions must come from this turn's tool results / user words; regenerate once, then template fallback), `templates.py`, `llm.py` (`LLM` protocol, `ScriptedLLM`, `KeywordLLM`),
+  `cli.py`; `brain/eval/keyword_parser.py` = baseline. langgraph is NOT in any image: tests run via `pip install --target DIR langgraph` in the rl image + `PYTHONPATH=DIR` (`brain/requirements.txt`; add it to an image in 5.3/5.6).
+  Test command: `docker run --rm -v $PWD:/w -v DIR:/lg -e PYTHONPATH=/lg -w /w --entrypoint python3 gurdy2/rl:cpu -m pytest -q brain/tests` (156 pass). Mock bug fixed: `World.line_free` sampled 5 cm, path corners clipped (return from room B blocked).
+  Not done: LLM re-plan after a failed mission step (agent only announces it), real LLM client (5.3), eval harness (5.3).

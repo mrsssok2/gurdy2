@@ -1,0 +1,10 @@
+# Safety thresholds (design 4.3). One place; the checker reads nothing else.
+critical_battery_pct: 10        # below: refuse every motion except stop / return_home
+confirm_path_longer_m: 8.0      # confirm first
+confirm_battery_pct: 30         # explore / patrol below this: confirm first
+confirm_patrol_loops_over: 3
+person_min_distance_m: 1.0      # keep this far from a mannequin (stand-in for people)
+confirmation_timeout_s: 30
+stt_confidence_min: 0.6         # below: clarify instead of acting
+motion_tools: [walk, turn, go_to, find, explore, patrol, inspect, return_home]
+always_allowed: [stop, mission_control]

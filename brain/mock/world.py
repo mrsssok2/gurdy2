@@ -107,7 +107,7 @@ class World:
         return self.bounds.contains(x, y) and self._cell(x, y) not in self.blocked_cells
 
     def line_free(self, p: tuple[float, float], q: tuple[float, float], zones=()) -> bool:
-        n = max(2, int(math.hypot(q[0] - p[0], q[1] - p[1]) / 0.05))
+        n = max(2, int(math.hypot(q[0] - p[0], q[1] - p[1]) / 0.0125))
         for k in range(1, n + 1):
             x, y = p[0] + (q[0] - p[0]) * k / n, p[1] + (q[1] - p[1]) * k / n
             if not self.is_free(x, y) or any(math.hypot(x - z[0], y - z[1]) <= z[2] for z in zones):
