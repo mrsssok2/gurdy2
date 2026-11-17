@@ -1,0 +1,526 @@
+{
+ "reason": "no frontiers left",
+ "sim_time_s": 703.6,
+ "start_pose": [
+  -5.49430277887283e-08,
+  1.3471280828569582e-17
+ ],
+ "end_pose": [
+  -0.019128512328591037,
+  -0.07922363817945809
+ ],
+ "end_to_start_m": 0.082,
+ "frontier_goals": 20,
+ "succeeded": 1,
+ "cancelled_resolved": 5,
+ "close_enough": 8,
+ "failed": 6,
+ "blacklisted": [
+  [
+   2.268,
+   0.897
+  ],
+  [
+   2.966,
+   0.047
+  ],
+  [
+   3.55,
+   -2.053
+  ],
+  [
+   -0.5,
+   -1.653
+  ]
+ ],
+ "return_status": "SUCCEEDED",
+ "goals": [
+  {
+   "xy": [
+    0.157,
+    0.257
+   ],
+   "t0": 0.0,
+   "from": [
+    -0.0,
+    0.0
+   ],
+   "size_m": 30.3,
+   "path_m": 0.31,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "frontier resolved",
+   "status": "CANCELED",
+   "t_end": 9.86,
+   "duration_s": 3.3,
+   "end_pose": [
+    0.1,
+    0.23
+   ]
+  },
+  {
+   "xy": [
+    0.842,
+    1.042
+   ],
+   "t0": 4.0,
+   "from": [
+    0.11,
+    0.23
+   ],
+   "size_m": 9.4,
+   "path_m": 1.11,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "close enough",
+   "status": "CANCELED",
+   "t_end": 48.952,
+   "duration_s": 38.4,
+   "end_pose": [
+    0.6,
+    0.83
+   ]
+  },
+  {
+   "xy": [
+    1.533,
+    1.287
+   ],
+   "t0": 42.9,
+   "from": [
+    0.6,
+    0.85
+   ],
+   "size_m": 1.15,
+   "path_m": 1.17,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "close enough",
+   "status": "CANCELED",
+   "t_end": 81.556,
+   "duration_s": 32.1,
+   "end_pose": [
+    1.44,
+    0.98
+   ]
+  },
+  {
+   "xy": [
+    2.768,
+    0.687
+   ],
+   "t0": 75.6,
+   "from": [
+    1.42,
+    0.99
+   ],
+   "size_m": 1.75,
+   "path_m": 1.52,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "no progress",
+   "status": "CANCELED",
+   "t_end": 132.609,
+   "duration_s": 50.5,
+   "end_pose": [
+    1.89,
+    0.78
+   ]
+  },
+  {
+   "xy": [
+    2.268,
+    0.897
+   ],
+   "t0": 126.7,
+   "from": [
+    1.9,
+    0.77
+   ],
+   "size_m": 1.2,
+   "path_m": 0.39,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "close enough",
+   "status": "CANCELED",
+   "t_end": 137.817,
+   "duration_s": 4.6,
+   "end_pose": [
+    2.02,
+    0.84
+   ]
+  },
+  {
+   "xy": [
+    2.268,
+    0.897
+   ],
+   "t0": 131.9,
+   "from": [
+    2.01,
+    0.83
+   ],
+   "size_m": 1.2,
+   "path_m": 0.27,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "close enough",
+   "status": "CANCELED",
+   "t_end": 142.572,
+   "duration_s": 4.2,
+   "end_pose": [
+    2.1,
+    0.73
+   ],
+   "blacklisted": true
+  },
+  {
+   "xy": [
+    2.968,
+    0.047
+   ],
+   "t0": 136.7,
+   "from": [
+    2.1,
+    0.72
+   ],
+   "size_m": 2.9,
+   "path_m": 1.26,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "no progress",
+   "status": "CANCELED",
+   "t_end": 183.534,
+   "duration_s": 40.3,
+   "end_pose": [
+    1.29,
+    0.16
+   ]
+  },
+  {
+   "xy": [
+    2.966,
+    0.047
+   ],
+   "t0": 177.3,
+   "from": [
+    1.28,
+    0.17
+   ],
+   "size_m": 2.95,
+   "path_m": 2.11,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "no progress",
+   "status": "CANCELED",
+   "t_end": 234.596,
+   "duration_s": 50.7,
+   "end_pose": [
+    1.88,
+    0.8
+   ],
+   "blacklisted": true
+  },
+  {
+   "xy": [
+    2.916,
+    0.797
+   ],
+   "t0": 228.4,
+   "from": [
+    1.89,
+    0.79
+   ],
+   "size_m": 1.0,
+   "path_m": 1.24,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "frontier resolved",
+   "status": "CANCELED",
+   "t_end": 267.673,
+   "duration_s": 32.8,
+   "end_pose": [
+    2.76,
+    0.27
+   ]
+  },
+  {
+   "xy": [
+    2.966,
+    -0.703
+   ],
+   "t0": 261.6,
+   "from": [
+    2.74,
+    0.28
+   ],
+   "size_m": 0.3,
+   "path_m": 1.1,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "frontier resolved",
+   "status": "CANCELED",
+   "t_end": 268.748,
+   "duration_s": 0.6,
+   "end_pose": [
+    2.76,
+    0.32
+   ]
+  },
+  {
+   "xy": [
+    4.866,
+    1.197
+   ],
+   "t0": 262.8,
+   "from": [
+    2.78,
+    0.34
+   ],
+   "size_m": 1.15,
+   "path_m": 2.45,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "no progress",
+   "status": "CANCELED",
+   "t_end": 366.744,
+   "duration_s": 97.4,
+   "end_pose": [
+    4.08,
+    -0.44
+   ]
+  },
+  {
+   "xy": [
+    4.25,
+    -2.003
+   ],
+   "t0": 360.5,
+   "from": [
+    4.08,
+    -0.44
+   ],
+   "size_m": 0.9,
+   "path_m": 1.72,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "no progress",
+   "status": "CANCELED",
+   "t_end": 412.302,
+   "duration_s": 45.2,
+   "end_pose": [
+    3.98,
+    -0.81
+   ]
+  },
+  {
+   "xy": [
+    4.25,
+    -2.003
+   ],
+   "t0": 406.2,
+   "from": [
+    3.98,
+    -0.81
+   ],
+   "size_m": 0.8,
+   "path_m": 1.35,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "close enough",
+   "status": "CANCELED",
+   "t_end": 457.374,
+   "duration_s": 44.7,
+   "end_pose": [
+    3.95,
+    -1.84
+   ]
+  },
+  {
+   "xy": [
+    3.65,
+    -2.103
+   ],
+   "t0": 451.3,
+   "from": [
+    3.95,
+    -1.85
+   ],
+   "size_m": 0.5,
+   "path_m": 0.4,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "close enough",
+   "status": "CANCELED",
+   "t_end": 462.256,
+   "duration_s": 4.4,
+   "end_pose": [
+    3.64,
+    -1.77
+   ]
+  },
+  {
+   "xy": [
+    3.55,
+    -2.053
+   ],
+   "t0": 456.1,
+   "from": [
+    3.62,
+    -1.77
+   ],
+   "size_m": 0.5,
+   "path_m": 0.32,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "",
+   "status": "SUCCEEDED",
+   "t_end": 464.721,
+   "duration_s": 2.1,
+   "end_pose": [
+    3.48,
+    -1.81
+   ],
+   "blacklisted": true
+  },
+  {
+   "xy": [
+    4.35,
+    2.097
+   ],
+   "t0": 458.3,
+   "from": [
+    3.47,
+    -1.81
+   ],
+   "size_m": 0.35,
+   "path_m": 4.48,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "frontier resolved",
+   "status": "CANCELED",
+   "t_end": 518.724,
+   "duration_s": 53.9,
+   "end_pose": [
+    3.28,
+    1.89
+   ]
+  },
+  {
+   "xy": [
+    0.3,
+    -1.753
+   ],
+   "t0": 512.7,
+   "from": [
+    3.3,
+    1.93
+   ],
+   "size_m": 1.35,
+   "path_m": 5.55,
+   "final": false,
+   "recoveries": 1,
+   "cancel_reason": "no progress",
+   "status": "CANCELED",
+   "t_end": 621.318,
+   "duration_s": 102.0,
+   "end_pose": [
+    0.63,
+    -0.14
+   ]
+  },
+  {
+   "xy": [
+    0.5,
+    -1.903
+   ],
+   "t0": 615.2,
+   "from": [
+    0.62,
+    -0.13
+   ],
+   "size_m": 0.65,
+   "path_m": 2.1,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "frontier resolved",
+   "status": "CANCELED",
+   "t_end": 658.244,
+   "duration_s": 36.5,
+   "end_pose": [
+    -0.31,
+    -1.6
+   ]
+  },
+  {
+   "xy": [
+    -0.5,
+    -1.603
+   ],
+   "t0": 652.0,
+   "from": [
+    -0.31,
+    -1.62
+   ],
+   "size_m": 1.15,
+   "path_m": 0.2,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "close enough",
+   "status": "CANCELED",
+   "t_end": 662.82,
+   "duration_s": 4.3,
+   "end_pose": [
+    -0.38,
+    -1.66
+   ]
+  },
+  {
+   "xy": [
+    -0.5,
+    -1.653
+   ],
+   "t0": 656.6,
+   "from": [
+    -0.38,
+    -1.64
+   ],
+   "size_m": 0.95,
+   "path_m": 0.1,
+   "final": false,
+   "recoveries": 0,
+   "cancel_reason": "close enough",
+   "status": "CANCELED",
+   "t_end": 667.43,
+   "duration_s": 4.3,
+   "end_pose": [
+    -0.46,
+    -1.98
+   ],
+   "blacklisted": true
+  },
+  {
+   "xy": [
+    -0.0,
+    0.0
+   ],
+   "t0": 671.7,
+   "from": [
+    -0.46,
+    -2.02
+   ],
+   "size_m": 0.0,
+   "path_m": 0.0,
+   "final": true,
+   "recoveries": 0,
+   "cancel_reason": "",
+   "status": "SUCCEEDED",
+   "t_end": 710.103,
+   "duration_s": 31.9,
+   "end_pose": [
+    -0.02,
+    -0.08
+   ]
+  }
+ ]
+}

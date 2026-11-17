@@ -3,7 +3,7 @@
 # Usage (sim container, nothing else running): scripts/phase4_semantic_run.sh NAME [detector.onnx]
 # Output: docs/results/data/phase4/NAME/{semantic.json,frames/,{explore_log.json,timeseries.csv,monitor.json,snaps/,rtf.txt,...}, maps/NAME.*
 set -eo pipefail
-NAME=${1:?}; DET=${2:-det_v1_s.onnx}; CTL=policy; ODOM=ground_truth; MODEL=
+NAME=${1:?}; DET=${2:-det_v2_s.onnx}; CTL=policy; ODOM=ground_truth; MODEL=
 MAXWALL=${MAXWALL:-3600}
 cd ~/gurdy2; set +u; source ros2_ws/install/setup.bash
 export PYTHONPATH=$HOME/gurdy2/gurdy_core:$HOME/gurdy2/sim_mujoco:${PYTHONPATH:-}

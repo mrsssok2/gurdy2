@@ -38,7 +38,7 @@ from gurdy_core.vision.geometry import (K_from_camera_info, backproject, box_dep
                                         visible_centre_u)
 from gurdy_core.vision.semantic_map import SemanticMap
 
-DEFAULT_MODEL = "det_v1_s.onnx"
+DEFAULT_MODEL = "det_v2_s.onnx"
 
 
 def image_to_numpy(m: Image) -> np.ndarray:

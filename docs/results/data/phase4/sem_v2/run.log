@@ -1,0 +1,6 @@
+nav ready after 3 s wall
+attempt 1/3: ready
+-rw-r--r-- 1 ubuntu ubuntu 15248859 Nov 17 08:28 maps/sem_v2.data
+-rw-r--r-- 1 ubuntu ubuntu    20999 Nov 17 08:28 maps/sem_v2.pgm
+-rw-r--r-- 1 ubuntu ubuntu 18128741 Nov 17 08:28 maps/sem_v2.posegraph
+-rw-r--r-- 1 ubuntu ubuntu      128 Nov 17 08:28 maps/sem_v2.yaml
