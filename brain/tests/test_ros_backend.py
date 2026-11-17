@@ -387,3 +387,122 @@ def test_agent_end_to_end_over_ros_backend(tmp_path):
         agent.pump()
     assert b.task is None and b.where_am_i().data["place"] == "room b"
     assert agent.say("what is your status").reply        # battery unknown must not crash the state block
+
+
+# ---------------------------------------------------------------- explore action wiring, health, alerts, zones, estop
+def test_explore_area_is_sent_to_the_action_as_a_rectangle(tmp_path):
+    b, p = make(tmp_path)
+    assert b.explore(max_time_s=50, area="Room B").ok
+    assert p.explores[1]["area_rect"] == [3.0, -1.0, 6.0, 2.0] and p.explores[1]["max_time_s"] == 50
+    b.stop()
+    assert p.explores[1]["state"] == "canceled"
+    assert b.explore(area="kitchen").code == "UNKNOWN_PLACE"
+    assert b.explore().ok and p.explores[2]["area_rect"] is None
+    b2, p2 = make(tmp_path)
+    p2.explore_ok = False
+    assert b2.explore().code == "UNAVAILABLE" and "/explore" in b2.explore().error["message"]
+    assert b2.find({"class": "barrel"}).code == "UNAVAILABLE"
+
+
+def test_explore_action_aborted_ends_task_blocked(tmp_path):
+    b, p = make(tmp_path)
+    b.explore(max_time_s=100)
+    p.explores[1]["state"] = "aborted"
+    b.tick()
+    assert final(b)["stopped_reason"] == "blocked" and b.task is None
+
+
+def test_status_uses_battery_and_leg_health_and_failed_leg_rule(tmp_path):
+    b, p = make(tmp_path)
+    p.battery, p.legs = 63.2, {"front_left": "ok", "rear_right": "failed"}
+    s = b.status().data
+    assert s["battery_pct"] == 63.2 and s["battery_simulated"] and s["legs"]["rear_right"] == "failed"
+    assert b.walk("forward", 0.3).code == "REFUSED" and b.explore().code == "REFUSED"
+    assert b.return_home().ok
+
+
+def test_monitor_alerts_enter_events_and_are_not_duplicated(tmp_path):
+    b, p = make(tmp_path)
+    p.alert("battery_low", "warning", "Battery is low at 19 percent (simulated).", battery_pct=19.0)
+    p.alert("object_new", "info", "New object: red box.", object_id=1)
+    b.tick()
+    assert [e["type"] for e in b.events] == ["battery_low", "object_new"]
+    assert b.status().data["alerts_active"] == ["battery_low"]        # info alerts are not "active"
+    assert b.why("alert").data["events"][0]["type"] == "battery_low"
+    # the backend saw Nav2 abort AND the monitor reports it: one path_blocked event
+    p.blocked.append((4.5, 0.5, 0.5))
+    b.go_to(place="room b")
+    p.alert("path_blocked", "warning", "The path is blocked: navigation gave up on the goal.")
+    run(b, p, 10)
+    assert [e["type"] for e in b.events].count("path_blocked") == 1
+    # and the other order: monitor first, backend second
+    b2, p2 = make(tmp_path)
+    p2.blocked.append((4.5, 0.5, 0.5))
+    b2.go_to(place="room b")
+    p2.advance(2.5)
+    p2.alert("path_blocked", "warning", "x")
+    b2.tick()
+    b2.tick()
+    assert [e["type"] for e in b2.events].count("path_blocked") == 1
+
+
+def test_fall_alert_ends_the_task(tmp_path):
+    b, p = make(tmp_path)
+    b.walk("forward", 1.0)
+    p.alert("fall", "critical", "I have fallen.")
+    b.tick()
+    assert final(b)["stopped_reason"] == "fell" and b.task is None and p.cmd == (0.0, 0.0, 0.0)
+
+
+def test_walk_into_a_zone_is_refused_up_front(tmp_path):
+    b, p = make(tmp_path)
+    b.zones.append({"id": 1, "name": "spill", "x": 1.0, "y": 0.0, "r": 0.3})
+    r = b.walk("forward", 2.0)
+    assert r.code == "IN_NO_GO_ZONE" and "spill" in r.error["message"] and b.task is None
+    assert b.walk("forward", 0.5).ok                      # stops before the zone edge at x = 0.7
+    b.stop()
+    assert b.walk("backward", 2.0).ok and b.walk("left", 1.0).code == "BUSY"
+    b.stop()
+    b.stop()
+
+
+def test_walk_sideways_through_zone_and_turn(tmp_path):
+    b, p = make(tmp_path, pose=(1.0, -1.0, math.pi / 2))      # facing +y, zone straight ahead at (1, 0)
+    b.zones.append({"id": 1, "name": "spill", "x": 1.0, "y": 0.0, "r": 0.3})
+    assert b.walk("forward", 1.5).code == "IN_NO_GO_ZONE"
+    assert b.walk("backward", 1.5).ok
+    b.stop()
+    assert b.turn("left", 90).ok                              # turning in place cannot enter a zone
+
+
+def test_walking_out_of_the_zone_you_stand_in_is_allowed(tmp_path):
+    b, p = make(tmp_path)
+    b.zones.append({"id": 1, "name": "spill", "x": 0.0, "y": 0.0, "r": 0.5})
+    assert b.walk("forward", 1.0).ok                          # start inside, moving away
+    b.stop()
+    b.zones[0]["x"] = 1.0                                     # zone ahead of us now; we stand at its edge... walking in is refused
+    p.x = 0.4
+    assert b.walk("forward", 0.5).code == "IN_NO_GO_ZONE"
+
+
+def test_walk_guard_stops_when_a_zone_appears_ahead_while_walking(tmp_path):
+    b, p = make(tmp_path)
+    assert b.walk("forward", 2.0).ok
+    run(b, p, 3.0)
+    b.zones.append({"id": 1, "name": "spill", "x": p.x + 0.3, "y": 0.0, "r": 0.5})     # added mid-walk (or drift) around the robot's path
+    # the robot is now inside the zone it was not in at the start of the step -> stop
+    run(b, p, 10.0)
+    d = final(b)
+    assert d["stopped_reason"] == "no_go_zone" and p.cmd == (0.0, 0.0, 0.0)
+    assert any(e["type"] == "path_blocked" and e["source"] == "zone_guard" for e in b.events)
+
+
+def test_estop_cancels_task_zeroes_velocity_and_latches(tmp_path):
+    b, p = make(tmp_path)
+    b.walk("forward", 1.0)
+    run(b, p, 2.0)
+    assert any(c[0] > 0 for c in p.cmds)
+    assert b.estop(True).ok
+    assert p.estop and p.cmd == (0.0, 0.0, 0.0) and final(b)["stopped_reason"] == "estop"
+    assert b.walk("forward", 0.5).code == "ESTOP" and b.status().data["mode"] == "estop"
+    assert b.estop(False).ok and b.walk("forward", 0.5).ok

@@ -391,7 +391,7 @@ class MockBackend:
             return {"turned_deg": round(math.degrees(task.turned), 1)}
         return self._start("turn", {"direction": direction, "angle_deg": angle_deg}, [("rotate", rad)], final)
 
-    def go_to(self, place=None, object=None, object_id=None, point=None, standoff_m: float = 0.6) -> Result:
+    def go_to(self, place=None, object=None, object_id=None, point=None, standoff_m: float = 0.6, _tool: str = "go_to") -> Result:
         r = self._resolve(place, object, object_id, point, standoff_m)
         if isinstance(r, Result):
             return r
@@ -403,11 +403,10 @@ class MockBackend:
         if face:
             segs.append(("rotate_to", math.atan2(face[1] - goal[1], face[0] - goal[0])))
         args = {k: v for k, v in dict(place=place, object=object, object_id=object_id, point=point).items() if v is not None}
-        return self._start("go_to", args, segs, self._goto_final(info, goal))
+        return self._start(_tool, args, segs, self._goto_final(info, goal))
 
     def return_home(self) -> Result:
-        r = self.go_to(place="home")
-        return r
+        return self.go_to(place="home", _tool="return_home")      # the tool name matters: a failed leg refuses everything but return_home
 
     def _viewpoints(self, area: str | None) -> list[tuple[float, float]]:
         """Scan points on a 2 m grid inside the rooms (free cells only), ordered nearest-neighbour from the robot."""

@@ -165,9 +165,9 @@ class FakePort:
     def explore_available(self):
         return self.explore_ok
 
-    def explore_start(self, max_time_s, area):
+    def explore_start(self, max_time_s, area_rect):
         self._h += 1
-        self.explores[self._h] = {"state": NAV_RUNNING, "elapsed": 0.0, "max_time_s": max_time_s, "finish_after": 60.0}
+        self.explores[self._h] = {"state": NAV_RUNNING, "elapsed": 0.0, "max_time_s": max_time_s, "finish_after": 60.0, "area_rect": area_rect}
         return self._h
 
     def explore_state(self, h):

@@ -13,9 +13,9 @@ Motion tools return `started` at once; the Nav2 goal is sent in the same call; t
 | Tool | ROS source | Status |
 |---|---|---|
 | `go_to`, `return_home` | place/object/point resolved here -> `compute_path_to_pose` check -> `navigate_to_pose`; object = nearest of 8 ring points at the standoff, goal yaw faces it | wired |
-| `walk`, `turn` | `RelativeMotion` on TF pose, publishes `cmd_vel_smoothed` (min-speed lift + collision monitor stay in the path); stops on no progress for 8 s (`blocked`) | wired (the "NEW executor" of design 1.3, as library code; no separate node) |
-| `find` | semantic map first; else explore until the object appears, cancel explore, optionally approach | **needs explore action** |
-| `explore` | explore action | **GAP: no action yet** (`frontier_explorer_node` runs to completion at launch) -> `UNAVAILABLE` |
+| `walk`, `turn` | `RelativeMotion` on TF pose, publishes `cmd_vel_smoothed` (min-speed lift + collision monitor stay in the path); stops on no progress for 8 s (`blocked`); a walk whose straight line enters a no-go zone is refused (`IN_NO_GO_ZONE`), leaving the zone you stand in is allowed, entering one while walking stops the task (`no_go_zone`); turning in place cannot enter a zone | wired (the "NEW executor" of design 1.3, as library code; no separate node) |
+| `find` | semantic map first; else explore until the object appears, cancel explore, optionally approach | wired (live part needs the `explore` action server) |
+| `explore` | `explore` action (`gurdy_interfaces/Explore`, `frontier_explorer_node serve_action:=true`); `area` -> place rectangle (point place = 4 m square) | wired; `UNAVAILABLE` while the server is down |
 | `patrol` | sequence of `navigate_to_pose` goals over `maps/*.places.yaml`; a blocked place is recorded `reached: false` and the patrol goes on; new/missing/moved = semantic map diff start vs end | wired (a never-dropped track cannot become `missing`) |
 | `inspect` | go to the object (standoff 0.6), face it, `confirmed` = track re-detected in the last 5 s | wired; `photo_path` = None |
 | `stop` | cancel goal / explore, zero `cmd_vel_smoothed` | wired; works with no LLM |
@@ -25,28 +25,39 @@ Motion tools return `started` at once; the Nav2 goal is sent in the same call; t
 | `whats_nearby` (obstacles) | 8 sectors from `/scan` (the self-filtered one) | wired; sectors with a return only |
 | `where_am_i` | TF `map -> base_link` + places file | wired; `localisation` is always `"ok"` (no covariance source yet) |
 | `path_check` | `compute_path_to_pose`, `/map` cell of the goal (unknown = `leaves_mapped_area`), zones checked against the plan points | wired |
-| `status` | speed (odom), `/policy/status`, IMU tilt, `/estop`, active alerts | wired; **battery and legs unknown** (below) |
+| `status` | speed (odom), `/policy/status`, IMU tilt, `/estop`, active alerts, `/battery` (SIMULATED), `/gurdy/leg_health` | wired (battery / legs stay unknown until their node runs) |
 | `why` | event log: backend task events + alert topic | wired |
 | `recall(mission/place)`, `report` | in-memory mission log / places file | wired; lost on restart (SQLite memory is 5.8) |
 | `describe_view` | detections seen in the last 1.5 s (detector output); `unverified: true` | partial: no VLM, no photo |
-| `no_go_zone`, `save_place` | places file (`no_go_zones`, `places`), enforced by the backend on goals and Nav2 plans | partial: **no Nav2 keepout filter**, a plan that merely cuts a zone is refused, walk/turn ignore zones |
+| `no_go_zone`, `save_place` | places file (`no_go_zones`, `places`), enforced by the backend on goals, Nav2 plans, walks | partial: **no Nav2 keepout filter**, a plan that merely cuts a zone is refused |
 | `ask_user` | handled by the tool layer | n/a |
-| events | `/gurdy/alerts` String JSON `{stamp,type,severity,text,data}` (interim); `fall` / `estop` alerts end the active task | topic **has no producer yet** (monitors = 5.7) |
-| e-stop | `RosBackend.estop(bool)` (not a tool) publishes latched `/estop`, cancels the task | **gate node does not exist** (5.7): until then it only cancels + zeroes |
+| events | `/gurdy/alerts` String JSON `{stamp,type,severity,source,text,data}` (interim); `fall` / `estop` alerts end the active task; same type from monitor and backend within 3 s = one event | producer: `alert_monitor_node` (below) |
+| e-stop | `RosBackend.estop(bool)` (not a tool) publishes latched `/estop`, cancels the task, zeroes `cmd_vel_smoothed`; **`policy_node` subscribes to `/estop`**: rate-limited move to the stand pose, ignores `/cmd_vel` until released (policy and tripod mode) | gate node (`cmd_vel` mux for Nav2 / teleop) still not built; `gait_node` does not listen to `/estop` |
 
-## Gaps (no ROS counterpart yet)
-1. Explore action (`gurdy_interfaces/Explore`, wrapping `frontier_explorer_node`: start/cancel/feedback) — blocks `explore` and live `find`.
-2. `battery_sim_node` -> `battery_pct` is `None`; the agent now treats unknown as "no battery rule fires" and says "battery unknown" (templates, state block, safety patched).
-3. `leg_health_node` -> `legs` empty, `legs_known: false`; the failed-leg safety rule cannot fire.
-4. `/gurdy/alerts` / `gurdy_interfaces/Event` producers (path_blocked monitor, stuck, fall, object_new/missing differ). The backend emits its own `path_blocked` on Nav2 abort.
-5. `cmd_vel_gate_node` + `/estop` subscriber, Nav2 keepout filter for zones.
-6. Localisation quality, VLM / photos, persistent memory (SQLite per `map_id`), `mapped_pct` needs `interior_bounds` for the map (None otherwise).
+## New nodes (code only, unit-tested without Gazebo; none has run in the sim yet)
+| Node (package) | What | Notes |
+|---|---|---|
+| `frontier_explorer_node serve_action:=true` (`gurdy_navigation`) | `explore` action server: goal `max_time_s`, `area_rect`, `return_to_start`; feedback 1 Hz (`phase`, `elapsed_s`, `frontier_goals`, `frontiers_left`); cancel stops the Nav2 goal; goals while a run is active or Nav2 / map / TF are not ready are rejected | default (no `serve_action`) is unchanged: run to completion at launch. Backend sends `return_to_start: false` |
+| `gurdy_interfaces/action/Explore` | the action type | new ament_cmake package, builds in 25 s |
+| `battery_sim_node` (`gurdy_safety`) | `/battery` `BatteryState`, `location` / `frame_id` = `SIMULATED`, warns at start; 0.03 %/s moving, 0.002 %/s idle (sim time) | set the level: `ros2 param set /battery_sim_node level 15.0` |
+| `leg_health_node` | `/gurdy/leg_health` (latched JSON `{"legs": {front_left: ok|failed ...}}`), from `|target - measured|` per leg (EMA 0.8 s) vs 0.15 rad **and** 3x the median of the other legs, held 2 s, only while >= 3 legs are moving; latched until `/leg_health/reset` (Trigger) | **thresholds are guesses, not calibrated on Gazebo**; a failure is invisible while standing; `fake_failed_leg:=rm` forces a failure without physics |
+| `alert_monitor_node` | `/gurdy/alerts`: `path_blocked` (Nav2 goal aborted, from `/navigate_to_pose/_action/status`), `stuck` (commanded > 0.05 m/s but measured < 0.02 for 8 s), `fall` (tilt >= 60 deg for 0.5 s, re-armed below 30), `battery_low` 20 % / `battery_critical` 10 %, `leg_failure`, `object_new` (not for objects already in the first map snapshot) | each alert once per episode; pure logic in `gurdy_core/ops_monitors.py` (`AlertMonitor`, `LegHealth`, `BatteryModel`) |
+Launch the three monitors: `ros2 launch gurdy_safety monitors.launch.py odom_topic:=/odom` (`/odometry/filtered` is the default; ground-truth odometry publishes `/odom`).
+
+## Gaps that remain
+1. `cmd_vel_gate_node` (a `cmd_vel` mux so Nav2 / teleop cannot drive during e-stop; today only the policy node obeys `/estop`), Nav2 keepout filter for zones.
+2. Localisation quality (`where_am_i.localisation` is always `ok`), VLM / photos, persistent memory (SQLite per `map_id`), `mapped_pct` needs `interior_bounds` for the map (None otherwise).
+3. Leg-health thresholds and the `stuck` / `fall` thresholds are unvalidated: measure healthy tracking error in Gazebo, then inject a limp / locked leg (the `leg_failure` env of Experiment B has the MuJoCo equivalent).
+4. `object_missing` alert (only the mock emits it); the backend's `patrol` report covers missing objects.
 Assumptions to check live: Nav2 `compute_path_to_pose` server is up with `navigate_to_pose`; `/imu` orientation is the body orientation; `/scan` bearing 0 = robot forward;
-GoalStatus codes 4/5/6 = succeeded/canceled/aborted; semantic JSON `last_seen` is /clock time (design assumes it, `detector_node` stamps from sim time).
+GoalStatus codes 4/5/6 = succeeded/canceled/aborted; semantic JSON `last_seen` is /clock time (design assumes it, `detector_node` stamps from sim time); `/odom` twist is the speed magnitude (frame does not matter).
 
 ## Found on the way
-`MockBackend.return_home` calls `go_to`, so a failed leg REFUSES it (the rule exempts `return_home`); RosBackend avoids it (`_tool`). The mock bug is not fixed here.
-Untested: the backend ran only against `FakePort`; the real adapter's action callbacks / TF / QoS are unrun.
+Fixed: `MockBackend.return_home` called `go_to`, so a failed leg refused it (the rule exempts `return_home`); it now passes `_tool="return_home"` like RosBackend (tests updated).
+Checked live without Gazebo (sim image): the packages build, `RclpyPort` sees the `explore` server (`explore_available() == True`), a goal without Nav2 / map is rejected and surfaces as `aborted`.
+Untested: the backend ran only against `FakePort`; the real adapter's Nav2 action callbacks / TF / QoS and the new nodes are unrun against Gazebo.
+Tests: `docker compose run --rm brain python3 -m pytest -q brain/tests` (235 pass); monitors `gurdy_core/tests/test_ops_monitors.py` (rl image: `docker run --rm -v $PWD:/w -w /w --entrypoint python3 gurdy2/rl:cpu -m pytest -q gurdy_core/tests/test_ops_monitors.py`);
+ROS nodes in the sim image after `colcon build --symlink-install --packages-up-to gurdy_safety gurdy_navigation gurdy_policy gurdy_interfaces` (`pytest ros2_ws/src/gurdy_safety/test ros2_ws/src/gurdy_policy/test`, 29 pass incl. e-stop).
 
 ## Gazebo test commands (later, when the GPU is free; one heavy workload at a time)
 ```bash
@@ -58,6 +69,12 @@ docker compose run -d --rm --name gurdy_agent sim bash -c 'cd ~/gurdy2 && source
   controller:=policy odom_source:=ground_truth && sleep infinity'
 #    wait ~2 min:  docker exec gurdy_agent cat /tmp/p56/nav_ready.txt   (ends with "ready")
 #    flat_lab objects are plain boxes / a cylinder, so the detector reports class `box` (colours red / blue / yellow; the cylinder becomes a box too).
+# 1b. new nodes (same container, one more shell): rebuild once:  cd ros2_ws && colcon build --symlink-install && source install/setup.bash
+docker exec -d gurdy_agent /entrypoint.sh bash -c 'cd ~/gurdy2 && ros2 run gurdy_navigation frontier_explorer_node --ros-args -p serve_action:=true -p log_path:=/tmp/p56/explore_log.json'
+docker exec -d gurdy_agent /entrypoint.sh bash -c 'cd ~/gurdy2 && ros2 launch gurdy_safety monitors.launch.py odom_topic:=/odom'   # /odom with ground_truth odometry
+#    checks: ros2 action list | grep explore;  ros2 topic echo /battery --once (location SIMULATED);  ros2 topic echo /gurdy/leg_health --once;
+#    low battery:  ros2 param set /battery_sim_node level 19.5   -> /gurdy/alerts battery_low;  ros2 param set /leg_health_node fake_failed_leg rm -> leg_failure + status legs
+#    e-stop:  ros2 topic pub --once -r 1 /estop std_msgs/msg/Bool '{data: true}'  (QoS latched: add --qos-durability transient_local --qos-reliability reliable) -> /policy/status stand:estop, legs go to stance, /cmd_vel ignored; data: false releases
 # 2. smoke test of the adapter, no LLM (second terminal):
 docker exec -it gurdy_agent /entrypoint.sh bash -c 'cd ~/gurdy2 && python3 - <<PY
 import time
@@ -85,4 +102,4 @@ docker exec -it gurdy_agent /entrypoint.sh bash -c 'cd ~/gurdy2 && python3 -m br
 ```
 Pass criteria (first run): pose + semantic objects arrive; `walk 0.3` moves 0.27-0.33 m; `turn left 90` ends within 5 deg; `go_to room b` returns `reached` with
 final error < 0.25 m; `stop` mid-goal zeroes `cmd_vel` within 1 s (check `ros2 topic echo /cmd_vel`); `where_is` matches the detector's map. Record RTF and RAM.
-`explore` / live `find` stay `UNAVAILABLE` until gap 1 is closed. Place names in `maps/flat_lab.places.yaml` match flat_lab only.
+Extra criteria: `b.explore(max_time_s=120)` runs, `/explore` feedback arrives, `b.stop()` cancels it (Nav2 goal cancelled, robot stops < 1 s); `b.find({"class":"box","color":"red"})` on an unmapped map explores then stops once the track appears; `b.walk("forward", 1.0)` through a `no_go_zone` is refused; `b.estop(True)` mid-walk: stand pose within ~2 s. Place names in `maps/flat_lab.places.yaml` match flat_lab only.

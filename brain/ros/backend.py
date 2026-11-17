@@ -20,6 +20,7 @@ from .relmotion import RelativeMotion
 WALK_TIMEOUT_FACTOR = 3.0
 NO_PROGRESS_S = 8.0
 SEEN_NOW_S = 1.5            # an object re-detected within this many seconds counts as "in view"
+DEDUP_S = 3.0              # the same alert type from the monitor and from this backend within this window = one event
 MOVED_M = 0.3               # semantic-map position change that patrol reports as "moved"
 
 
@@ -70,9 +71,19 @@ class RosBackend:
         self.events.append(ev)
         return ev
 
+    def _recent(self, typ: str, window_s: float) -> bool:
+        return any(e["type"] == typ and self.now() - e["stamp"] <= window_s for e in self.events[-20:])
+
+    def _emit_once(self, typ: str, severity: str, text: str, src: str, **data: Any) -> None:
+        """Like _emit, but not if the alert monitor (or this backend) reported the same type a moment ago."""
+        if not self._recent(typ, DEDUP_S):
+            self._emit(typ, severity, text, src=src, **data)
+
     def tick(self) -> None:
         """Advance task state machines, schedules and the alert topic. Call at ~2-10 Hz."""
         for a in self.p.drain_alerts():
+            if self._recent(a.get("type", "alert"), DEDUP_S):      # the backend already reported the same thing itself
+                continue
             ev = {"stamp": round(a.get("stamp", self.now()), 2), "type": a.get("type", "alert"),
                   "severity": a.get("severity", "info"), "source": a.get("source", "alert_topic"),
                   "text": a.get("text", ""), "data": a.get("data", {})}
@@ -166,6 +177,35 @@ class RosBackend:
 
     def _path_crosses_zone(self, path: dict) -> bool:
         return any(self._in_zone(px, py) for px, py in path.get("points", []))
+
+    def _zone_ids(self, x: float, y: float) -> set:
+        return {z["id"] for z in self.zones if math.hypot(x - z["x"], y - z["y"]) <= z["r"]}
+
+    def _walk_zone_hit(self, direction: str, distance_m: float) -> dict | None:
+        """The straight walk from the current pose (5 cm samples) enters a no-go zone? Leaving the zone the robot already
+        stands in (moving away from its centre) is allowed. -> the zone or None."""
+        pose = self._pose()
+        if pose is None or not self.zones:
+            return None
+        x0, y0, yaw = pose
+        dx, dy = {"forward": (1, 0), "backward": (-1, 0), "left": (0, 1), "right": (0, -1)}[direction]
+        ux, uy = dx * math.cos(yaw) - dy * math.sin(yaw), dx * math.sin(yaw) + dy * math.cos(yaw)
+        inside0 = self._zone_ids(x0, y0)
+        for k in range(1, int(distance_m / 0.05) + 2):
+            d = min(k * 0.05, distance_m)
+            px, py = x0 + ux * d, y0 + uy * d
+            for z in self.zones:
+                r = math.hypot(px - z["x"], py - z["y"])
+                if r <= z["r"]:
+                    if z["id"] in inside0 and r >= math.hypot(x0 + ux * max(d - 0.05, 0) - z["x"], y0 + uy * max(d - 0.05, 0) - z["y"]) - 1e-9:
+                        continue          # walking out of the zone we are in
+                    return z
+        return None
+
+    def _zone_violation(self, s: dict, pose) -> bool:
+        """Runtime guard for walk / turn: the robot entered a zone it was not in when the step started (drift, slip)."""
+        entered = self._zone_ids(pose[0], pose[1]) - s.setdefault("zones0", self._zone_ids(pose[0], pose[1]))
+        return bool(entered)
 
     def _resolve(self, place=None, object=None, object_id=None, point=None, standoff_m=0.6):
         """-> (goal_xy, face_xy|None, info, path) or a Result error. `path` is the Nav2 plan to the goal."""
@@ -303,7 +343,7 @@ class RosBackend:
         if st["state"] == NAV_OK:
             self._next(t, {"place": s.get("name"), "reached": True})
         elif st["state"] == NAV_ABORTED:
-            self._emit("path_blocked", "warning", "The path is blocked.", src="nav_monitor", task_id=t.id)
+            self._emit_once("path_blocked", "warning", "The path is blocked.", "nav_monitor", task_id=t.id)
             if s.get("optional"):
                 self._next(t, {"place": s.get("name"), "reached": False})
             else:
@@ -317,6 +357,9 @@ class RosBackend:
             s["ctl"] = RelativeMotion(s["motion"], s["direction"], s["amount"], pose)
             s["started"] = True
         ctl: RelativeMotion = s["ctl"]
+        if self._zone_violation(s, pose):
+            self._emit("path_blocked", "warning", "I stopped at the edge of a no-go zone.", src="zone_guard", task_id=t.id)
+            return self._finish(t, "no_go_zone")
         vx, vy, wz = ctl.command(pose)
         if ctl.done:
             self.p.send_cmd(0.0, 0.0, 0.0)
@@ -326,7 +369,7 @@ class RosBackend:
         if s["best"] is None or prog > s["best"] + (0.02 if ctl.kind == "walk" else 0.03):
             s["best"], s["progress_t"] = prog, self.now()
         elif self.now() - s["progress_t"] > NO_PROGRESS_S:
-            self._emit("path_blocked", "warning", "I am not making progress.", src="motion_monitor", task_id=t.id)
+            self._emit_once("path_blocked", "warning", "I am not making progress.", "motion_monitor", task_id=t.id)
             self._finish(t, "blocked")
 
     def _step_rotate(self, t: _Task, s: dict, pose) -> None:
@@ -392,6 +435,8 @@ class RosBackend:
     # ================================================================ motion
     def walk(self, direction: str, distance_m: float) -> Result:
         ctl_est = RelativeMotion("walk", direction, distance_m, (0, 0, 0)).estimate
+        if (z := self._walk_zone_hit(direction, distance_m)) is not None:
+            return fail("IN_NO_GO_ZONE", f"Walking {direction} {distance_m:g} metres would enter the no-go zone {z['name']}.", zone=dict(z))
         def final(reason, t):
             c = t.done_steps[-1] if t.done_steps else (t.cur["ctl"].result() if t.cur and "ctl" in t.cur else {"moved_m": 0.0})
             return dict(c)
@@ -420,9 +465,16 @@ class RosBackend:
     def return_home(self) -> Result:
         return self.go_to(place="home", _tool="return_home")
 
+    def _area_rect(self, area: str | None) -> list[float] | None:
+        """Named place -> [x0, y0, x1, y1] in the map frame for the explorer (a point place = 4 m square around it)."""
+        if area is None:
+            return None
+        v = next(v for n, v in self.places.items() if _norm(n) == _norm(area))
+        return list(v["rect"]) if "rect" in v else [v["x"] - 2.0, v["y"] - 2.0, v["x"] + 2.0, v["y"] + 2.0]
+
     def explore(self, max_time_s: float = 600, area: str | None = None) -> Result:
         if not self.p.explore_available():
-            return fail("UNAVAILABLE", "The exploration action is not running (explore is not wired to ROS yet).")
+            return fail("UNAVAILABLE", "The exploration action server (/explore) is not running.")
         if area is not None and _norm(area) not in {_norm(n) for n in self.places}:
             return fail("UNKNOWN_PLACE", f"I do not know an area called '{area}'.", known_places=list(self.places))
         def final(reason, t):
@@ -432,7 +484,7 @@ class RosBackend:
                     "new_objects": [self._obj(x) for x in self._tracks() if x["id"] not in before],
                     "travelled_m": round(t.travelled, 2), "duration_s": round(self.now() - t.t0, 1)}
         args = {"max_time_s": max_time_s, **({"area": area} if area else {})}
-        return self._start("explore", args, [{"kind": "explore", "max_time_s": max_time_s, "area": area}], final, max_time_s,
+        return self._start("explore", args, [{"kind": "explore", "max_time_s": max_time_s, "area": self._area_rect(area)}], final, max_time_s,
                            estimate={"distance_m": 0.0, "duration_s": float(max_time_s)})
 
     def find(self, object: dict, approach: bool = False, max_time_s: float = 300) -> Result:
@@ -455,7 +507,7 @@ class RosBackend:
                                    final, max_time_s)
             return self._start("find", args, [], final)
         if not self.p.explore_available():
-            return fail("UNAVAILABLE", "The object is not in the map and exploration is not wired to ROS yet.")
+            return fail("UNAVAILABLE", "The object is not in the map and the exploration action server (/explore) is not running.")
         steps: list[dict] = [{"kind": "explore", "max_time_s": max_time_s, "area": None}]
         until = lambda: bool(self._match(object))
         if approach:      # filled in once the object is seen: the step list is replaced when `until` fires
@@ -695,7 +747,8 @@ class RosBackend:
 
     # ================================================================ configuration
     def no_go_zone(self, action: str, place: str | None = None, around_object_id: int | None = None, radius_m: float = 0.8) -> Result:
-        """Zones are enforced by this backend (goal + Nav2 plan check). The Nav2 keepout costmap filter is NEW (5.7)."""
+        """Zones are enforced by this backend: goals, Nav2 plans, and straight walks (checked up front and while walking).
+        Turning in place cannot enter a zone, so it is allowed. The Nav2 keepout costmap filter is still NEW (5.7)."""
         if action == "list":
             return ok(zones=[dict(z) for z in self.zones])
         if action == "add":

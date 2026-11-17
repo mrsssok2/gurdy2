@@ -121,3 +121,27 @@ def test_mode_switch_to_tripod_and_back(node):
     node.set_parameters([Parameter("mode", value="policy")])
     run(node, t, 1.0, (0.08, 0.0, 0.0))
     assert node.status == "policy"
+
+
+def _estop(node, active):
+    from std_msgs.msg import Bool
+    node.on_estop(Bool(data=active))
+
+
+@pytest.mark.parametrize("mode", ["policy", "tripod"])
+def test_estop_goes_to_stand_ignores_cmd_and_releases(node, mode):
+    from rclpy.parameter import Parameter
+    node.set_parameters([Parameter("mode", value=mode)])
+    t = run(node, 0.0, 2.0, (0.08, 0.0, 0.0))
+    assert node.status == mode
+    _estop(node, True)
+    t = run(node, t, 3.0, (0.08, 0.0, 0.0))               # /cmd_vel keeps coming: must be ignored
+    assert node.status == "stand:estop"
+    assert np.max(np.abs(node.published[-1] - node.q_stance)) < 1e-9
+    steps = np.abs(np.diff(np.array(node.published[-100:]), axis=0))
+    assert steps.max() <= node.get_parameter("stand_speed").value * node.dt + 1e-9      # rate-limited, no jump
+    _estop(node, False)
+    t = run(node, t, 0.3, None)
+    assert node.status.startswith("stand") if mode == "policy" else node.status == "tripod"   # policy: stands until a fresh /cmd_vel; tripod: zero command
+    run(node, t, 1.0, (0.08, 0.0, 0.0))
+    assert node.status == mode

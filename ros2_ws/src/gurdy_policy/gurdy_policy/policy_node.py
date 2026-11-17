@@ -16,6 +16,9 @@ Parameters
   cmd_timeout   s of sim time without /cmd_vel   -> policy mode: ramp to the stand pose (tripod: zero command)
   sensor_timeout  s without a fresh /imu (sim time) or /joint_states (wall time) -> stand pose
   stand_speed   rad/s joint speed limit while moving to the stand pose
+  /estop (std_msgs/Bool, latched): true -> go to the stand pose (joint speed limited, like a timeout), ignore /cmd_vel and hold it
+                until /estop is false again. Works in both modes (policy and tripod). The stand pose is the safe pose: all
+                legs under the body, no stride, no free-falling limbs.
 After a stand period the controller is reset (zero history/previous action, clock phase 0) = the
 rest start the policy was trained from.
 
@@ -30,8 +33,9 @@ import rclpy
 from geometry_msgs.msg import Twist
 from rcl_interfaces.msg import SetParametersResult
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Imu, JointState
-from std_msgs.msg import Float64MultiArray, String
+from std_msgs.msg import Bool, Float64MultiArray, String
 
 from gurdy_core.gait import TripodGait
 from gurdy_core.policy_runtime import OnnxPolicy, PolicyController, load_meta
@@ -76,12 +80,15 @@ class PolicyNode(Node):
         self.last_tick = None
         self.q_out = self.q_stance.copy()   # last published target (stand ramp starts here)
         self.in_stand = True
+        self.estop = False
         self.status = ""
         self.t_infer = []
 
         self.pub = self.create_publisher(Float64MultiArray, "/joint_pd_controller/commands", 10)
         self.pub_cmd = self.create_publisher(Twist, "/policy/cmd", 10)
         self.pub_status = self.create_publisher(String, "/policy/status", 10)
+        latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE)
+        self.create_subscription(Bool, "/estop", self.on_estop, latched)
         self.create_subscription(Twist, "/cmd_vel", self.on_cmd, 10)
         self.create_subscription(Imu, "/imu", self.on_imu, 10)
         self.create_subscription(JointState, "/joint_states", self.on_joint_states, 10)
@@ -108,7 +115,18 @@ class PolicyNode(Node):
                 self.get_logger().info(f"mode -> {self.mode}")
         return SetParametersResult(successful=True)
 
+    def on_estop(self, msg: Bool):
+        if bool(msg.data) != self.estop:
+            self.get_logger().warn("E-STOP engaged: standing" if msg.data else "e-stop released")
+            self.estop = bool(msg.data)
+            self.cmd = np.zeros(3)
+            self.last_cmd_time = None          # after a release, stand until a fresh /cmd_vel arrives
+            self.ctl.reset()
+            self.gait = TripodGait(self.robot)
+
     def on_cmd(self, msg: Twist):
+        if self.estop:
+            return
         self.cmd = np.array([msg.linear.x, msg.linear.y, msg.angular.z])
         self.last_cmd_time = self.sim_now
 
@@ -145,6 +163,8 @@ class PolicyNode(Node):
     # ------------------------------------------------------------------ control
     def stand_reason(self):
         """None if the policy may run, else why we must stand."""
+        if self.estop:
+            return "estop"
         if self.q is None:
             return "no joint_states"
         if self.imu is None or self.sim_now - self.imu_time > float(self.get_parameter("sensor_timeout").value):
@@ -173,6 +193,9 @@ class PolicyNode(Node):
         self.set_status(f"stand:{reason}")
 
     def tick(self):
+        if self.estop:                                  # both modes: safe stand pose, no stride
+            self.go_stand("estop")
+            return
         if self.mode == "tripod":                       # baseline gait: zero command on timeout, as gait_node
             fresh = self.last_cmd_time is not None and self.sim_now - self.last_cmd_time <= float(
                 self.get_parameter("cmd_timeout").value)
@@ -201,7 +224,7 @@ class PolicyNode(Node):
 
     def watchdog(self):
         """/joint_states silent for sensor_timeout wall seconds (sim paused or crashed): stand pose."""
-        if self.mode != "policy" or self.last_js_wall is None:
+        if self.last_js_wall is None or (self.mode != "policy" and not self.estop):
             return
         if time.monotonic() - self.last_js_wall > float(self.get_parameter("sensor_timeout").value):
             self.go_stand("joint_states timeout")

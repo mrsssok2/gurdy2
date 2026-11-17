@@ -23,8 +23,8 @@ class RosPort(Protocol):
     def map_cell(self, x: float, y: float) -> str | None: ...     # "free" | "occupied" | "unknown" (/map)
     def mapped_fraction(self) -> float | None: ...                # known share of the interior, 0..1 (frontier.map_stats)
     def obstacle_sectors(self, radius_m: float) -> list[dict]: ...  # [{bearing_deg, distance_m}], from /scan
-    def battery_pct(self) -> float | None: ...                    # NEW battery_sim_node; None until it exists
-    def leg_states(self) -> dict[str, str] | None: ...            # NEW leg_health_node; None until it exists
+    def battery_pct(self) -> float | None: ...                    # /battery (battery_sim_node, SIMULATED); None until a message arrived
+    def leg_states(self) -> dict[str, str] | None: ...            # /gurdy/leg_health (leg_health_node); None until a message arrived
     def drain_alerts(self) -> list[dict]: ...                     # alert / event topic, since last call
     # ---- Nav2
     def nav_ready(self) -> bool: ...
@@ -32,9 +32,9 @@ class RosPort(Protocol):
     def nav_state(self, handle: int) -> dict[str, Any]: ...       # {state, distance_remaining, recoveries}
     def nav_cancel(self, handle: int) -> None: ...
     def compute_path(self, x: float, y: float) -> dict | None: ...  # compute_path_to_pose -> {length_m, points} | None
-    # ---- exploration (NEW action; the node today is run-to-completion)
+    # ---- exploration (the `explore` action of frontier_explorer_node, serve_action:=true)
     def explore_available(self) -> bool: ...
-    def explore_start(self, max_time_s: float, area: str | None) -> int | None: ...
+    def explore_start(self, max_time_s: float, area_rect: list[float] | None) -> int | None: ...   # rect = [x0, y0, x1, y1] map frame
     def explore_state(self, handle: int) -> dict[str, Any]: ...   # {state}
     def explore_cancel(self, handle: int) -> None: ...
     # ---- actuation / safety

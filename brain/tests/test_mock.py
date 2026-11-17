@@ -222,9 +222,9 @@ def test_leg_failure_alert_and_refusal_of_motion():
     b.fail_leg("front_left")
     assert b.status().data["legs"]["front_left"] == "failed" and b.status().data["alerts_active"] == ["leg_failure"]
     assert b.walk("forward", 1).code == "REFUSED"
-    assert b.return_home().ok is False or b.where_am_i().data["home_distance_m"] == 0   # already home -> trivial
-    ev = b.poll_events()
-    assert ev[-1]["type"] == "leg_failure" and ev[-1]["severity"] == "critical"
+    assert b.return_home().ok                       # the one motion a failed leg still allows (was refused before the fix)
+    ev = [e for e in b.poll_events() if e["type"] == "leg_failure"]
+    assert ev and ev[-1]["severity"] == "critical"
 
 
 def test_why_and_report_and_recall():
@@ -314,3 +314,11 @@ def test_focus_and_state_block():
     L.call("go_to", {"place": "room B"})
     assert L.focus["place"] == "room B"
     assert [x["tool"] for x in L.log][:2] == ["find", "where_is"]
+
+
+def test_return_home_is_allowed_after_a_leg_failure():
+    b = MockBackend(seed=1)
+    b.fail_leg("rear_left")
+    assert b.go_to(place="room B").code == "REFUSED"
+    r = b.return_home()
+    assert r.ok, r.error

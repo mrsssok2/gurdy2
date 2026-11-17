@@ -10,11 +10,16 @@ Loop (1 Hz, sim time from /clock):
     was reached `max_visits` times with a frontier still there is blacklisted too (unresolvable pocket, e.g. behind glass).
 Then it navigates to the start pose (first map-frame pose seen), writes `log_path` (JSON, every goal) and touches `done_path`.
 Odometry is taken from TF map->base_link only, so it works with ground-truth or EKF odometry alike.
+Two ways to run it:
+  * default: run-to-completion at launch (scripts/phase3_explore_run.sh);
+  * `serve_action:=true`: idle until an `explore` action goal (gurdy_interfaces/Explore: max_time_s, area_rect, return_to_start) arrives;
+    feedback every second, cancel stops the active Nav2 goal. This is what the agent's RosBackend (explore / live find) uses.
 Does not use use_sim_time (rclpy sim time costs CPU at 1 kHz); the clock comes from a /clock subscription.
 """
 import json
 import math
 import os
+import time
 
 import numpy as np
 import rclpy
@@ -28,6 +33,13 @@ from rosgraph_msgs.msg import Clock
 from tf2_ros import Buffer, TransformException, TransformListener
 
 from gurdy_core import frontier as fr
+
+try:                                          # only needed with serve_action:=true
+    from gurdy_interfaces.action import Explore
+    from rclpy.action import ActionServer, CancelResponse, GoalResponse
+    from rclpy.callback_groups import ReentrantCallbackGroup
+except ImportError:                           # pragma: no cover
+    Explore = None
 
 
 class FrontierExplorer(Node):
@@ -52,6 +64,7 @@ class FrontierExplorer(Node):
         P("return_to_start", True)
         P("log_path", "explore_log.json")
         P("done_path", "explore.done")
+        P("serve_action", False)         # wait for `explore` action goals instead of starting at launch
         g = lambda k: self.get_parameter(k).value
         self.p = {k: g(k) for k in ("min_cells", "clearance", "reach", "size_weight", "blacklist_radius", "goal_timeout",
                                     "progress_window", "progress_min", "arrive_radius", "max_failures", "max_visits", "empty_cycles",
@@ -64,6 +77,19 @@ class FrontierExplorer(Node):
         qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE)
         self.create_subscription(OccupancyGrid, "/map", self.on_map, qos)
         self.create_subscription(Clock, "/clock", self.on_clock, 10)
+        self._reset_state()
+        self.serve = bool(self.get_parameter("serve_action").value)
+        self.active = not self.serve               # tick only works while a run is active
+        if self.serve:
+            if Explore is None:
+                raise RuntimeError("serve_action needs the gurdy_interfaces package (colcon build it and source install/setup.bash)")
+            self.cbg = ReentrantCallbackGroup()
+            self.server = ActionServer(self, Explore, "explore", execute_callback=self.execute, goal_callback=self.on_goal,
+                                       cancel_callback=lambda _g: CancelResponse.ACCEPT, callback_group=self.cbg)
+        self.create_timer(1.0, self.tick, callback_group=self.cbg if self.serve else None)
+        self.get_logger().info("frontier explorer up; " + ("serving the `explore` action" if self.serve else "waiting for /map, TF and navigate_to_pose"))
+
+    def _reset_state(self):
         self.t_start = None
         self.start_pose = None
         self.goal = None               # dict of the active goal
@@ -79,8 +105,60 @@ class FrontierExplorer(Node):
         self.returning = False
         self.finished = False
         self.reason = ""
-        self.create_timer(1.0, self.tick)
-        self.get_logger().info("frontier explorer up; waiting for /map, TF and navigate_to_pose")
+        self.area_rect = None          # [x0, y0, x1, y1]: only frontiers inside
+        self.run_max_time = self.p["max_time"]
+        self.run_return = self.p["return_to_start"]
+        self.frontiers_left = 0
+
+    # ---- action server -------------------------------------------------------------------------------
+    def on_goal(self, req):
+        if self.active or not self.ac.server_is_ready() or self.map is None or self.robot_xy() is None or self.now is None:
+            self.get_logger().warn("explore goal rejected: a run is active or navigation / map / TF is not ready")
+            return GoalResponse.REJECT
+        return GoalResponse.ACCEPT
+
+    def execute(self, gh):
+        g = gh.request
+        self._reset_state()
+        if len(g.area_rect) == 4:
+            self.area_rect = [float(v) for v in g.area_rect]
+        if g.max_time_s > 0:
+            self.run_max_time = float(g.max_time_s)
+        self.run_return = bool(g.return_to_start)
+        self.active = True
+        cancelled = False
+        while rclpy.ok() and not self.finished:
+            if gh.is_cancel_requested:
+                cancelled = True
+                break
+            fb = Explore.Feedback()
+            fb.phase = "returning" if self.returning else "exploring"
+            fb.elapsed_s = float(self.now - self.t_start) if self.t_start is not None else 0.0
+            fb.frontier_goals = len(self.goals)
+            fb.frontiers_left = int(self.frontiers_left)
+            gh.publish_feedback(fb)
+            time.sleep(1.0)
+        res = Explore.Result()
+        if cancelled:
+            self.reason = "cancelled"
+            self.finished = True                    # tick stops; a pending Nav2 goal is cancelled below
+            if self.gh is not None:
+                self.gh.cancel_goal_async()
+            self.active = False
+            gh.canceled()
+        else:
+            self.active = False
+            if self.reason in ("no frontiers left", "time limit"):
+                gh.succeed()
+                res.completed = True
+            else:
+                gh.abort()
+        res.reason = self.reason
+        res.sim_time_s = float(self.now - self.t_start) if self.t_start is not None else 0.0
+        fg = [x for x in self.goals if not x["final"]]
+        res.frontier_goals = len(fg)
+        res.failed_goals = sum(x["status"] in ("ABORTED", "REJECTED") or x.get("cancel_reason") in ("goal timeout", "no progress") for x in fg)
+        return res
 
     # ---- inputs --------------------------------------------------------------------------------------
     def on_clock(self, m):
@@ -100,7 +178,7 @@ class FrontierExplorer(Node):
 
     # ---- main loop -----------------------------------------------------------------------------------
     def tick(self):
-        if self.finished or self.now is None:
+        if not self.active or self.finished or self.now is None:
             return
         pose = self.robot_xy()
         if pose is None or self.map is None or not self.ac.server_is_ready():
@@ -113,7 +191,7 @@ class FrontierExplorer(Node):
             return
         if self.returning:
             return
-        if self.now - self.t_start > self.p["max_time"]:
+        if self.now - self.t_start > self.run_max_time:
             return self.begin_return("time limit")
         fs = self.plan(pose)
         if not fs:
@@ -129,9 +207,14 @@ class FrontierExplorer(Node):
 
     def plan(self, pose):
         grid, res, org = self.map
-        return fr.plan_frontiers(grid, res, org, pose, min_cells=self.p["min_cells"], clearance_m=self.p["clearance"],
+        fs = fr.plan_frontiers(grid, res, org, pose, min_cells=self.p["min_cells"], clearance_m=self.p["clearance"],
                                  reach_m=self.p["reach"], blacklist=self.blacklist,
                                  blacklist_radius_m=self.p["blacklist_radius"], size_weight=self.p["size_weight"])
+        if self.area_rect is not None:
+            x0, y0, x1, y1 = self.area_rect
+            fs = [f for f in fs if x0 <= f.goal_xy[0] <= x1 and y0 <= f.goal_xy[1] <= y1]
+        self.frontiers_left = len(fs)
+        return fs
 
     # ---- goals ---------------------------------------------------------------------------------------
     def send(self, f, pose, final=False, xy=None, yaw=None):
@@ -158,6 +241,10 @@ class FrontierExplorer(Node):
     def on_accept(self, fut):
         h = fut.result()
         self.pending = False
+        if self.finished:                      # the run was cancelled while the goal was being sent
+            if h.accepted:
+                h.cancel_goal_async()
+            return
         if not h.accepted:
             self.finish_goal("REJECTED")
             return
@@ -205,6 +292,9 @@ class FrontierExplorer(Node):
             self.gh.cancel_goal_async()
 
     def finish_goal(self, status):
+        if self.finished:                      # late result of a goal from a cancelled run
+            self.goal, self.gh, self.cancelling, self.pending = None, None, False, False
+            return
         gl = self.goal
         pose = self.robot_xy() or (float("nan"), float("nan"))
         gl.update({"status": status, "t_end": self.now, "duration_s": round(self.now - gl["t0"], 1),
@@ -235,7 +325,7 @@ class FrontierExplorer(Node):
         self.reason = reason
         self.get_logger().info(f"exploration over: {reason}")
         pose = self.robot_xy()
-        if self.p["return_to_start"] and self.start_pose is not None and pose is not None:
+        if self.run_return and self.start_pose is not None and pose is not None:
             self.returning = True
             self.send(None, pose, final=True, xy=self.start_pose, yaw=0.0)
         else:
@@ -243,12 +333,15 @@ class FrontierExplorer(Node):
 
     def finish(self):
         self.finished = True
+        if self.t_start is None:
+            return
         pose = self.robot_xy()
         d = None
         if pose is not None and self.start_pose is not None:
             d = round(math.hypot(pose[0] - self.start_pose[0], pose[1] - self.start_pose[1]), 3)
         fr_goals = [g for g in self.goals if not g["final"]]
         out = {"reason": self.reason, "sim_time_s": round(self.now - self.t_start, 1), "start_pose": list(self.start_pose),
+               "area_rect": self.area_rect,
                "end_pose": list(pose) if pose else None, "end_to_start_m": d,
                "frontier_goals": len(fr_goals),
                "succeeded": sum(g["status"] == "SUCCEEDED" for g in fr_goals),
@@ -270,8 +363,14 @@ def main():
     rclpy.init()
     n = FrontierExplorer()
     try:
-        while rclpy.ok() and not n.finished:
-            rclpy.spin_once(n, timeout_sec=0.2)
+        if n.serve:
+            from rclpy.executors import MultiThreadedExecutor
+            ex = MultiThreadedExecutor(num_threads=4)
+            ex.add_node(n)
+            ex.spin()
+        else:
+            while rclpy.ok() and not n.finished:
+                rclpy.spin_once(n, timeout_sec=0.2)
     except KeyboardInterrupt:
         pass
     n.destroy_node()

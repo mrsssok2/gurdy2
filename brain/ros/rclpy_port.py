@@ -4,7 +4,8 @@
 Topics / actions used (parameters can remap): TF map->base_link, /clock, /odometry/filtered (or /odom), /imu,
 /policy/status, semantic_map/objects (JSON String, latched), /map, /scan, /gurdy/alerts (JSON String; interim until
 the gurdy_interfaces/Event bus exists), navigate_to_pose + compute_path_to_pose (Nav2), cmd_vel_smoothed, /estop.
-No topic yet for: battery, leg health, explore action  -> those return None / False.
+/battery (BatteryState, SIMULATED), /gurdy/leg_health (latched JSON), `explore` action (gurdy_interfaces/Explore; the explorer
+must run with serve_action:=true). Until a battery / leg message arrives those return None (unknown, never invented).
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ from collections import deque
 
 import rclpy
 from geometry_msgs.msg import PoseStamped, Twist
+from gurdy_interfaces.action import Explore
 from nav2_msgs.action import ComputePathToPose, NavigateToPose
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.action import ActionClient
@@ -22,7 +24,7 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from rosgraph_msgs.msg import Clock
-from sensor_msgs.msg import Imu, LaserScan
+from sensor_msgs.msg import BatteryState, Imu, LaserScan
 from std_msgs.msg import Bool, String
 from tf2_ros import Buffer, TransformException, TransformListener
 
@@ -49,6 +51,9 @@ class RclpyPort:
         self._map = None
         self._scan = None
         self._alerts: deque = deque(maxlen=500)
+        self._battery = None
+        self._legs = None
+        self._explores: dict[int, dict] = {}
         self._estop = False
         self._goals: dict[int, dict] = {}
         self._h = 0
@@ -62,10 +67,13 @@ class RclpyPort:
         n.create_subscription(OccupancyGrid, "/map", lambda m: setattr(self, "_map", m), _LATCHED)
         n.create_subscription(LaserScan, "/scan", lambda m: setattr(self, "_scan", m), qos_profile_sensor_data)
         n.create_subscription(String, "/gurdy/alerts", self._on_alert, 50)
+        n.create_subscription(BatteryState, "/battery", lambda m: setattr(self, "_battery", 100.0 * m.percentage), 10)
+        n.create_subscription(String, "/gurdy/leg_health", self._on_legs, _LATCHED)
         self._pub_cmd = n.create_publisher(Twist, cmd_topic, 10)
         self._pub_estop = n.create_publisher(Bool, "/estop", _LATCHED)
         self._nav = ActionClient(n, NavigateToPose, "navigate_to_pose")
         self._plan = ActionClient(n, ComputePathToPose, "compute_path_to_pose")
+        self._explore = ActionClient(n, Explore, "explore")
         if spin:
             self._ex = MultiThreadedExecutor(num_threads=3)
             self._ex.add_node(n)
@@ -96,6 +104,14 @@ class RclpyPort:
             a = json.loads(m.data)
             if isinstance(a, dict):
                 self._alerts.append(a)
+        except ValueError:
+            pass
+
+    def _on_legs(self, m):
+        try:
+            legs = json.loads(m.data).get("legs")
+            if isinstance(legs, dict):
+                self._legs = {str(k): str(v) for k, v in legs.items()}
         except ValueError:
             pass
 
@@ -166,10 +182,10 @@ class RclpyPort:
         return [{"bearing_deg": sec * 45.0 if sec < 5 else sec * 45.0 - 360.0, "distance_m": d} for sec, d in best.items()]
 
     def battery_pct(self):
-        return None                      # NEW battery_sim_node
+        return self._battery             # SIMULATED (battery_sim_node)
 
     def leg_states(self):
-        return None                      # NEW leg_health_node
+        return self._legs
 
     def drain_alerts(self):
         out = []
@@ -238,18 +254,43 @@ class RclpyPort:
         pts = [(p.pose.position.x, p.pose.position.y) for p in res.result.path.poses]
         return {"length_m": sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(pts, pts[1:])), "points": pts}
 
-    # ---- exploration: NEW action not built yet
+    # ---- exploration: the `explore` action of frontier_explorer_node (serve_action:=true)
     def explore_available(self) -> bool:
-        return False
+        return self._explore.server_is_ready()
 
-    def explore_start(self, max_time_s, area):
-        return None
+    def explore_start(self, max_time_s, area_rect):
+        goal = Explore.Goal()
+        goal.max_time_s = float(max_time_s)
+        goal.area_rect = [float(v) for v in (area_rect or [])]
+        goal.return_to_start = False             # the agent decides what happens next (find / return_home)
+        self._h += 1
+        h = self._h
+        st = self._explores[h] = {"state": NAV_RUNNING, "gh": None, "cancel": False}
+
+        def accepted(f):
+            gh = f.result()
+            if not gh.accepted:
+                st["state"] = NAV_ABORTED
+                return
+            st["gh"] = gh
+            if st["cancel"]:                     # cancel was asked before the goal was accepted
+                gh.cancel_goal_async()
+            gh.get_result_async().add_done_callback(
+                lambda rf: st.__setitem__("state", _STATUS.get(rf.result().status, NAV_ABORTED)))
+
+        self._explore.send_goal_async(goal).add_done_callback(accepted)
+        return h
 
     def explore_state(self, h):
-        return {"state": NAV_ABORTED}
+        return {"state": self._explores[h]["state"]}
 
     def explore_cancel(self, h):
-        pass
+        st = self._explores[h]
+        if st["state"] != NAV_RUNNING:
+            return
+        st["cancel"] = True
+        if st["gh"] is not None:
+            st["gh"].cancel_goal_async()
 
     # ---- actuation
     def send_cmd(self, vx, vy, wz):

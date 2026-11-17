@@ -1,0 +1,16 @@
+# Frontier exploration (gurdy_navigation/frontier_explorer_node, serve_action:=true).
+# Goal: explore until no frontier is left, `max_time_s` sim seconds have passed, or the goal is cancelled.
+float32 max_time_s            # sim seconds; <= 0 = the node's max_time parameter
+float32[] area_rect           # [x0, y0, x1, y1] map frame: only frontiers inside; empty = whole map
+bool return_to_start          # drive back to the start pose when finished (not after a cancel)
+---
+bool completed                # false when aborted or cancelled
+string reason                 # "no frontiers left" | "time limit" | "cancelled" | "navigation not ready" ...
+float32 sim_time_s
+uint32 frontier_goals
+uint32 failed_goals
+---
+string phase                  # "exploring" | "returning"
+float32 elapsed_s
+uint32 frontier_goals         # goals sent so far
+uint32 frontiers_left         # usable frontiers at the last planning step
