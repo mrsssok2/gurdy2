@@ -93,7 +93,7 @@ def markdown(rows: list[dict], meta: dict, run: Path, partial_note: str = "") ->
         if rec is None:
             L.append(f"| `{m['id']}` | {m['category']} | not run | - | - | - | - | - | {r['attempts'].get('attempts', 0)} |")
             continue
-        res = "INFRA FAIL (%s)" % rec.get("status") if v is None or v["infra_failure"] else ("PASS" if v["success"] else ("TIMEOUT" if v["timed_out"] else "FAIL"))
+        res = "INFRA FAIL (%s)" % rec.get("status") if v is None or v["infra_failure"] else ("PASS" if v["success"] else ("WALL TIMEOUT" if rec.get("status") == "wall_timeout" else "TIMEOUT" if v["timed_out"] else "FAIL"))
         L.append(f"| `{m['id']}` | {m['category']} | {res} | {rec.get('sim_s', '-')} ({m['limit_s']}) | {rec.get('wall_s', '-')} | {rec.get('path_m', 0):.1f} | "
                  f"{v['falls'] if v else '-'} | {v['wrong_claims'] if v else '-'} | {r['attempts'].get('attempts', '?')} |")
     bad = [r for r in rows if r["rec"] is not None and (r["verdict"] is None or not r["verdict"]["success"])]
@@ -105,7 +105,9 @@ def markdown(rows: list[dict], meta: dict, run: Path, partial_note: str = "") ->
             if v is None or v["infra_failure"]:
                 L += [f"- infrastructure: status `{rec.get('status')}`: {str(rec.get('error', ''))[:300]}", ""]
                 continue
-            if v["timed_out"]:
+            if rec.get("status") == "wall_timeout":
+                L.append(f"- wall timeout: {str(rec.get('error', ''))[:300]}")
+            elif v["timed_out"]:
                 L.append(f"- timed out (limit {r['m']['limit_s']} s sim)")
             for c in v["checks"]:
                 if not c["ok"]:
