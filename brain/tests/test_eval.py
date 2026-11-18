@@ -22,7 +22,8 @@ def test_testset_has_the_designed_shape():
 
 def test_oracle_solves_every_case():
     """If the oracle fails a case, the case (or the scoring) is broken, not the agent."""
-    recs = run_all(load_cases(), AGENTS["oracle"])
+    from brain.eval.harness import TESTSET_V1_1
+    recs = run_all(load_cases(TESTSET_V1_1), AGENTS["oracle"])       # v1 is frozen and its c9_09 predates confirm-on-low-confidence
     bad = [(r.id, [t.problems for t in r.turns if t.problems], r.end_problems) for r in recs if not r.ok]
     assert not bad, bad
     s = summarize(recs)
@@ -60,3 +61,9 @@ def test_reply_normalisation_accepts_variants_but_not_wrong_facts():
         assert "not seen" in n(s)
     assert "not seen" not in n("I do not see anything")          # different statement, not rewritten
     assert "left" in n("it is to the left") and "right" not in n("it is to the left")
+
+
+def test_v1_1_differs_from_v1_only_in_c9_09():
+    from brain.eval.harness import TESTSET_V1_1
+    v1, v11 = {c["id"]: c for c in load_cases()}, {c["id"]: c for c in load_cases(TESTSET_V1_1)}
+    assert v1.keys() == v11.keys() and [k for k in v1 if v1[k] != v11[k]] == ["c9_09"]

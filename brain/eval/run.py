@@ -15,10 +15,11 @@ def main() -> None:
     ap.add_argument("--cat", type=int, nargs="*", help="only these categories")
     ap.add_argument("--json", help="write per-case records + summary here")
     ap.add_argument("--failures", action="store_true", help="print every failed case with the reasons")
-    ap.add_argument("--set", default="v1", choices=["v1", "ood_v1"], help="ood_v1 = assistant-written out-of-distribution set")
+    ap.add_argument("--set", default="v1", choices=["v1", "v1_1", "ood_v1"],
+                    help="v1 = frozen (scores comparable: base 59, SFT-400 94); v1_1 = v1 with c9_09 for the confirm-on-low-confidence behaviour; ood_v1 = assistant-written out-of-distribution set")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
-    cases = [c for c in (load_cases(TESTSET_OOD) if a.set == "ood_v1" else load_cases()) if not a.cat or c["cat"] in a.cat]
+    cases = [c for c in (load_cases(TESTSET_OOD) if a.set == "ood_v1" else load_cases(TESTSET_V1_1) if a.set == "v1_1" else load_cases()) if not a.cat or c["cat"] in a.cat]
     recs = run_all(cases, AGENTS[a.agent], a.seed)
     s = summarize(recs, OOD_CATEGORIES if a.set == "ood_v1" else None)
     print(f"agent={a.agent}  cases={s['n_cases']}  success={s['success_pct']}%")

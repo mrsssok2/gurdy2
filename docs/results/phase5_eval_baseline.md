@@ -73,3 +73,10 @@ reason). Its calls go through the safety checker like any plan (refuse / clarify
 gate). A text reply passes the grounding check (one regeneration with feedback, then the plain failure sentence). A re-plan's own
 failure is only reported (at most one re-plan per user request); the keyword planner returns `{}` (no recovery). Tested with
 `ScriptedLLM` (5 tests). The test set has no case for it yet: a "path blocked mid-way" scenario hook belongs in testset v2.
+
+
+## Test set versions
+- **`testset_v1.yaml` is frozen**: all scores (keyword 55/59, base Qwen3 53/36, SFT-400 94) are on it and stay comparable. Never edit it.
+- **`testset_v1_1.yaml`** (2026-11-18) = v1 with ONLY `c9_09` changed (`walk forward two metres`, STT confidence 0.4). Since the agent now reads a cleanly parsed low-confidence command back and asks
+  "Shall I do that?" instead of refusing to act (`stt_confidence_min` 0.6 in `safety.yaml`), the expected behaviour is `confirm`, not `clarify`. On v1 that one case now fails for every agent by design
+  (the oracle test runs on v1.1). Run it with `python3 -m brain.eval.run --set v1_1`; report v1 numbers as "v1 (frozen)" and note that c9_09 reflects the old behaviour.

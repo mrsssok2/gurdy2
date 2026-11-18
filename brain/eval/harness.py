@@ -33,6 +33,7 @@ from ..mock.world import flat_lab
 from ..tools import TOOLS, ToolLayer
 
 TESTSET = Path(__file__).with_name("testset_v1.yaml")
+TESTSET_V1_1 = Path(__file__).with_name("testset_v1_1.yaml")   # v1 with only c9_09 changed (see docs/results/phase5_eval_baseline.md)
 TESTSET_OOD = Path(__file__).with_name("testset_ood_v1.yaml")
 CATEGORIES = {1: "single motion / navigation", 2: "search and inspection", 3: "spatial questions",
               4: "status, why, memory", 5: "multi-step missions", 6: "multi-turn dialogues",
