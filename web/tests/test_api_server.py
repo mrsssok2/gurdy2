@@ -237,6 +237,13 @@ class DashboardAssets(Base):
         for font in ("Inter", "Space Grotesk", "JetBrains Mono"):
             self.assertIn(font, css)
         self.assertIn("estop", html)
+        for rel in re.findall(r"url\((fonts/[^)]+)\)", css):                      # bundled fonts exist, are served as woff2, licences present
+            self.assertTrue((app / rel).exists(), rel)
+            st, data = request(self.srv, "GET", "/" + rel, token=None)
+            self.assertEqual((st, data[:4]), (200, b"wOF2"), rel)
+        self.assertEqual(len(re.findall(r"@font-face", css)), 5)
+        for lic in ("OFL-Inter.txt", "OFL-SpaceGrotesk.txt", "OFL-JetBrainsMono.txt"):
+            self.assertIn("SIL Open Font License", (app / "fonts" / lic).read_text())
         self.assertNotIn("http://", html + css + js.replace("http://host", ""))      # offline: no CDN / external URL
         self.assertNotIn("https://", html + css + js)
         self.assertNotIn("innerHTML", js)                                          # robot text must never be parsed as HTML

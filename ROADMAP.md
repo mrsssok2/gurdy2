@@ -323,7 +323,7 @@ Design (2026-11-17, plan only): **`docs/phase6_design.md`** (incident definition
 ## Phase 7 — Mission control + polish
 Design (2026-11-18): **`docs/phase7_design.md`** (dashboard panels, API + WebSocket, stdlib server + static no-build frontend instead of Next.js — flagged for the user's decision, auth, phone access, steps 1–8).
 - [x] Step 1: API server skeleton on the MockBackend (`web/api`: REST + WebSocket + token auth + chat log + e-stop; 23 tests `python3 -m unittest web.tests.test_api_server`)
-- [~] Step 2: dashboard page (`web/app`: dark theme, bottom tabs Map / Chat / Status / Alerts, always-visible E-STOP, canvas map, token login, WebSocket reconnect). Written, NOT yet opened in a browser (none on this machine; only structure tests). Fonts Inter / Space Grotesk / JetBrains Mono load only if installed on the device (no CDN); vendoring them is open.
+- [~] Step 2: dashboard page (`web/app`: dark theme, bottom tabs Map / Chat / Status / Alerts, always-visible E-STOP, canvas map, token login, WebSocket reconnect). Written, NOT yet opened in a browser (none on this machine; only structure tests). Fonts Inter 400 / Space Grotesk 600+700 / JetBrains Mono 400+700 bundled as latin woff2 in `web/app/fonts/` with OFL licences (from @fontsource 5.3.0), system fallbacks kept.
 - [ ] Next.js/TypeScript app: rosbridge, three.js 3D robot view, map, camera, chat, incidents page
 - [ ] Docker compose profiles per part
 - [ ] GitHub Actions CI (lint + unit tests; ROS build/test job)
