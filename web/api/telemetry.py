@@ -1,0 +1,71 @@
+"""Telemetry sources for the dashboard. A source answers `snapshot()` (small dict, sent ~2 Hz) and `map()` (static geometry, sent once).
+`MockTelemetry` reads a MockBackend; the ROS version (rclpy) comes in Phase 7 step 5 and implements the same two methods."""
+from __future__ import annotations
+
+import time
+from collections import deque
+from typing import Any, Protocol
+
+TRAIL_MAX = 200
+TRAIL_MIN_STEP_M = 0.05
+
+
+class Telemetry(Protocol):
+    def snapshot(self) -> dict[str, Any]: ...
+    def map(self) -> dict[str, Any]: ...
+
+
+def _rect(r) -> dict:
+    return {"x0": r.x0, "y0": r.y0, "x1": r.x1, "y1": r.y1}
+
+
+class MockTelemetry:
+    """Reads `host.agent.layer.backend` (a MockBackend). The backend is not thread-safe: reads happen under `host.lock` (the same lock
+    `AgentHost.say` holds during an LLM turn). If the lock is busy longer than `lock_timeout_s` the LAST snapshot is returned with
+    `stale: true`, so a slow turn never freezes the stream and nothing here can delay an e-stop (which does not use the lock)."""
+
+    def __init__(self, host, lock_timeout_s: float = 0.2, wall=time.monotonic):
+        self.host, self.lock_timeout_s, self.wall = host, lock_timeout_s, wall
+        self._last: dict[str, Any] | None = None
+        self._trail: deque[tuple[float, float]] = deque(maxlen=TRAIL_MAX)
+
+    @property
+    def backend(self):
+        return self.host.agent.layer.backend
+
+    def snapshot(self) -> dict[str, Any]:
+        lock = getattr(self.host, "lock", None)
+        if lock is not None and not lock.acquire(timeout=self.lock_timeout_s):
+            return {**(self._last or {"connected": True}), "stale": True}
+        try:
+            snap = self._read()
+        finally:
+            if lock is not None:
+                lock.release()
+        self._last = snap
+        return snap
+
+    def _read(self) -> dict[str, Any]:
+        b = self.backend
+        st, pos = b.status().data, b.where_am_i().data
+        xy = (pos["x"], pos["y"])
+        if not self._trail or abs(xy[0] - self._trail[-1][0]) + abs(xy[1] - self._trail[-1][1]) >= TRAIL_MIN_STEP_M:
+            self._trail.append(xy)
+        objs = b.recall("object").data.get("records", [])
+        return {
+            "connected": True, "stale": False, "source": "mock", "sim_time_s": round(b.now(), 1),
+            "pose": {"x": pos["x"], "y": pos["y"], "heading_deg": pos["heading_deg"], "place": pos["place"]},
+            "mode": st["mode"], "moving": st["mode"] == "moving", "estop": st["estop"], "task": st["task"],
+            "speed_mps": st["speed_mps"], "battery_pct": st["battery_pct"], "battery_simulated": st["battery_simulated"],
+            "legs": st["legs"], "alerts": list(st["alerts_active"]),
+            "objects": [{k: o[k] for k in ("id", "class", "color", "x", "y", "place", "age_s", "stale")} for o in objs],
+            "zones": [dict(z) for z in getattr(b, "zones", [])],
+            "trail": [list(p) for p in self._trail],
+        }
+
+    def map(self) -> dict[str, Any]:
+        w = self.backend.world
+        return {"map_id": w.map_id, "bounds": _rect(w.bounds),
+                "rooms": {n: _rect(r) for n, r in w.rooms.items()},
+                "walls": [_rect(r) for r in w.walls], "obstacles": [_rect(r) for r in w.obstacles],
+                "places": {n: {"x": xy[0], "y": xy[1]} for n, xy in self.backend.places.items()}}

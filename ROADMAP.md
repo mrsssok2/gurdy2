@@ -303,6 +303,7 @@ criteria are 5.A–5.K below (formerly numbered 5.1–5.11); the build order is 
 ---
 
 ## Phase 6 — Robot Incident Graph (robot-ops)
+**PAUSED (2026-11-18) after step 1** (incident data model + SQLite `IncidentStore`, `ops/incidents`, commit 405c10c). Phase 7 runs first; Phase 6 **resumes at step 2** (event/metric schema, exporter, replay) after Phase 7.
 Design (2026-11-17, plan only): **`docs/phase6_design.md`** (incident definition, data flow, storage, root-cause linking, brain queries, stack budget, milestones 6.1–6.9, ~19 working days estimated).
 - [ ] Telemetry/log exporter: ROS 2 → Redpanda (also from rosbag replay)
 - [ ] Event normalizer (schema), fingerprinting, embeddings → Qdrant
@@ -320,6 +321,8 @@ Design (2026-11-17, plan only): **`docs/phase6_design.md`** (incident definition
 ---
 
 ## Phase 7 — Mission control + polish
+Design (2026-11-18): **`docs/phase7_design.md`** (dashboard panels, API + WebSocket, stdlib server + static no-build frontend instead of Next.js — flagged for the user's decision, auth, phone access, steps 1–8).
+- [x] Step 1: API server skeleton on the MockBackend (`web/api`: REST + WebSocket + token auth + chat log + e-stop; 22 tests `python3 -m unittest web.tests.test_api_server`)
 - [ ] Next.js/TypeScript app: rosbridge, three.js 3D robot view, map, camera, chat, incidents page
 - [ ] Docker compose profiles per part
 - [ ] GitHub Actions CI (lint + unit tests; ROS build/test job)

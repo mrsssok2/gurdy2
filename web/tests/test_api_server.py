@@ -1,0 +1,333 @@
+"""Phase 7 step 1 tests. Run: python3 -m unittest web.tests.test_api_server   (stdlib only; real MockBackend, fake agent host; no Docker/ROS/LLM)."""
+import base64
+import http.client
+import json
+import os
+import socket
+import threading
+import time
+import unittest
+from io import BytesIO
+
+from brain.mock import MockBackend
+from brain.tools import ToolLayer
+from web.api import GurdyWebServer, MockTelemetry, ws
+
+TOKEN = "test-token-123"
+
+
+class FakeAgent:
+    def __init__(self):
+        self.layer = ToolLayer(MockBackend())
+
+
+class FakeHost:
+    """Same surface as AgentHost used by the server: agent.layer.backend, lock, say, estop, on_message."""
+
+    def __init__(self):
+        self.agent, self.lock, self.listeners = FakeAgent(), threading.Lock(), []
+        self.estops, self.say_delay = 0, 0.0
+
+    def say(self, text, conf=None, started_ago=None):
+        with self.lock:
+            time.sleep(self.say_delay)
+            if "walk" in text:
+                self.agent.layer.backend.walk("forward", 1.0)
+            return f"ok: {text}"
+
+    def estop(self):                                    # like AgentHost.estop: no lock
+        self.estops += 1
+        self.agent.layer.call("stop")
+
+    def on_message(self, fn):
+        self.listeners.append(fn)
+
+
+def request(srv, method, path, body=None, token=TOKEN, headers=None):
+    c = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=5)
+    h = dict(headers or {})
+    if token:
+        h["Authorization"] = f"Bearer {token}"
+    data = None if body is None else (body if isinstance(body, bytes) else json.dumps(body))
+    c.request(method, path, data, h)
+    r = c.getresponse()
+    raw = r.read()
+    c.close()
+    try:
+        return r.status, json.loads(raw)
+    except ValueError:
+        return r.status, raw
+
+
+class WsClient:
+    """Tiny blocking WebSocket test client."""
+
+    def __init__(self, srv, token=TOKEN, path=None):
+        self.s = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+        key = base64.b64encode(os.urandom(16)).decode()
+        self.s.sendall((f"GET {path or '/ws?token=' + str(token)} HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                        f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n").encode())
+        self.f = self.s.makefile("rb")
+        self.status = int(self.f.readline().split()[1])
+        self.headers = {}
+        while (line := self.f.readline()) not in (b"\r\n", b""):
+            k, _, v = line.decode().partition(":")
+            self.headers[k.strip().lower()] = v.strip()
+        self.key = key
+
+    def send(self, obj):
+        self.s.sendall(ws.encode_frame(ws.OP_TEXT, json.dumps(obj).encode(), os.urandom(4)))
+
+    def recv(self):
+        def read_unmasked():
+            b0, b1 = self.f.read(2)
+            n = b1 & 0x7F
+            if n == 126:
+                n = int.from_bytes(self.f.read(2), "big")
+            elif n == 127:
+                n = int.from_bytes(self.f.read(8), "big")
+            return b0 & 0x0F, self.f.read(n)
+        return read_unmasked()
+
+    def recv_json(self, type_=None, limit=20):
+        for _ in range(limit):
+            op, data = self.recv()
+            if op == ws.OP_TEXT:
+                o = json.loads(data)
+                if type_ is None or o.get("type") == type_:
+                    return o
+        raise AssertionError(f"no {type_} message")
+
+    def close(self):
+        self.f.close()
+        self.s.close()
+
+
+class Base(unittest.TestCase):
+    def setUp(self):
+        self.host = FakeHost()
+        self.srv = GurdyWebServer(self.host, token=TOKEN, port=0, state_s=0.05).start()
+
+    def tearDown(self):
+        self.srv.close()
+
+
+class RestTests(Base):
+    def test_health_is_public(self):
+        self.assertEqual(request(self.srv, "GET", "/api/health", token=None), (200, {"ok": True, "version": "0.1"}))
+
+    def test_auth_required_everywhere(self):
+        for m, p in (("GET", "/api/state"), ("GET", "/api/map"), ("GET", "/api/messages"), ("POST", "/api/say"), ("POST", "/api/estop")):
+            self.assertEqual(request(self.srv, m, p, {"text": "x"} if m == "POST" else None, token=None)[0], 401, p)
+            self.assertEqual(request(self.srv, m, p, {"text": "x"} if m == "POST" else None, token="wrong")[0], 401, p)
+        self.assertEqual(self.host.estops, 0)               # an unauthenticated stop did not reach the robot
+        self.assertEqual(request(self.srv, "GET", "/api/state?token=" + TOKEN, token=None)[0], 200)
+
+    def test_state_matches_backend(self):
+        s, st = request(self.srv, "GET", "/api/state")
+        self.assertEqual(s, 200)
+        b = self.host.agent.layer.backend
+        self.assertEqual((st["pose"]["x"], st["pose"]["y"]), (round(b.x, 2), round(b.y, 2)))
+        self.assertEqual((st["mode"], st["battery_pct"], st["estop"], st["stale"], st["source"]), ("idle", 100.0, False, False, "mock"))
+        self.assertEqual(sorted(st["legs"].values()), ["ok"] * 6)
+        self.assertTrue(st["battery_simulated"])
+
+    def test_state_follows_motion_and_trail(self):
+        b = self.host.agent.layer.backend
+        request(self.srv, "GET", "/api/state")
+        b.walk("forward", 1.0)
+        b.advance(30)
+        st = request(self.srv, "GET", "/api/state")[1]
+        self.assertGreater(st["pose"]["x"], 0.5)
+        self.assertGreaterEqual(len(st["trail"]), 2)
+        self.assertEqual(st["trail"][-1], [st["pose"]["x"], st["pose"]["y"]])
+
+    def test_map_geometry(self):
+        s, m = request(self.srv, "GET", "/api/map")
+        self.assertEqual(s, 200)
+        self.assertEqual(sorted(m["rooms"]), ["room A", "room B"])
+        self.assertEqual(len(m["walls"]), 6)
+        self.assertIn("home", m["places"])
+        self.assertEqual(set(m["bounds"]), {"x0", "y0", "x1", "y1"})
+
+    def test_say_and_message_log(self):
+        s, r = request(self.srv, "POST", "/api/say", {"text": "  hello robot "})
+        self.assertEqual((s, r["reply"]), (200, "ok: hello robot"))
+        msgs = request(self.srv, "GET", "/api/messages")[1]
+        self.assertEqual([(m["role"], m["text"]) for m in msgs["messages"]], [("user", "hello robot"), ("robot", "ok: hello robot")])
+        self.assertEqual(request(self.srv, "GET", f"/api/messages?since={msgs['seq']}")[1]["messages"], [])
+        self.assertEqual(request(self.srv, "GET", "/api/messages?since=abc")[0], 400)
+
+    def test_pump_messages_reach_chat(self):
+        for fn in self.host.listeners:
+            fn("Battery is low.")
+        m = request(self.srv, "GET", "/api/messages")[1]["messages"]
+        self.assertEqual((m[-1]["role"], m[-1]["text"]), ("robot", "Battery is low."))
+
+    def test_say_validation(self):
+        for body in ({}, {"text": ""}, {"text": "   "}, {"text": 5}, {"text": "x" * 501}, [1]):
+            self.assertEqual(request(self.srv, "POST", "/api/say", body)[0], 400, body)
+        self.assertEqual(request(self.srv, "POST", "/api/say", b"not json")[0], 400)
+        self.assertEqual(request(self.srv, "POST", "/api/say", b"x" * 70000)[0], 413)
+        self.assertEqual(request(self.srv, "GET", "/api/messages")[1]["messages"], [])
+
+    def test_estop_stops_robot_and_is_logged(self):
+        b = self.host.agent.layer.backend
+        b.walk("forward", 2.0)
+        self.assertEqual(request(self.srv, "GET", "/api/state")[1]["mode"], "moving")
+        self.assertEqual(request(self.srv, "POST", "/api/estop", {})[0], 200)
+        self.assertEqual(self.host.estops, 1)
+        st = request(self.srv, "GET", "/api/state")[1]
+        self.assertNotEqual(st["mode"], "moving")
+        self.assertIn("Emergency stop", request(self.srv, "GET", "/api/messages")[1]["messages"][-1]["text"])
+
+    def test_unknown_routes(self):
+        self.assertEqual(request(self.srv, "GET", "/api/nope")[0], 404)
+        self.assertEqual(request(self.srv, "POST", "/api/nope", {})[0], 404)
+        self.assertEqual(request(self.srv, "POST", "/other", {})[0], 404)
+
+
+class SlowTurnTests(Base):
+    def test_state_stale_not_blocked_and_estop_not_queued(self):
+        self.srv.telemetry.lock_timeout_s = 0.05
+        request(self.srv, "GET", "/api/state")                       # prime the cache
+        self.host.say_delay = 1.0
+        t = threading.Thread(target=request, args=(self.srv, "POST", "/api/say", {"text": "walk"}))
+        t.start()
+        time.sleep(0.2)                                              # the turn holds host.lock now
+        t0 = time.monotonic()
+        st = request(self.srv, "GET", "/api/state")[1]
+        self.assertTrue(st["stale"])
+        self.assertEqual(st["pose"]["place"], "room A")
+        self.assertLess(time.monotonic() - t0, 0.6)
+        t0 = time.monotonic()
+        self.assertEqual(request(self.srv, "POST", "/api/estop", {})[0], 200)
+        self.assertLess(time.monotonic() - t0, 0.5)                  # did not wait for the 1 s turn
+        t.join()
+
+
+class StaticTests(Base):
+    def test_index_and_traversal(self):
+        s, body = request(self.srv, "GET", "/", token=None)
+        self.assertEqual(s, 200)
+        self.assertIn(b"Gurdy", body)
+        for p in ("/../server.py", "/..%2fserver.py", "/%2e%2e/api/server.py", "/missing.js", "/api"):
+            self.assertIn(request(self.srv, "GET", p, token=None)[0], (404, 401), p)
+        c = http.client.HTTPConnection("127.0.0.1", self.srv.port)
+        c.request("GET", "/../../../etc/passwd")                    # raw path, not normalised by the client library
+        self.assertEqual(c.getresponse().status, 404)
+
+
+class WebSocketFrames(unittest.TestCase):
+    def test_accept_key_rfc_example(self):
+        self.assertEqual(ws.accept_key("dGhlIHNhbXBsZSBub25jZQ=="), "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")
+
+    def test_roundtrip_lengths(self):
+        for n in (0, 5, 125, 126, 4000, 70000):
+            payload = os.urandom(n)
+            fin, op, data = ws.read_frame(BytesIO(ws.encode_frame(ws.OP_BIN, payload, b"\x01\x02\x03\x04")), max_len=1 << 20)
+            self.assertEqual((fin, op, data), (True, ws.OP_BIN, payload))
+
+    def test_rejects_unmasked_oversized_and_reserved(self):
+        with self.assertRaises(ws.WsError):
+            ws.read_frame(BytesIO(ws.encode_frame(ws.OP_TEXT, b"hi")))
+        with self.assertRaises(ws.WsError) as cm:
+            ws.read_frame(BytesIO(ws.encode_frame(ws.OP_TEXT, b"x" * 200, b"abcd")), max_len=100)
+        self.assertEqual(cm.exception.code, 1009)
+        with self.assertRaises(ws.WsError):
+            ws.read_frame(BytesIO(bytes([0xC1, 0x80]) + b"abcd"))
+
+    def test_fragments_and_ping(self):
+        m = b"abcd"
+        part1 = bytes([0x01, 0x82]) + m + bytes(b ^ m[i % 4] for i, b in enumerate(b"he"))              # text, fin=0
+        ping = ws.encode_frame(ws.OP_PING, b"p", m)
+        part2 = bytes([0x80, 0x83]) + m + bytes(b ^ m[i % 4] for i, b in enumerate(b"llo"))             # continuation, fin
+        sent = []
+        self.assertEqual(ws.read_message(BytesIO(part1 + ping + part2), sent.append), (ws.OP_TEXT, b"hello"))
+        self.assertEqual(sent, [ws.encode_frame(ws.OP_PONG, b"p")])
+        self.assertIsNone(ws.read_message(BytesIO(ws.encode_frame(ws.OP_CLOSE, b"", m)), sent.append))
+
+
+class WebSocketServer(Base):
+    def test_requires_token(self):
+        for path in ("/ws", "/ws?token=bad"):
+            c = WsClient(self.srv, path=path)
+            self.assertEqual(c.status, 401)
+            c.close()
+
+    def test_handshake_hello_and_state_stream(self):
+        c = WsClient(self.srv)
+        self.assertEqual(c.status, 101)
+        self.assertEqual(c.headers["sec-websocket-accept"], ws.accept_key(c.key))
+        hello = c.recv_json("hello")
+        self.assertEqual(sorted(hello["map"]["rooms"]), ["room A", "room B"])
+        s1 = c.recv_json("state")
+        s2 = c.recv_json("state")
+        self.assertEqual(s1["pose"]["place"], "room A")
+        self.assertIsNotNone(s2)
+        c.close()
+
+    def test_say_over_ws_broadcasts_chat_to_all_clients(self):
+        a, b = WsClient(self.srv), WsClient(self.srv)
+        a.send({"op": "say", "text": "walk"})
+        for c in (a, b):
+            texts = []
+            while len(texts) < 2:
+                o = c.recv_json("chat")
+                texts.append((o["role"], o["text"]))
+            self.assertEqual(texts, [("user", "walk"), ("robot", "ok: walk")])
+        self.assertGreater(self.host.agent.layer.backend.status().data["speed_mps"] + len(self.host.agent.layer.backend.events), 0)
+        a.close(); b.close()
+
+    def test_estop_over_ws_and_bad_commands(self):
+        c = WsClient(self.srv)
+        c.send({"op": "estop"})
+        self.assertEqual(c.recv_json("ack")["op"], "estop")
+        self.assertEqual(self.host.estops, 1)
+        c.send({"op": "fly"})
+        self.assertIn("unknown op", c.recv_json("error")["error"])
+        c.s.sendall(ws.encode_frame(ws.OP_TEXT, b"not json", b"abcd"))
+        self.assertIn("expected", c.recv_json("error")["error"])
+        c.send({"op": "say", "text": ""})
+        self.assertEqual(c.recv_json("error")["error"], "bad 'text'")
+        c.close()
+
+    def test_client_limit_and_cleanup(self):
+        cs = [WsClient(self.srv) for _ in range(8)]
+        extra = WsClient(self.srv)
+        self.assertEqual(extra.status, 503)
+        extra.close()
+        for c in cs:
+            c.close()
+        for _ in range(100):                                         # the server notices closed sockets
+            if self.srv.n_clients == 0:
+                break
+            time.sleep(0.05)
+        self.assertEqual(self.srv.n_clients, 0)
+
+
+class TokenSource(unittest.TestCase):
+    def test_env_token_random_fallback_and_telemetry_error(self):
+        os.environ["GURDY_WEB_TOKEN"] = "from-env"
+        try:
+            a = GurdyWebServer(FakeHost(), port=0)
+            self.assertEqual(a.token, "from-env")
+            a.httpd.server_close()
+        finally:
+            del os.environ["GURDY_WEB_TOKEN"]
+        b = GurdyWebServer(FakeHost(), port=0)
+        c = GurdyWebServer(FakeHost(), port=0)
+        self.assertGreaterEqual(len(b.token), 16)
+        self.assertNotEqual(b.token, c.token)
+        self.assertFalse(b.check_token(None) or b.check_token("") or b.check_token("ü"))
+
+        class Broken:
+            def snapshot(self): raise RuntimeError("boom")
+            def map(self): return {}
+        b.telemetry = Broken()
+        self.assertEqual(b.state(), {"connected": False, "error": "RuntimeError: boom"})
+        b.httpd.server_close(); c.httpd.server_close()
+
+
+if __name__ == "__main__":
+    unittest.main()
