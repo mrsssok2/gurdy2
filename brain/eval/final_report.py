@@ -112,7 +112,7 @@ def first_pass_section(first_rows: list[dict], rows: list[dict]) -> list[str]:
     return L
 
 
-def markdown(rows: list[dict], meta: dict, run: Path, partial_note: str = "", first_rows: list[dict] | None = None) -> str:
+def markdown(rows: list[dict], meta: dict, run: Path, partial_note: str = "", first_rows: list[dict] | None = None, notes: str = "") -> str:
     s = summarize(rows)
     L = ["# Phase 5.11 - final Gazebo eval (gurdy-sft-400, typed input)", ""]
     L.append(f"Run: `{run.as_posix()}`  ·  started {meta.get('started', '?')}  ·  commit `{meta.get('commit', '?')}`  ·  model `{meta.get('model', '?')}`  ·  suite: {s['missions_total']} missions.")
@@ -179,6 +179,8 @@ def markdown(rows: list[dict], meta: dict, run: Path, partial_note: str = "", fi
             L.append(f"| `{i}` | {st['text']} | {st['moving_before']} ({st['speed_before']} m/s) | {st['say_s']} | {st['latency_s']} |")
     if first_rows:
         L += [""] + first_pass_section(first_rows, rows)
+    if notes.strip():
+        L += ["", "## Notes on individual results (added after the run)", "", notes.strip(), ""]
     L += ["", "## What this does and does not show", "",
           "- Single run per mission (no variance estimate); one world (flat_lab, 5 objects); one model; typed input - voice is evaluated separately (`phase5_voice*.md`).",
           "- Battery is SIMULATED (`battery_sim_node`, level set by `ros2 param set`); the leg fault is SYNTHETIC (`leg_health_node fake_failed_leg`): the robot's legs keep working. "
@@ -200,7 +202,8 @@ def main() -> None:
     json.dump({"summary": summ, "missions": [{"id": r["m"]["id"], "verdict": r["verdict"], "attempts": r["attempts"]} for r in rows]},
               open(run / "summary.json", "w"), indent=1, default=str)
     first_rows = load(run / "first_pass")[0] if (run / "first_pass" / "missions").exists() else None
-    md = markdown(rows, meta, run, a.note, first_rows)
+    notes = (run / "notes.md").read_text() if (run / "notes.md").exists() else ""
+    md = markdown(rows, meta, run, a.note, first_rows, notes)
     (run / "report.md").write_text(md)
     if a.doc:
         Path(a.doc).write_text(md)
