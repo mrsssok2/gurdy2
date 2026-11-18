@@ -23,7 +23,7 @@ from .grounding import GroundedReply, collect_facts, grounded_reply, violations
 from .fuzzy import suggest_object, suggest_place, suggest_verb
 from .guard import _is_state_change, guard_plan, normalize_call, unknown_noun
 from .llm import LLM
-from .safety import ConfirmationGate, is_clear_yes, SafetyChecker, Verdict, is_unsafe_request
+from .safety import ConfirmationGate, is_clear_no, is_clear_yes, SafetyChecker, Verdict, is_unsafe_request
 
 MAX_LLM_CALLS = 4
 SYSTEM_PROMPT = ("You are Gurdy, a hexapod robot. Turn the user's request into tool calls, or ask / refuse. "
@@ -105,6 +105,8 @@ class Agent:
         if pf is not None and now <= pf["expires_at"]:
             if is_clear_yes(text) and len(pf["options"]) == 1:
                 return next(iter(pf["options"].values()))
+            if is_clear_no(text):
+                return TurnResult("Okay, cancelled.", [], [{"outcome": "cancelled", "rule": "did_you_mean"}], 0, {})
             for name, corrected in pf["options"].items():              # several options: the answer names one ("room B")
                 if re.search(rf"\b{re.escape(name)}\b", text, re.I) and not is_estop_phrase(text):
                     return corrected

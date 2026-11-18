@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import argparse
+import sys
+import threading
 import time
 
 
@@ -14,6 +16,8 @@ def main() -> None:
     ap.add_argument("--map-id", default="unknown")
     ap.add_argument("--odom-topic", default="/odometry/filtered")
     ap.add_argument("--memory-db", default=None, help="SQLite file: objects / missions / places survive restarts (per --map-id)")
+    ap.add_argument("--serve", type=int, default=None, metavar="PORT",
+                    help="also serve the agent to a voice client (brain.voice.cli --remote HOST:PORT); the typed chat keeps working")
     ap.add_argument("--ollama", default=None, help="model name; needs OLLAMA_URL")
     a = ap.parse_args()
     from ..agent.graph import Agent
@@ -39,7 +43,18 @@ def main() -> None:
     from .chat_ui import Chat
     chat = Chat(agent, be.known_places, prompt="> ")
     print("Gurdy (ROS). Type a command; 'status' line = '?'; '!estop' / '!release' = emergency stop latch; 'quit' to exit.")
-    chat.start()                       # progress, alerts and new objects arrive on their own, without breaking what you type
+    if a.serve:
+        from ..voice.host import AgentHost, serve
+        host = AgentHost(agent)
+        host.lock = chat.lock                 # typed chat and voice share ONE agent lock
+        host.start()                          # the chat's own pump thread is not started when voice serves (one pump, spoken + printed)
+        host.on_message(lambda m: chat.say_async("Gurdy: " + m))
+        serve(host, a.serve)
+        print(f"voice server on :{a.serve}", flush=True)
+        if not sys.stdin.isatty():            # started without a terminal (voice mode of start_agent_chat.sh): just serve
+            threading.Event().wait()
+    else:
+        chat.start()                       # progress, alerts and new objects arrive on their own, without breaking what you type
     while True:
         try:
             text = input("> ").strip()

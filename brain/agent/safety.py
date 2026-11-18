@@ -200,6 +200,14 @@ _YES = re.compile(r"^\s*(?:(?:yes|yeah|yep|yup|sure|ok|okay|correct|confirm(?:ed
                   r"go ahead|do it|please|thanks|thank you)\b[\s,.!]*)+$", re.I)
 
 
+_NO = re.compile(r"^\s*(?:(?:no|nope|nah|negative|cancel|never ?mind|don'?t|do not|wrong|not that)\b[\s,.!]*)+$", re.I)
+
+
+def is_clear_no(text: str) -> bool:
+    """An unambiguous no ("no", "nope", "never mind"). A plain command is not a no."""
+    return bool(_NO.match(text))
+
+
 def is_clear_yes(text: str) -> bool:
     """Only an unambiguous yes counts ("yes but go left" does not)."""
     return bool(_YES.match(text))

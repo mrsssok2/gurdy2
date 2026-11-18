@@ -1,41 +1,103 @@
-"""Run a WAV file (or the live mic) through the voice pipeline against the mock world.
-  python3 -m brain.voice.cli --wav utterance.wav [--stt-model /path/to/ct2 --device cpu] [--tts-model piper.onnx]
-  python3 -m brain.voice.cli --mic --ptt      (WSLg mic via parecord, voice image; Enter = press / release)  [live path untested]
-Without --stt-model / --tts-model the engines are not loaded (STT prints nothing): give both for a real run."""
+"""Voice front end for the agent.
+
+  # live, mock world, CPU (voice image):   scripts/voice_chat.sh        (see below)
+  python3 -m brain.voice.cli --mic [--vad] [--mock | --remote HOST:PORT] [--ollama MODEL | keyword planner]
+  python3 -m brain.voice.cli --wav utterance.wav ...                    (one recorded utterance through the same pipeline, mock world)
+
+--mic      : persistent mic stream (WSLg parecord, 1.5 s warm-up discarded), Piper replies through paplay.
+             Push-to-talk by default (Enter = start, Enter = send); --vad = always listening. A typed line is a command as text.
+--mock     : the agent runs in this process on the mock world (default). --remote HOST:PORT: the agent runs elsewhere
+             (`python3 -m brain.ros.run_text --serve PORT` in the sim image; see scripts/start_agent_chat.sh VOICE=true).
+Models: --stt-model (CTranslate2 Whisper dir, default /models/whisper-turbo-ct2), --tts-model (Piper .onnx, default /models/tts/piper-lessac.onnx).
+The Whisper vocabulary bias is fed with the agent's place names. Speaking (barge-in): talk or press Enter while it speaks and it stops at once."""
 from __future__ import annotations
 
 import argparse
+import os
+import queue
+import sys
+import threading
 
 import numpy as np
 
-from ..agent.graph import Agent
-from ..agent.llm import KeywordLLM
-from ..mock import MockBackend
-from ..tools import ToolLayer
-from .audio import FRAME_N, frames, read_wav
+from .audio import FRAME_N, AplaySink, ArecordSource, frames, read_wav
 from .pipeline import VoiceConfig, VoicePipeline
-from .stt import FasterWhisperSTT
-from .tts import PiperTTS, Speaker
+
+
+def build_local_host(ollama: str | None):
+    from ..agent.graph import Agent
+    from ..mock import MockBackend
+    from ..tools import ToolLayer
+    from .host import AgentHost
+    b = MockBackend()
+    if ollama:
+        from ..agent.ollama_llm import OllamaLLM
+        llm = OllamaLLM(model=ollama, constrain=not ollama.startswith("gurdy-sft"))
+    else:
+        from ..agent.llm import KeywordLLM
+        llm = KeywordLLM(b.known_places)
+    return AgentHost(Agent(ToolLayer(b), llm)), b
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--mic", action="store_true")
     ap.add_argument("--wav")
-    ap.add_argument("--stt-model", required=True)
-    ap.add_argument("--tts-model", required=True)
-    ap.add_argument("--device", default="cpu")
+    ap.add_argument("--vad", action="store_true", help="always listening (default: push-to-talk with Enter)")
+    ap.add_argument("--mock", action="store_true", help="agent in this process on the mock world (default)")
+    ap.add_argument("--remote", help="HOST:PORT of an agent served by brain.ros.run_text --serve")
+    ap.add_argument("--ollama", default=os.environ.get("MODEL") or None, help="LLM model name (needs OLLAMA_URL); default: keyword planner")
+    ap.add_argument("--stt-model", default="/models/whisper-turbo-ct2")
+    ap.add_argument("--tts-model", default="/models/tts/piper-lessac.onnx")
+    ap.add_argument("--device", default="cpu", help="Whisper device: cpu | cuda")
+    ap.add_argument("--no-bias", action="store_true", help="no Whisper vocabulary bias")
     a = ap.parse_args()
-    b = MockBackend()
-    agent = Agent(ToolLayer(b), KeywordLLM(b.known_places))
-    pipe = VoicePipeline(FasterWhisperSTT(a.stt_model, a.device), Speaker(PiperTTS(a.tts_model)),
-                         lambda t, c: agent.say(t, c).reply, lambda: agent.layer.call("stop"),
-                         lambda: b.t > 0 and agent.executor.state == "running", VoiceConfig())
-    audio = np.concatenate([read_wav(a.wav), np.zeros(FRAME_N * 40, np.float32)])
-    for f in frames(audio):
-        pipe.feed(f)
-    for e in pipe.log:
-        print(e)
+    if not (a.mic or a.wav):
+        ap.error("give --mic or --wav")
+
+    if a.remote:
+        from .host import RemoteHost
+        host, mock = RemoteHost(a.remote), None
+    else:
+        host, mock = build_local_host(a.ollama if a.mic or a.ollama else None)
+    from .stt import FasterWhisperSTT
+    from .tts import PiperTTS, Speaker
+    print("loading Whisper + Piper ...", flush=True)
+    stt = FasterWhisperSTT(a.stt_model, a.device, places=host.places() or None, bias=not a.no_bias)
+    tts = PiperTTS(a.tts_model)
+
+    if a.wav:                                       # one utterance, synchronous, mock world
+        agent = host.agent
+        pipe = VoicePipeline(stt, Speaker(tts), lambda t, c: agent.say(t, c).reply, lambda: agent.layer.call("stop"),
+                             lambda: agent.executor.state == "running", VoiceConfig())
+        for f in frames(np.concatenate([read_wav(a.wav), np.zeros(FRAME_N * 40, np.float32)])):
+            pipe.feed(f)
+        for e in pipe.log:
+            print(e)
+        return
+
+    from .live import LivePipeline, LockedSpeaker, run_live, stdin_controls
+    mode = "vad" if a.vad else "ptt"
+    host.start()
+    pipe = LivePipeline(stt, LockedSpeaker(Speaker(tts, AplaySink())), host, VoiceConfig(mode=mode))
+    ctl: queue.Queue = queue.Queue()
+    src = ArecordSource()
+    print("opening the microphone (1.5 s warm-up) ...", flush=True)
+    src.start()
+    if src.warmup_rms < 1e-4:
+        print("  warning: the mic delivered silence while warming up (check `scripts/mic_test.sh list`)")
+    stdin_controls(ctl, mode)
+    print(("Always listening: just speak." if a.vad else "Push-to-talk: press Enter, speak, press Enter.")
+          + " Type a command to send it as text. 'stop' works any time. 'q' quits.\nReady.", flush=True)
+    try:
+        run_live(pipe, src, ctl)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        pipe.close(); host.close(); src.close(); pipe.speaker.stop()
 
 
 if __name__ == "__main__":
     main()
+    sys.stdout.flush()
+    os._exit(0)

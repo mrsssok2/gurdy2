@@ -3,6 +3,6 @@
 FROM gurdy2/brain:cpu
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends pulseaudio-utils && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir faster-whisper==1.2.1
+RUN pip install --no-cache-dir faster-whisper==1.2.1 piper-tts
 USER ubuntu
 ENV PULSE_SERVER=unix:/mnt/wslg/PulseServer

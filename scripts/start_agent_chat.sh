@@ -3,12 +3,13 @@
 #   scripts/start_agent_chat.sh            # flat_lab, model gurdy-sft-400
 #   GUI=true scripts/start_agent_chat.sh   # with the Gazebo window (WSLg)
 #   MODEL=qwen3:1.7b scripts/start_agent_chat.sh
+#   VOICE=true scripts/start_agent_chat.sh # voice instead of typing: mic + Whisper (CPU) + Piper in the `voice` container (push-to-talk: Enter; VAD=true = always listening)
 #   MEMORY=false scripts/start_agent_chat.sh   # no persistent memory (default: on, file ~/.gurdy/memory.db, rows per map_id)
 # Needs: nothing else running (docker ps empty). Starts this project's Ollama on :11435 if it is not up. Takes ~2.5 min until the prompt appears.
 # Type e.g.: go to room B | find the red box | what is near you | stop | why did you stop | patrol room A and room B | quit
 set -eo pipefail
 cd "$(dirname "$0")/.."
-export MODEL=${MODEL:-gurdy-sft-400} GUI=${GUI:-false} MEMORY=${MEMORY:-true}; PORT=11435
+export MODEL=${MODEL:-gurdy-sft-400} GUI=${GUI:-false} MEMORY=${MEMORY:-true} VOICE=${VOICE:-false} VAD=${VAD:-false}; PORT=11435
 mkdir -p "$HOME/.gurdy"
 if [ -n "$(docker ps -q)" ]; then echo "Other containers are running (docker ps). Stop them first (one heavy workload at a time)."; exit 1; fi
 if ! curl -sf "localhost:$PORT/api/tags" >/dev/null; then
@@ -19,6 +20,26 @@ fi
 curl -s "localhost:$PORT/api/tags" | grep -q "\"$MODEL" || { echo "model $MODEL not in Ollama (see brain/tools/Modelfile.sft)"; exit 1; }
 curl -s "localhost:$PORT/api/generate" -d "{\"model\":\"$MODEL\",\"keep_alive\":\"30m\"}" >/dev/null   # load the model before the sim competes for RAM
 export OLLAMA_URL=http://$(hostname -I | cut -d' ' -f1):$PORT
+if [ "$VOICE" = true ]; then   # the agent runs headless in the sim container and serves text on gurdy_agent:8765 (compose network); the voice container talks to it
+  docker compose run --rm -T --name gurdy_agent -e OLLAMA_URL -e MODEL -e GUI -e MEMORY -e DETECTOR_LOG -v "$HOME/.gurdy:/home/ubuntu/.gurdy" sim bash -c '
+    cd ~/gurdy2 && source ros2_ws/install/setup.bash && export PYTHONPATH=$HOME/gurdy2:$HOME/gurdy2/gurdy_core:$HOME/gurdy2/sim_mujoco:$PYTHONPATH
+    source scripts/lib_nav_start.sh; mkdir -p /tmp/chat; cp maps/flat_lab.places.yaml /tmp/chat/places.yaml
+    trap "stop_nav_stack" EXIT
+    start_nav_stack /tmp/chat gui:=$GUI world:=flat_lab perception:=true estop_gate:=true target_frame:=map nav:=localization map:=flat_lab_tripod_gt navigation:=true controller:=policy odom_source:=ground_truth > /tmp/chat/start.log 2>&1 < /dev/null \
+      || { echo "Nav2 never became ready (see /tmp/chat/launch.log)"; exit 1; }
+    ros2 launch gurdy_safety monitors.launch.py odom_topic:=/odom > /tmp/chat/monitors.log 2>&1 < /dev/null &
+    ros2 run gurdy_navigation frontier_explorer_node --ros-args -p serve_action:=true -p clock_topic:=/clock_slow -p log_path:=/tmp/chat/explore_log.json -p done_path:=/tmp/chat/explore.done > /tmp/chat/explorer.log 2>&1 < /dev/null &
+    sleep 12
+    MEMORY_ARGS=""; [ "$MEMORY" = true ] && MEMORY_ARGS="--memory-db /home/ubuntu/.gurdy/memory.db"
+    exec python3 -m brain.ros.run_text --ollama "$MODEL" --places /tmp/chat/places.yaml --map-id flat_lab --odom-topic /odom ${MEMORY_ARGS} --serve 8765
+  ' > /tmp/gurdy_agent.log 2>&1 &
+  trap "docker rm -f gurdy_agent >/dev/null 2>&1" EXIT
+  echo "starting the simulation (about 2.5 minutes; log /tmp/gurdy_agent.log) ..."
+  for _ in $(seq 400); do grep -q "voice server on" /tmp/gurdy_agent.log 2>/dev/null && break; grep -q "never became ready" /tmp/gurdy_agent.log 2>/dev/null && { tail -5 /tmp/gurdy_agent.log; exit 1; }; sleep 1; done
+  grep -q "voice server on" /tmp/gurdy_agent.log || { echo "agent did not start"; tail -5 /tmp/gurdy_agent.log; exit 1; }
+  docker compose run --rm voice python3 -m brain.voice.cli --mic --remote gurdy_agent:8765 $([ "$VAD" = true ] && echo --vad)
+  exit 0
+fi
 docker compose run --rm $([ -t 0 ] || echo -T) --name gurdy_agent -e OLLAMA_URL -e MODEL -e GUI -e MEMORY -e DETECTOR_LOG -v "$HOME/.gurdy:/home/ubuntu/.gurdy" sim bash -c '
   cd ~/gurdy2 && source ros2_ws/install/setup.bash && export PYTHONPATH=$HOME/gurdy2:$HOME/gurdy2/gurdy_core:$HOME/gurdy2/sim_mujoco:$PYTHONPATH
   source scripts/lib_nav_start.sh; mkdir -p /tmp/chat; cp maps/flat_lab.places.yaml /tmp/chat/places.yaml   # zones the chat adds stay out of git

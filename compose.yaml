@@ -75,11 +75,12 @@ services:
     environment:
       PULSE_SERVER: unix:/mnt/wslg/PulseServer
       OLLAMA_URL: ${OLLAMA_URL:-}
-      PYTHONPATH: /home/ubuntu/gurdy2:/home/ubuntu/gurdy2/gurdy_core
+      PYTHONPATH: /home/ubuntu/gurdy2:/home/ubuntu/gurdy2/gurdy_core:/pk
     volumes:
       - .:/home/ubuntu/gurdy2
       - /mnt/wslg:/mnt/wslg
       - ${HOME}/p5_models:/models:ro
+      - ${HOME}/p5_piper312:/pk:ro      # piper-tts for Python 3.12 (pip --target; see scripts/voice_chat.sh)
 
   # RL training (Phase 2): headless MuJoCo + SB3. Never run together with `sim` (RAM rule).
   #   docker compose run --rm rl python3 rl/bench.py

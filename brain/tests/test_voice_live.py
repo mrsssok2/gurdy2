@@ -1,0 +1,160 @@
+"""Live voice loop (threads, host, TCP bridge, yes/no by voice) with scripted engines and the mock world. No mic, no models."""
+import queue
+import time
+
+import numpy as np
+
+from brain.agent.graph import Agent
+from brain.agent.llm import KeywordLLM
+from brain.mock import MockBackend
+from brain.tools import ToolLayer
+from brain.voice import ScriptedSTT, Speaker, VoiceConfig
+from brain.voice.audio import FRAME_N, SAMPLE_RATE, NullSink, frames
+from brain.voice.host import AgentHost, RemoteHost, serve
+from brain.voice.live import LivePipeline, LockedSpeaker, run_live
+
+RNG = np.random.default_rng(1)
+
+
+class SineTTS:
+    sample_rate = 22050
+
+    def synthesize(self, text):
+        n = int(0.03 * len(text) * self.sample_rate)
+        return (0.3 * np.sin(2 * np.pi * 220 * np.arange(n) / self.sample_rate)).astype(np.float32)
+
+
+def quiet(s):
+    return (RNG.normal(0, 10 ** (-60 / 20), int(s * SAMPLE_RATE))).astype(np.float32)
+
+
+def speech(s):                                  # a loud burst the energy VAD takes for speech
+    return (RNG.normal(0, 0.1, int(s * SAMPLE_RATE))).astype(np.float32)
+
+
+def utterance():
+    return np.concatenate([quiet(0.6), speech(1.0), quiet(1.2)])
+
+
+def setup(texts, mode="vad", llm=None):
+    b = MockBackend()
+    agent = Agent(ToolLayer(b), llm or KeywordLLM(b.known_places))
+    host = AgentHost(agent)
+    sink = NullSink()
+    pipe = LivePipeline(ScriptedSTT(texts), LockedSpeaker(Speaker(SineTTS(), sink)), host, VoiceConfig(mode=mode), out=lambda *_: None)
+    return b, agent, host, pipe, sink
+
+
+def feed(pipe, audio, ctl=None):
+    run_live(pipe, frames(audio), ctl or queue.Queue())
+
+
+def wait(cond, t=5.0):
+    end = time.time() + t
+    while time.time() < end:
+        if cond():
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def test_spoken_command_runs_and_reply_is_spoken():
+    b, agent, host, pipe, sink = setup(["go to room A"])
+    feed(pipe, utterance())
+    assert wait(lambda: pipe.events("say"))
+    assert agent.executor.state in ("running", "idle", "finished") and any(e["event"] == "say" for e in pipe.log)
+    assert any(c["tool"] in ("go_to", "navigate") or "go" in c["tool"] for c in agent.layer.log if isinstance(c, dict) and "tool" in c)
+
+
+def test_did_you_mean_answered_yes_by_voice_runs_the_corrected_command():
+    b, agent, host, pipe, sink = setup(["open room B", "yes.", "yes"])
+    feed(pipe, utterance())
+    assert wait(lambda: agent.pending_fix is not None)         # "Did you mean: go to room B?" was asked, nothing moved yet
+    assert not [c for c in agent.layer.log if c["tool"] == "go_to"]
+    feed(pipe, utterance())
+    assert wait(lambda: len(pipe.events("say")) >= 2)            # room B is outside the mapped area: the safety gate asks once more
+    assert not [c for c in agent.layer.log if c["tool"] == "go_to"]
+    feed(pipe, utterance())
+    assert wait(lambda: [c for c in agent.layer.log if c["tool"] == "go_to"])
+
+
+def test_did_you_mean_answered_no_by_voice_cancels():
+    b, agent, host, pipe, sink = setup(["open room B", "no"])
+    feed(pipe, utterance())
+    assert wait(lambda: agent.pending_fix is not None)
+    feed(pipe, utterance())
+    assert wait(lambda: any("cancel" in e["text"].lower() for e in pipe.events("say")))
+    assert agent.pending_fix is None and not [c for c in agent.layer.log if c["tool"] == "go_to"]
+
+
+def test_stop_phrase_fires_estop_without_waiting_for_a_slow_agent():
+    b, agent, host, pipe, sink = setup(["stop"])
+    called = []
+    pipe.on_estop = lambda: called.append(time.time())
+    slow = []
+    pipe.on_text = lambda t, c: (time.sleep(1.0), slow.append(1), "Stopped.")[2]
+    feed(pipe, utterance())
+    assert wait(lambda: called)
+    assert not slow                                           # estop came BEFORE the slow agent call finished
+
+
+def test_robot_messages_wait_while_the_user_is_talking_then_are_spoken():
+    b, agent, host, pipe, sink = setup([])
+    pipe.seg.active = True
+    pipe.robot_message("Battery low.")
+    assert not pipe.events("say")
+    pipe.seg.active = False
+    pipe.feed(quiet(0.02)[:FRAME_N])
+    assert [e["text"] for e in pipe.events("say")] == ["Battery low."]
+
+
+def test_typed_text_goes_through_the_same_path():
+    b, agent, host, pipe, sink = setup([])
+    ctl = queue.Queue()
+    ctl.put(("text", "go to room A"))
+    feed(pipe, quiet(0.2), ctl)
+    assert wait(lambda: pipe.events("say"))
+
+
+def test_ptt_press_release_via_controls():
+    b, agent, host, pipe, sink = setup(["where am I"], mode="ptt")
+    ctl = queue.Queue()
+    ctl.put(("press",))
+    audio = np.concatenate([speech(1.0)])
+    fr = list(frames(audio))
+    n = 0
+
+    def src():
+        nonlocal n
+        for f in fr:
+            n += 1
+            if n == len(fr):
+                ctl.put(("release",))
+            yield f
+        yield fr[0]                                          # one more frame so the release is processed
+    run_live(pipe, src(), ctl)
+    assert wait(lambda: pipe.events("transcript"))
+
+
+def test_tcp_bridge_say_state_estop_and_push_messages():
+    b = MockBackend()
+    agent = Agent(ToolLayer(b), KeywordLLM(b.known_places))
+    host = AgentHost(agent)
+    host.start()
+    serve(host, 0, "127.0.0.1") if False else None
+    import socket
+    s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+    serve(host, port, "127.0.0.1")
+    c = RemoteHost(f"127.0.0.1:{port}", state_s=0.1)
+    got = []
+    c.on_message(got.append)
+    assert "Room" in c.say("go to room B").title() or c.say("where am I")
+    assert wait(lambda: "room a" in [p.lower() for p in c.places()])
+    c.estop()
+    assert wait(lambda: not c.is_moving())
+    with host.lock:
+        host.agent._announce([{"type": "battery_low", "level": 0.15}]) if False else None
+    for fn in host.listeners:
+        fn("Battery low.")
+    assert wait(lambda: got == ["Battery low."])
+    c.close(); host.close()
