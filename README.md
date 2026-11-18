@@ -15,6 +15,19 @@ Everything runs offline: ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL
 
 ![Gurdy driven by the fine-tuned LLM: chat and Gazebo side by side](docs/images/gurdy_live_run.png)
 
+## Voice control in Gazebo
+
+Spoken English commands go through push-to-talk, Whisper on the GPU and the same agent as typed input; the robot answers aloud.
+
+![Go to room B and find the red box](docs/images/gurdy_voice_room_b.png)
+*Go to room B and find the red box: it reports the box is really in room A.*
+
+![Go home](docs/images/gurdy_voice_go_home.png)
+*Go home: arrives 0.1 m from the goal.*
+
+![Stop, then find the red box](docs/images/gurdy_voice_stop_find.png)
+*Stop heard in 0.3 s, then find the red box.*
+
 ## Architecture
 
 Runtime:
@@ -68,6 +81,7 @@ flowchart LR
 | LLM brain, 40 unseen casual phrasings | base 35 % → fine-tuned **65 %** (test set written by an AI assistant, not by humans) | [OOD eval](docs/results/phase5_eval_ood.md) |
 | Hallucinated replies | 0 hallucinated replies reached the user (28 checked; the grounding check blocks any fact not in that turn's tool results: 0 needed blocking for the fine-tuned model, 4 for the base model) | [SFT eval](docs/results/phase5_eval_sft.md) |
 | Live LLM-driven Gazebo missions | 9/9 typed missions completed (go-to, find, patrol, stop, refusal, clarification) | [live test](docs/results/phase5_live_test.md) |
+| Voice (read-aloud, 43 real clips) | word error rate 3.7 %, exact-command accuracy 86 %, speech-to-text ~0.3 s per clip on the GPU | [voice eval](docs/results/phase5_eval_sft_v2.md) |
 | Leg-failure adaptation (negative result) | missed the < 40 % criterion, worse than the open-loop tripod; not deployed | [Experiment B](docs/results/exp_B_leg_failure.md) |
 
 Per-phase tables and RL training commands: [docs/RESULTS.md](docs/RESULTS.md). All write-ups: [docs/results/](docs/results/). The selected walking policy everywhere is `terrain_dr2` 15M.
