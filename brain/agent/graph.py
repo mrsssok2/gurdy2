@@ -51,6 +51,8 @@ class TurnState(TypedDict, total=False):
     llm_calls: int
     calls: list[dict]
     cont: bool
+    followup_skip: set
+    followup: bool          # a motion plan said `continue`: plan the rest when the mission has finished
     approved: bool
     reply_parts: list[str]
     reply: str
@@ -82,6 +84,7 @@ class Agent:
         self.replan_used = False        # at most one re-plan per user request (a re-plan's own failure is only reported)
         self.replans: list[dict] = []   # log of re-plan attempts (evaluation / debugging)
         self.alerts = alerts or AlertManager()
+        self.followup: dict | None = None        # {utterance, log_start, done}: plan the rest of the request once the mission is done
         self.pending_fix: dict | None = None    # "Did you mean room B?" waiting for a yes: {options: {name: corrected text}, expires_at}
         self.graph = self._build()
 
@@ -110,6 +113,8 @@ class Agent:
                          "llm_calls": 0, "calls": [], "reply_parts": [], "verdicts": [], "events": [], "grounding": {},
                          "approved": False, "has_query": False, "cont": False, "notes": []}
         out = self.graph.invoke(st)
+        if out.get("followup"):
+            self.followup = {"utterance": out["utterance"], "log_start": self.executor.log_start}
         return TurnResult(out["reply"], out["calls"], out["verdicts"], out["llm_calls"], out["grounding"], out["events"])
 
     # ---- speech-recognition repair: unknown place / object close to a known one -> ask, never run it unconfirmed
@@ -142,7 +147,28 @@ class Agent:
         if self.executor.state == "awaiting_confirmation" and self.executor.waiting and not self.gate.pending:
             w = self.executor.waiting
             self.gate.hold("mission_step", {"calls": self.executor.remaining_calls(), "resume": True}, w.reason)
-        return self._announce(evs)
+        msgs = self._announce(evs)
+        if self.followup is not None:
+            if self.executor.state == "done":
+                msgs += self._run_followup()
+            elif self.executor.state in ("failed", "cancelled", "idle"):
+                self.followup = None
+        return msgs
+
+    def _run_followup(self) -> list[str]:
+        """The first part of a request was motion with `continue: true` (the rest needs its outcome): plan again now, with the
+        results of the finished steps in front of the planner. Calls that repeat an already finished step are dropped
+        (never walk to the same place twice)."""
+        f, self.followup = self.followup, None
+        done = {(st.tool, repr(st.args)) for st in self.executor.steps if st.status == "done"}
+        st: TurnState = {"utterance": f["utterance"], "stt_confidence": None, "log_start": f["log_start"], "llm_calls": 0, "calls": [],
+                         "reply_parts": [], "verdicts": [], "events": [], "grounding": {}, "approved": False, "has_query": False,
+                         "cont": False, "notes": [], "followup_skip": done}
+        try:
+            out = self.graph.invoke(st)
+        except Exception:                                    # noqa: BLE001  never break pump()
+            return []
+        return [out["reply"]] if out.get("reply_parts") and out.get("reply") else []
 
     def _announce(self, evs: list[dict]) -> list[str]:
         out: list[str] = []
@@ -252,6 +278,7 @@ class Agent:
                     ev = self.executor.approve_and_continue()
                     return {"reply_parts": ["Okay."], "next": "finish", "events": ev}
                 return {"calls": p.args["calls"], "approved": True, "next": "execute",
+                        "cont": bool(p.args.get("cont")), "utterance": p.args.get("utterance", text),
                         "verdicts": [{"outcome": "confirmed", "rule": p.reason}]}
         noun = unknown_noun(text, self.layer.backend.known_places())
         if noun:                                   # no concept of this thing: say so, never substitute a known one (no LLM call)
@@ -276,6 +303,11 @@ class Agent:
         if out.get("done") and s["has_query"]:      # the model says the results so far answer the request
             return {"llm_calls": n, "next": "respond"}
         if "calls" in out and out["calls"]:
+            skip = s.get("followup_skip")
+            if skip:
+                out = {**out, "calls": [c for c in out["calls"] if (c["tool"], repr(c.get("args", {}))) not in skip]}
+                if not out["calls"]:
+                    return {"reply_parts": [], "llm_calls": n, "next": "finish"}
             g = guard_plan(s["utterance"], list(out["calls"]), self.layer.focus, self._recall_classes)
             if g.reply is not None:
                 outcome = "refuse" if g.rule == "unknown_tool" else "none"
@@ -317,7 +349,7 @@ class Agent:
                 self.layer.call("ask_user", {"question": v.reason, **({"options": v.options[:6]} if v.options else {})})
                 return {"reply_parts": [q], "verdicts": s["verdicts"] + verdicts, "next": "finish"}
             if v.outcome == "confirm":
-                self.gate.hold(c["tool"], {"calls": pending_calls}, v.reason)
+                self.gate.hold(c["tool"], {"calls": pending_calls, "cont": s["cont"], "utterance": s["utterance"]}, v.reason)
                 return {"reply_parts": [v.reason], "verdicts": s["verdicts"] + verdicts, "next": "finish"}
         return {"verdicts": s["verdicts"] + verdicts, "next": "execute"}
 
@@ -369,11 +401,15 @@ class Agent:
                         parts.append(templates.describe_event(done) if done else templates.ack(step.tool, step.args, step.result))
                     elif step.status == "failed":
                         parts.append(templates.error_text(step.result) if step.result and step.result.get("error") else "I could not start that.")
+                later = [templates.ack(st.tool, st.args, {}) for st in self.executor.steps if st.status == "pending"]
+                if later and self.executor.state == "running":        # say the rest of the plan, so it is not lost to the listener
+                    parts.append("Next: " + "; then ".join(t.rstrip(".") for t in later) + ".")
                 if self.executor.state == "awaiting_confirmation" and self.executor.waiting:
                     self.gate.hold("mission_step", {"calls": self.executor.remaining_calls(), "resume": True},
                                    self.executor.waiting.reason)
                     parts.append(self.executor.waiting.reason)
-        upd = {"reply_parts": s["reply_parts"] + parts, "events": s["events"] + events, "has_query": has_query,
+        upd = {"followup": bool(s["cont"] and motion and not has_query and self.executor.active),
+               "reply_parts": s["reply_parts"] + parts, "events": s["events"] + events, "has_query": has_query,
                "calls": [{**c, "_done": True} for c in s["calls"]]}
         if s["cont"] and s["llm_calls"] < MAX_LLM_CALLS and has_query and not asked:
             return {**upd, "cont": False, "next": "plan"}

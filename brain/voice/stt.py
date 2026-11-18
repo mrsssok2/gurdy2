@@ -24,16 +24,24 @@ class STT(Protocol):
 
 class FasterWhisperSTT:
     def __init__(self, model_path: str, device: str = "cpu", compute_type: str | None = None, beam_size: int = 1, language: str = "en",
-                 places=None, bias: bool = True):
+                 places=None, bias: "bool | str" = "prompt"):
         from faster_whisper import WhisperModel
         self.model = WhisperModel(model_path, device=device, compute_type=compute_type or ("int8_float16" if device == "cuda" else "int8"))
         self.beam, self.language = beam_size, language
         self.set_vocabulary(places, bias)
 
-    def set_vocabulary(self, places=None, bias: bool = True) -> None:
-        """Bias decoding towards the current place names / object classes / colours (call again when places change)."""
+    def set_vocabulary(self, places=None, bias: "bool | str" = "prompt") -> None:
+        """Bias decoding towards the current place names / object classes / colours (call again when places change).
+        bias: "none" | "prompt" (initial_prompt only: default, best confidence on the 5 real clips of 2026-11-18)
+              | "full" (prompt + hotwords: made short phrases WORSE there; kept for room letters, see scripts/voice_ab.py).
+        True = "full", False = "none" (old calls)."""
         from .vocab import hotwords, initial_prompt
-        self.prompt, self.hotwords = (initial_prompt(places), hotwords(places)) if bias else (None, None)
+        bias = {True: "full", False: "none"}.get(bias, bias)
+        if bias not in ("none", "prompt", "full"):
+            raise ValueError("bias: none | prompt | full")
+        self.bias = bias
+        self.prompt = initial_prompt(places) if bias in ("prompt", "full") else None
+        self.hotwords = hotwords(places) if bias == "full" else None
 
     def transcribe(self, audio: np.ndarray, sr: int = SAMPLE_RATE) -> Transcript:
         if sr != SAMPLE_RATE:

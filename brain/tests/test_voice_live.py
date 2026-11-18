@@ -217,3 +217,40 @@ def test_trim_keeps_a_soft_onset():
     audio = np.concatenate([quiet(0.5), soft, speech(0.6), quiet(0.5)])
     out = seg._trim(audio)
     assert len(out) >= len(soft) + len(speech(0.6)) - n
+
+
+def test_keyword_plan_after_yes_says_and_runs_the_whole_plan():
+    b = MockBackend()
+    agent = Agent(ToolLayer(b), KeywordLLM(b.known_places))
+    agent.say("Go to room B and find the red box", 0.9)
+    r = agent.say("yes", 0.9)
+    assert "Going to room B" in r.reply and "Next: Looking for the red box" in r.reply
+    msgs = []
+    for _ in range(12):
+        b.advance(10)
+        msgs += agent.pump()
+    assert [s.status for s in agent.executor.steps] == ["done", "done"] and any("Found the red box" in m for m in msgs)
+
+
+def test_continue_flag_survives_the_confirmation_and_never_repeats_the_walk():
+    from brain.agent import ScriptedLLM
+    from test_agent import RED, agent_for, call
+    seen = []
+
+    def second(**kw):
+        seen.append(kw["tool_results"])
+        return {"calls": [call("go_to", place="room B"), call("find", object=RED)]}   # the model repeats the first call
+    llm = ScriptedLLM(plans=[{"calls": [call("go_to", place="room B")], "continue": True}, second])
+    b, l, a = agent_for(llm, explored=False)
+    assert "Shall I go" in a.say("Go to room B and find the red box").reply
+    a.say("yes")
+    walks = []
+    msgs = []
+    for _ in range(14):
+        b.advance(10)
+        msgs += a.pump()
+        walks.append([(s.tool, s.status) for s in a.executor.steps])
+    assert len(llm.plan_calls) == 2 and llm.plan_calls[1]["utterance"] == "Go to room B and find the red box"
+    assert any(r["tool"] == "go_to" for r in seen[0])                 # the planner sees the finished walk
+    assert [t for t, _ in walks[-1]] == ["find"] and walks[-1][0][1] == "done"
+    assert any("Found the red box" in m for m in msgs)

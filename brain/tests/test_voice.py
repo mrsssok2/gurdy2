@@ -231,3 +231,14 @@ def test_ptt_preroll_keeps_speech_before_the_press():
 def test_vad_preroll_keeps_a_soft_onset():
     seg = Segmenter()
     assert seg.preroll.maxlen * 0.02 >= 0.4 - 1e-9
+
+
+def test_bias_modes():
+    from brain.voice.stt import FasterWhisperSTT
+    s = object.__new__(FasterWhisperSTT)
+    for mode, has_prompt, has_hot in (("none", False, False), ("prompt", True, False), ("full", True, True), (True, True, True), (False, False, False)):
+        s.set_vocabulary(["room A", "room B"], mode)
+        assert (s.prompt is not None, s.hotwords is not None) == (has_prompt, has_hot), mode
+    import pytest
+    with pytest.raises(ValueError):
+        s.set_vocabulary(None, "loud")

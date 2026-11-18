@@ -51,7 +51,9 @@ def main() -> None:
     ap.add_argument("--tts-model", default="/models/tts/piper-lessac.onnx")
     ap.add_argument("--device", default="cpu", help="Whisper device: cpu | cuda")
     ap.add_argument("--no-debug-wav", action="store_true", help="do not save each utterance to brain/runs/voice_debug/")
-    ap.add_argument("--no-bias", action="store_true", help="no Whisper vocabulary bias")
+    ap.add_argument("--bias", choices=["none", "prompt", "full"], default=os.environ.get("VOICE_BIAS", "prompt"),
+                    help="Whisper vocabulary bias: none | prompt (default) | full (prompt + hotwords). Env VOICE_BIAS")
+    ap.add_argument("--no-bias", action="store_true", help="same as --bias none")
     a = ap.parse_args()
     if not (a.mic or a.wav):
         ap.error("give --mic or --wav")
@@ -64,7 +66,7 @@ def main() -> None:
     from .stt import FasterWhisperSTT
     from .tts import PiperTTS, Speaker
     print("loading Whisper + Piper ...", flush=True)
-    stt = FasterWhisperSTT(a.stt_model, a.device, places=host.places() or None, bias=not a.no_bias)
+    stt = FasterWhisperSTT(a.stt_model, a.device, places=host.places() or None, bias="none" if a.no_bias else a.bias)
     tts = PiperTTS(a.tts_model)
 
     if a.wav:                                       # one utterance, synchronous, mock world
