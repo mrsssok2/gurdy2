@@ -1,6 +1,6 @@
 """Run a WAV file (or the live mic) through the voice pipeline against the mock world.
   python3 -m brain.voice.cli --wav utterance.wav [--stt-model /path/to/ct2 --device cpu] [--tts-model piper.onnx]
-  python3 -m brain.voice.cli --mic --ptt      (WSLg mic via arecord; Enter = press / release)  [live path untested]
+  python3 -m brain.voice.cli --mic --ptt      (WSLg mic via parecord, voice image; Enter = press / release)  [live path untested]
 Without --stt-model / --tts-model the engines are not loaded (STT prints nothing): give both for a real run."""
 from __future__ import annotations
 

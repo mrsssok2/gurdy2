@@ -50,10 +50,10 @@ def frames(audio: np.ndarray, n: int = FRAME_N):
 
 # ---------------------------------------------------------------- real devices (WSLg PulseAudio; not used by the tests)
 class ArecordSource:
-    """Mic frames from `parecord`/`arecord` (raw s16le 16 kHz mono on stdout). Iterating blocks in real time."""
+    """Mic frames from `parecord` (WSLg PulseAudio) (raw s16le 16 kHz mono on stdout). Iterating blocks in real time."""
 
     def __init__(self, cmd: list[str] | None = None):
-        self.cmd = cmd or ["arecord", "-q", "-f", "S16_LE", "-r", str(SAMPLE_RATE), "-c", "1", "-t", "raw"]
+        self.cmd = cmd or ["parecord", "--raw", "--format=s16le", f"--rate={SAMPLE_RATE}", "--channels=1", "--latency-msec=20"]
         self.proc: subprocess.Popen | None = None
 
     def __iter__(self):
@@ -95,14 +95,14 @@ class NullSink:
 
 
 class AplaySink:
-    """Plays chunks through `aplay` (raw s16le). stop() kills the process: playback ends within the pipe buffer."""
+    """Plays chunks through `paplay` (raw s16le). stop() kills the process: playback ends within the pipe buffer."""
 
     def __init__(self):
         self.proc: subprocess.Popen | None = None
 
     def start(self, sr: int) -> None:
         self.stop()
-        self.proc = subprocess.Popen(["aplay", "-q", "-f", "S16_LE", "-r", str(sr), "-c", "1", "-t", "raw", "-B", "100000"],
+        self.proc = subprocess.Popen(["paplay", "--raw", "--format=s16le", f"--rate={sr}", "--channels=1", "--latency-msec=100"],
                                      stdin=subprocess.PIPE)
 
     def write(self, chunk: np.ndarray) -> None:

@@ -66,6 +66,21 @@ services:
     volumes:
       - .:/home/ubuntu/gurdy2
 
+  # Phase 5.8 live voice: PulseAudio tools + faster-whisper (CPU). Mic/speaker through WSLg. See scripts/mic_test.sh
+  voice:
+    profiles: [voice]
+    image: gurdy2/voice:cpu
+    build:
+      context: docker/voice
+    environment:
+      PULSE_SERVER: unix:/mnt/wslg/PulseServer
+      OLLAMA_URL: ${OLLAMA_URL:-}
+      PYTHONPATH: /home/ubuntu/gurdy2:/home/ubuntu/gurdy2/gurdy_core
+    volumes:
+      - .:/home/ubuntu/gurdy2
+      - /mnt/wslg:/mnt/wslg
+      - ${HOME}/p5_models:/models:ro
+
   # RL training (Phase 2): headless MuJoCo + SB3. Never run together with `sim` (RAM rule).
   #   docker compose run --rm rl python3 rl/bench.py
   #   docker compose run --rm --service-ports rl tensorboard --logdir runs --bind_all   # :6006
