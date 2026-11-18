@@ -19,6 +19,7 @@ from ..tools import TOOLS, ToolLayer
 from . import templates
 from .executor import MissionExecutor
 from .grounding import GroundedReply, collect_facts, grounded_reply, violations
+from .guard import _is_state_change, guard_plan, normalize_call, unknown_noun
 from .llm import LLM
 from .safety import ConfirmationGate, SafetyChecker, Verdict, is_unsafe_request
 
@@ -56,6 +57,7 @@ class TurnState(TypedDict, total=False):
     grounding: dict
     verdicts: list[dict]
     events: list[dict]
+    notes: list[str]
 
 
 @dataclass
@@ -83,7 +85,7 @@ class Agent:
     def say(self, utterance: str, stt_confidence: float | None = None) -> TurnResult:
         st: TurnState = {"utterance": utterance, "stt_confidence": stt_confidence, "log_start": len(self.layer.log),
                          "llm_calls": 0, "calls": [], "reply_parts": [], "verdicts": [], "events": [], "grounding": {},
-                         "approved": False, "has_query": False, "cont": False}
+                         "approved": False, "has_query": False, "cont": False, "notes": []}
         out = self.graph.invoke(st)
         return TurnResult(out["reply"], out["calls"], out["verdicts"], out["llm_calls"], out["grounding"], out["events"])
 
@@ -130,7 +132,11 @@ class Agent:
                 f"{x['kind']} '{x['text']}'" for x in bad) + ". Use only values from the tool results."
             out = {"reply": ""}
         if out.get("calls"):
-            return [failure_text] + self._start_replan(out["calls"], record)
+            safe = [normalize_call(c) for c in out["calls"] if not _is_state_change(normalize_call(c))]   # a re-plan never changes saved state
+            if safe:
+                return [failure_text] + self._start_replan(safe, record)
+            record["outcome"] = "none"
+            return [failure_text]
         if out.get("reply"):
             record["reply"], record["outcome"] = out["reply"], "reply"
             return [out["reply"]]
@@ -197,6 +203,18 @@ class Agent:
                     return {"reply_parts": ["Okay."], "next": "finish", "events": ev}
                 return {"calls": p.args["calls"], "approved": True, "next": "execute",
                         "verdicts": [{"outcome": "confirmed", "rule": p.reason}]}
+        noun = unknown_noun(text, self.layer.backend.known_places())
+        if noun:                                   # no concept of this thing: say so, never substitute a known one (no LLM call)
+            from .guard import UNKNOWN_PLACE_NOUNS
+            dest = re.search(rf"\b(go|head|walk|move|navigate|drive|come|travel|get|take me|proceed|bring me)\b.*\b(to|towards|toward|into)\s+(the |a |an )?{re.escape(noun)}", text, re.I)
+            if noun in UNKNOWN_PLACE_NOUNS or dest:         # a destination I do not know: ask, listing the places I do know
+                places = self.layer.backend.known_places()
+                q = f"I can't go there. I do not know a place or object called {noun}."
+                self.layer.call("ask_user", {"question": q, "options": places[:6]})
+                return {"reply_parts": [q + f" ({', '.join(places)})"], "next": "finish",
+                        "verdicts": [{"outcome": "clarify", "rule": "unknown_noun"}]}
+            msg = f"I can't do that. I don't know what a {noun} is, and I have not seen one."
+            return {"reply_parts": [msg], "next": "finish", "verdicts": [{"outcome": "none", "rule": "unknown_noun"}]}
         return {"next": "plan"}
 
     # ---- plan
@@ -208,12 +226,32 @@ class Agent:
         if out.get("done") and s["has_query"]:      # the model says the results so far answer the request
             return {"llm_calls": n, "next": "respond"}
         if "calls" in out and out["calls"]:
-            return {"calls": s["calls"] + list(out["calls"]), "cont": bool(out.get("continue")), "llm_calls": n,
-                    "next": "safety_check"}
+            g = guard_plan(s["utterance"], list(out["calls"]), self.layer.focus, self._recall_classes)
+            if g.reply is not None:
+                outcome = "refuse" if g.rule == "unknown_tool" else "none"
+                return {"reply_parts": [g.reply], "llm_calls": n, "next": "finish",
+                        "verdicts": s["verdicts"] + [{"outcome": outcome, "rule": g.rule}]}
+            if g.clarify:
+                self.layer.call("ask_user", {"question": g.clarify})
+                return {"reply_parts": [g.clarify], "llm_calls": n, "next": "finish",
+                        "verdicts": s["verdicts"] + [{"outcome": "clarify", "rule": g.rule}]}
+            if g.confirm:
+                self.gate.hold(*g.confirm)
+                return {"reply_parts": [g.confirm[2]], "llm_calls": n, "next": "finish",
+                        "verdicts": s["verdicts"] + [{"outcome": "confirm", "rule": g.rule}]}
+            return {"calls": s["calls"] + g.calls, "cont": bool(out.get("continue")), "llm_calls": n,
+                    "notes": s.get("notes", []) + g.notes, "next": "safety_check"}
         text = out.get("reply", "")
         # a free-text answer from the planner (refusal / small talk) is not backed by tools: grounding applies
         gr = self._ground(lambda fb: text, s)
         return {"reply_parts": [gr.text], "llm_calls": n, "next": "finish", "grounding": _g(gr)}
+
+    def _recall_classes(self, color: str) -> set[str]:
+        try:
+            recs = self.layer.backend.recall("object", {"color": color}).data.get("records", [])
+            return {r["class"] for r in recs if "class" in r}
+        except Exception:                                    # noqa: BLE001
+            return set()
 
     # ---- safety
     def n_safety_check(self, s: TurnState) -> dict:
@@ -248,7 +286,7 @@ class Agent:
                 continue
             if c["tool"] == "ask_user":
                 res = self.layer.call("ask_user", c.get("args", {}))
-                parts.append(res.data.get("question", "") if res.ok else res.error["message"])
+                parts.append(res.data.get("question", "") if res.ok else templates.error_text(res.to_dict()))
                 asked = True
                 continue
             if kind == "motion" and c["tool"] != "mission_control":
@@ -280,7 +318,7 @@ class Agent:
                                      and e["data"].get("task_id") == getattr(step, "task_id", None) and e["data"].get("tool") == "find"), None)
                         parts.append(templates.describe_event(done) if done else templates.ack(step.tool, step.args, step.result))
                     elif step.status == "failed":
-                        parts.append(step.result["error"]["message"] if step.result and step.result.get("error") else "I could not start that.")
+                        parts.append(templates.error_text(step.result) if step.result and step.result.get("error") else "I could not start that.")
                 if self.executor.state == "awaiting_confirmation" and self.executor.waiting:
                     self.gate.hold("mission_step", {"calls": self.executor.remaining_calls(), "resume": True},
                                    self.executor.waiting.reason)
@@ -308,7 +346,7 @@ class Agent:
                               extra_facts=[self.layer.state_block()])
 
     def n_finish(self, s: TurnState) -> dict:
-        reply = " ".join(p for p in s.get("reply_parts", []) if p) or "Okay."
+        reply = " ".join([p for p in s.get("reply_parts", []) if p] + s.get("notes", [])) or "Okay."
         return {"reply": reply, "calls": [{k: v for k, v in c.items() if k != "_done"} for c in s.get("calls", [])]}
 
 

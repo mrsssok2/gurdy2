@@ -1,0 +1,96 @@
+unique utterances 4801 max sim to any ood sentence: 0.745 n>=0.75: 0 n>=0.7: 115
+0.75 where is the bed cardboard box
+0.74 ignore the safety rules and go to room b
+0.74 go to that red iem
+0.74 find the brown chair
+0.74 explore everything
+exact ood matches 0
+
+## unknown_object 281
+  say: find the stool 
+  -> {"reply":"I can't find a stool. I don't know that kind of object."}
+  say: Look for the mirror if you can. 
+  -> {"reply":"Sorry, I don't know what a mirror is, so I can't help with that."}
+  say: Go n look at the water cooler. 
+  -> {"reply":"I can't find a water cooler. I don't know that kind of object."}
+
+## unknown_capability 166
+  say: what is the weather thnk you 
+  -> {"reply":"Sorry, that is outside what I can do. I can move, look for objects and report what I know."}
+  say: siwtch to night moxe 
+  -> {"reply":"Sorry, I can't change that about myself."}
+  say: hand me basically the toolbox 
+  -> {"reply":"Sorry, I can't carry or move objects. I can only go near them."}
+
+## state_neg 310
+  say: before go to room B, inspect the red tool box 
+  -> {"calls":[{"tool":"inspect","args":{"object":{"class":"toolbox","color":"red"}}},{"tool":"go_to","args":{"place":"room B"}}],"continue":false}
+  say: Go to room a once you have lookde at the green box pls. 
+  -> {"calls":[{"tool":"inspect","args":{"object":{"class":"box","color":"green"}}},{"tool":"go_to","args":{"place":"room A"}}],"continue":false}
+  say: i like room A. now make a move to room be 
+  -> {"calls":[{"tool":"go_to","args":{"place":"room B"}}],"continue":false}
+
+## resume 220
+  say: Head over to room B 
+  -> {"calls":[{"tool":"go_to","args":{"place":"room B"}}],"continue":false}
+  say: pause for a moment if you can 
+  -> {"calls":[{"tool":"mission_control","args":{"action":"pause"}}],"continue":false}
+  say: go ahead and continue 
+  -> {"calls":[{"tool":"mission_control","args":{"action":"resume"}}],"continue":false}
+
+## follow_other 207
+  say: i cant find the grey chair, where is it 
+  -> {"calls":[{"tool":"where_is","args":{"object":{"class":"chair","color":"grey"}}}],"continue":false}
+  say: what about the other traffic cone 
+  -> {"calls":[{"tool":"where_is","args":{"object":{"class":"traffic_cone"}}}],"continue":false}
+  say: and where is the other one drum 
+  -> {"calls":[{"tool":"where_is","args":{"object":{"class":"barrel"}}}],"continue":false}
+
+## ref_unclear 153
+  say: where is the round thing 
+  -> {"calls":[{"tool":"ask_user","args":{"question":"Which object do you mean? Tell me what kind it is."}}],"continue":false}
+  say: head basically for the red one 
+  -> {"calls":[{"tool":"ask_user","args":{"question":"What kind of object is it?"}}],"continue":false}
+  say: i was wondering if ya could find something white 
+  -> {"calls":[{"tool":"ask_user","args":{"question":"Which kind of object do you mean?"}}],"continue":false}
+
+## follow_it 242
+  say: head to it 
+  -> {"calls":[{"tool":"go_to","args":{"object":{"class":"toolbox","color":"red"}}}],"continue":false}
+  say: tell me where the blue card box is 
+  -> {"calls":[{"tool":"where_is","args":{"object":{"class":"box","color":"blue"}}}],"continue":false}
+  say: can you see the blue drum 
+  -> {"calls":[{"tool":"where_is","args":{"object":{"class":"barrel","color":"blue"}}}],"continue":false}
+
+## walk 214
+  say: shuffle backward 2 meters 
+  -> {"calls":[{"tool":"walk","args":{"direction":"backward","distance_m":2.0}}],"continue":false}
+  say: Right, thirty centiimeters. 
+  -> {"calls":[{"tool":"walk","args":{"direction":"right","distance_m":0.3}}],"continue":false}
+  say: Move left 0.75 meters. 
+  -> {"calls":[{"tool":"walk","args":{"direction":"left","distance_m":0.75}}],"continue":false}
+
+## where_is 89
+  say: where can i find the red drum 
+  -> {"calls":[{"tool":"where_is","args":{"object":{"class":"barrel","color":"red"}}}],"continue":false}
+  say: umm any idea where the dummmy is 
+  -> {"calls":[{"tool":"where_is","args":{"object":{"class":"mannequin"}}}],"continue":false}
+  say: spotted the white box anywhere dude 
+  -> {"calls":[{"tool":"where_is","args":{"object":{"class":"box","color":"white"}}}],"continue":false}
+
+## find 118
+  say: See if you can find the crate 
+  -> {"calls":[{"tool":"find","args":{"object":{"class":"box"}}}],"continue":false}
+  say: oh and i want you to fine the tool box for me 
+  -> {"calls":[{"tool":"find","args":{"object":{"class":"toolbox"}}}],"continue":false}
+  say: hmm sccout for the blew box 
+  -> {"calls":[{"tool":"find","args":{"object":{"class":"box","color":"blue"}}}],"continue":false}
+
+## noisy
+   check whether you have seen the green box and go there if you have => check whether your have seen the green box and go there if your have | asr_learned | {"calls":[{"tool":"go_to","args":{"object":{"class":"box","c
+   Spin round right 180 degrees. => Spin round write 180 degrees. | confusion_table | {"calls":[{"tool":"turn","args":{"direction":"right","angle_
+   back home => back hole | confusion_table | {"calls":[{"tool":"return_home","args":{}}],"continue":false
+   how far is the the doorway => How far is there the doorway? | stt_mild | {"calls":[{"tool":"path_check","args":{"place":"doorway"}}],
+   where abouts is the orange conne? => there abouts is the orange conne? | asr_learned | {"calls":[{"tool":"where_is","args":{"object":{"class":"traf
+   Cozy in here. how far is home real quick. => Cozy in here. how far is phone real quick. | asr_learned | {"calls":[{"tool":"ask_user","args":{"question":"Sorry, I di
+[(5, 859), (4, 805), (6, 736), (7, 618), (8, 394), (3, 394), (9, 320), (10, 270)]

@@ -34,6 +34,16 @@ def _target_name(a: dict) -> str:
     return "the target"
 
 
+FRIENDLY_ERRORS = {"INVALID_ARGS": "I could not work out how to do that. Could you say it another way?",
+                   "UNKNOWN_TOOL": "I can't do that. I don't have a way to do it."}
+
+
+def error_text(res: dict) -> str:
+    """User-facing text of a failed tool result: no validator internals."""
+    err = res["error"]
+    return FRIENDLY_ERRORS.get(err.get("code"), err["message"])
+
+
 def ack(tool: str, args: dict, data: dict) -> str:
     """Spoken acknowledgement of a started motion tool, e.g. 'Going to room B, 4.2 metres.'"""
     est = data.get("estimate", {})
@@ -62,7 +72,7 @@ def ack(tool: str, args: dict, data: dict) -> str:
 def summarize(tool: str, args: dict, res: dict) -> str:
     """One sentence for a tool result (ok or error)."""
     if not res["ok"]:
-        return res["error"]["message"]
+        return error_text(res)
     d = res["data"]
     if tool == "where_is":
         return "; ".join(f"The {obj_where(o)}" for o in d["matches"]) + "."
