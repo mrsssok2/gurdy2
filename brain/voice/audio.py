@@ -50,26 +50,57 @@ def frames(audio: np.ndarray, n: int = FRAME_N):
 
 # ---------------------------------------------------------------- real devices (WSLg PulseAudio; not used by the tests)
 class ArecordSource:
-    """Mic frames from `parecord` (WSLg PulseAudio) (raw s16le 16 kHz mono on stdout). Iterating blocks in real time."""
+    """Mic frames from `parecord` (WSLg PulseAudio) (raw s16le 16 kHz mono on stdout). Iterating blocks in real time.
 
-    def __init__(self, cmd: list[str] | None = None):
+    The WSLg RDPSource is SUSPENDED when nothing records and needs ~1 s to wake up: the start of a fresh stream is silent or
+    very quiet. So the stream is opened ONCE (`start()`, or on the first iteration) and stays open for the whole session
+    (never open/close per utterance); the first `warmup_s` seconds are discarded (both in samples and in wall time), and
+    the voice loop's segmenter keeps a pre-roll buffer so the first syllable of an utterance is never cut."""
+
+    def __init__(self, cmd: list[str] | None = None, warmup_s: float = 1.5, wall_clock: bool = True):
         self.cmd = cmd or ["parecord", "--raw", "--format=s16le", f"--rate={SAMPLE_RATE}", "--channels=1", "--latency-msec=20"]
+        self.warmup_s, self.wall_clock = warmup_s, wall_clock      # wall_clock=False: count samples only (tests with a fast fake source)
         self.proc: subprocess.Popen | None = None
+        self.warm = False
+        self.warmup_rms = 0.0               # level of what was discarded (diagnostics)
+
+    def _read(self) -> np.ndarray | None:
+        raw = self.proc.stdout.read(FRAME_N * 2)
+        if len(raw) < FRAME_N * 2:
+            return None
+        return np.frombuffer(raw, "<i2").astype(np.float32) / 32768.0
+
+    def start(self) -> None:
+        """Open the stream (if not open) and discard the warm-up audio. Blocks about `warmup_s`. Idempotent."""
+        import time
+        if self.proc is None or self.proc.poll() is not None:
+            self.proc, self.warm = subprocess.Popen(self.cmd, stdout=subprocess.PIPE), False
+        if self.warm:
+            return
+        t0, n, sq = time.monotonic(), 0, 0.0
+        while n * FRAME_N < self.warmup_s * SAMPLE_RATE or (self.wall_clock and time.monotonic() - t0 < self.warmup_s):
+            f = self._read()
+            if f is None:
+                break
+            n, sq = n + 1, sq + float(np.mean(f ** 2))
+        self.warmup_rms = float(np.sqrt(sq / n)) if n else 0.0
+        self.warm = True
 
     def __iter__(self):
-        self.proc = subprocess.Popen(self.cmd, stdout=subprocess.PIPE)
+        self.start()
         try:
             while True:
-                raw = self.proc.stdout.read(FRAME_N * 2)
-                if len(raw) < FRAME_N * 2:
+                f = self._read()
+                if f is None:
                     return
-                yield np.frombuffer(raw, "<i2").astype(np.float32) / 32768.0
+                yield f
         finally:
             self.close()
 
     def close(self):
         if self.proc and self.proc.poll() is None:
             self.proc.kill()
+        self.proc, self.warm = None, False
 
 
 class NullSink:

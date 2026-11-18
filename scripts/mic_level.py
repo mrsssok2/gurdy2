@@ -5,6 +5,9 @@ w = wave.open(sys.argv[1])
 a = np.frombuffer(w.readframes(w.getnframes()), "<i2").astype(float) / 32768
 peak, rms = abs(a).max(), np.sqrt((a ** 2).mean())
 print(f"recorded {len(a) / w.getframerate():.1f} s, peak {peak:.3f}, rms {rms:.4f}")
+n = int(0.5 * w.getframerate())
+r0, r1 = np.sqrt((a[:n] ** 2).mean()), np.sqrt((a[n:] ** 2).mean())
+print(f"rms first 0.5 s {r0:.4f}, rest {r1:.4f}" + ("   <- start is much quieter than the rest (stream not warm?)" if r0 < 0.2 * r1 else ""))
 if peak >= 0.99:
     print("WARNING: clipping (peak >= 0.99). Lower the microphone volume in Windows (Sound settings -> Input) and record again.")
 elif peak < 0.01:

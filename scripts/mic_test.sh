@@ -10,9 +10,8 @@ docker compose run --rm voice bash -c '
   echo "== sources (mic = non-monitor)"; pactl list short sources
   echo "== sinks"; pactl list short sinks
   [ "'"${1:-}"'" = list ] && exit 0
-  echo; echo "RECORDING 5 s in 2 s ... say: go to room B and then find the red box"; sleep 2; echo ">>> SPEAK NOW"
-  mkdir -p tmp_audio; parecord --rate=16000 --channels=1 --format=s16le --file-format=wav tmp_audio/mic_test.wav & P=$!
-  sleep 5; kill -INT $P; wait $P 2>/dev/null || true
+  echo; echo "opening the mic stream (WSLg wakes it in ~1 s; that audio is discarded) ..."
+  mkdir -p tmp_audio; python3 scripts/mic_record.py tmp_audio/mic_test.wav 5 1.5      # prints ">>> SPEAK NOW" after the warm-up
   python3 -I scripts/mic_level.py tmp_audio/mic_test.wav
   echo ">>> PLAYBACK"; paplay tmp_audio/mic_test.wav
   echo "== Whisper turbo, CPU int8"

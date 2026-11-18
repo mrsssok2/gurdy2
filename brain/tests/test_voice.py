@@ -185,3 +185,49 @@ def test_real_whisper_outputs_for_stop_and_halt_hit_the_fast_path(heard):
     """'top.' and 'Holt.' are what Whisper turbo (CPU int8) returned for the Piper clips stop.wav / halt.wav."""
     from brain.agent.graph import is_estop_phrase
     assert is_estop_phrase(heard)
+
+
+# ---------------------------------------------------------------- mic warm-up / pre-roll (WSLg RDPSource wakes in ~1 s)
+def _fake_mic_cmd(silent_s, tone_s):
+    import sys
+    code = ("import sys,numpy as np;sr=16000;"
+            f"z=np.zeros(int({silent_s}*sr),'<i2');t=(8000*np.sin(np.arange(int({tone_s}*sr))*0.2)).astype('<i2');"
+            "sys.stdout.buffer.write(z.tobytes()+t.tobytes());sys.stdout.buffer.flush()")
+    return [sys.executable, "-c", code]
+
+
+def test_source_discards_warmup_and_stays_open():
+    from brain.voice.audio import ArecordSource
+    src = ArecordSource(_fake_mic_cmd(1.0, 1.0), warmup_s=1.0, wall_clock=False)
+    src.start()
+    proc = src.proc
+    src.start()                                           # idempotent: the same stream, not a reopen
+    assert src.proc is proc and src.warmup_rms == 0.0
+    first = next(iter(src))
+    assert np.sqrt((first ** 2).mean()) > 0.1             # the silent wake-up is gone, the first frame we get is live audio
+    src.close()
+
+
+def test_source_without_warmup_starts_in_the_silence():
+    from brain.voice.audio import ArecordSource
+    src = ArecordSource(_fake_mic_cmd(1.0, 1.0), warmup_s=0.0, wall_clock=False)
+    assert np.sqrt((next(iter(src)) ** 2).mean()) == 0.0
+    src.close()
+
+
+def test_ptt_preroll_keeps_speech_before_the_press():
+    seg = Segmenter(mode="ptt")
+    tone = (0.3 * np.sin(np.arange(FRAME_N * 10) * 0.2)).astype(np.float32)
+    for f in frames(np.concatenate([noise(1.0), tone])):             # speech starts, the button comes 10 frames later
+        seg.feed(f)
+    seg.press()
+    for f in frames(noise(0.3)):
+        seg.feed(f)
+    ev = seg.release()
+    assert ev and ev[0][0] == "end" and ev[0][1] is not None
+    assert np.abs(ev[0][1]).max() > 0.2                               # the first syllable (before the press) is in the segment
+
+
+def test_vad_preroll_keeps_a_soft_onset():
+    seg = Segmenter()
+    assert seg.preroll.maxlen * 0.02 >= 0.4 - 1e-9

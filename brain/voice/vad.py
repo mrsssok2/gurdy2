@@ -39,7 +39,7 @@ class EnergyVad:
 
 
 class Segmenter:
-    def __init__(self, vad=None, mode: str = "vad", start_s: float = 0.12, hangover_s: float = 0.5, preroll_s: float = 0.2,
+    def __init__(self, vad=None, mode: str = "vad", start_s: float = 0.12, hangover_s: float = 0.5, preroll_s: float = 0.4, ptt_preroll_s: float = 0.3,
                  max_s: float = 15.0, min_s: float = 0.2, partial_every_s: float | None = None):
         if mode not in ("vad", "ptt"):
             raise ValueError("mode: vad | ptt")
@@ -51,6 +51,7 @@ class Segmenter:
         self.n_min = max(1, round(min_s / FRAME_S))
         self.n_partial = round(partial_every_s / FRAME_S) if partial_every_s else 0
         self.preroll: deque = deque(maxlen=max(1, round(preroll_s / FRAME_S)))
+        self.ptt_preroll: deque = deque(maxlen=max(1, round(ptt_preroll_s / FRAME_S)))   # audio just before the button press
         self.buf: list[np.ndarray] = []
         self.active = False
         self.ptt_down = False
@@ -72,9 +73,12 @@ class Segmenter:
         ev: list = []
         if self.mode == "ptt":
             if not self.ptt_down:
+                self.ptt_preroll.append(frame)       # people start talking a moment before / while pressing
                 return ev
             if not self.buf:
                 ev.append(("start", None))
+                self.buf = list(self.ptt_preroll)
+                self.ptt_preroll.clear()
             self.buf.append(frame)
             return ev + self._partial()
         if not self.active:
