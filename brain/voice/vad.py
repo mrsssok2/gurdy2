@@ -46,6 +46,7 @@ class Segmenter:
         self.vad = vad or EnergyVad()
         self.mode = mode
         self.n_start = max(1, round(start_s / FRAME_S))
+        self.lead_pad, self.tail_pad = 12, 8          # frames kept before the first / after the last loud frame (0.24 s / 0.16 s)
         self.n_hang = max(1, round(hangover_s / FRAME_S))
         self.n_max = round(max_s / FRAME_S)
         self.n_min = max(1, round(min_s / FRAME_S))
@@ -119,5 +120,5 @@ class Segmenter:
         idx = [i for i, v in enumerate(lv) if v > thr]
         if not idx:
             return audio[:0]
-        a, b = max(0, idx[0] - 5), min(len(lv), idx[-1] + 6)
+        a, b = max(0, idx[0] - self.lead_pad), min(len(lv), idx[-1] + 1 + self.tail_pad)   # soft onsets ("Wh-", "Where") must survive
         return audio[a * n:b * n]

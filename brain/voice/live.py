@@ -51,10 +51,11 @@ class LockedSpeaker:
 
 
 class LivePipeline(VoicePipeline):
-    def __init__(self, stt, speaker, host, cfg: VoiceConfig | None = None, say_prefix: str = "", out=print, **kw):
+    def __init__(self, stt, speaker, host, cfg: VoiceConfig | None = None, say_prefix: str = "", out=print, debug_dir=None, **kw):
         sp = speaker if isinstance(speaker, LockedSpeaker) else LockedSpeaker(speaker)
         super().__init__(stt, sp, lambda t, c: host.say(t, c), host.estop, host.is_moving, cfg, **kw)
         self.host, self.out = host, out
+        self.debug_dir, self._n_saved = debug_dir, 0     # every utterance is saved as a WAV (+ index.jsonl) to listen to later
         self.jobs: queue.Queue = queue.Queue()
         self._partial_busy = threading.Event()
         self._held: list[str] = []                    # robot messages waiting until the user stops talking
@@ -105,8 +106,30 @@ class LivePipeline(VoicePipeline):
             except Exception as e:                      # never let one bad turn kill the loop
                 self.out(f"[voice] error: {type(e).__name__}: {e}")
 
+    def _save_debug(self, audio: np.ndarray, tr) -> None:
+        if not self.debug_dir:
+            return
+        import json
+        from pathlib import Path
+        from .audio import write_wav
+        d = Path(self.debug_dir)
+        d.mkdir(parents=True, exist_ok=True)
+        self._n_saved += 1
+        name = f"{time.strftime('%Y%m%d_%H%M%S')}_{self._n_saved:03d}.wav"
+        write_wav(d / name, audio)
+        a = np.asarray(audio, np.float32)
+        rec = {"wav": name, "text": tr.text, "confidence": tr.confidence, "audio_s": round(len(a) / SAMPLE_RATE, 2),
+               "rms": float(np.sqrt(np.mean(a ** 2))) if len(a) else 0.0, "peak": float(np.abs(a).max()) if len(a) else 0.0,
+               "mode": self.cfg.mode, "robot_speaking": bool(self.speaker.speaking)}
+        with open(d / "index.jsonl", "a") as f:
+            f.write(json.dumps(rec) + "\n")
+
     def _utterance_job(self, audio: np.ndarray) -> None:
         tr = self.stt.transcribe(audio)
+        try:
+            self._save_debug(audio, tr)
+        except Exception as e:                          # noqa: BLE001  debugging aid, never breaks the loop
+            self.out(f"[voice] could not save wav: {e}")
         self.log.append({"t": self.t, "event": "transcript", "text": tr.text, "stt_s": tr.seconds, "audio_s": len(audio) / SAMPLE_RATE})
         if not tr.text:
             self.out("(heard nothing)")

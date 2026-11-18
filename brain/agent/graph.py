@@ -86,7 +86,21 @@ class Agent:
         self.graph = self._build()
 
     # ------------------------------------------------------------------ public API
+    def _reask(self, text: str, conf: float | None) -> "TurnResult | None":
+        """Low speech-recognition confidence: repeat what was heard and ask again, before any planning (no LLM call).
+        Never for a stop, a yes / no, or while a question is pending."""
+        if conf is None or conf >= self.safety.cfg.get("stt_reask_below", 0.5) or not text.strip():
+            return None
+        if (self.gate.pending is not None or self.pending_fix is not None or is_estop_phrase(text)
+                or is_clear_yes(text) or is_clear_no(text)):
+            return None
+        return TurnResult(f"I heard '{text.strip()}'. Can you say that again?", [],
+                          [{"outcome": "clarify", "rule": "low_stt_confidence"}], 0, {})
+
     def say(self, utterance: str, stt_confidence: float | None = None) -> TurnResult:
+        again = self._reask(utterance, stt_confidence)
+        if again is not None:
+            return again
         fixed = self._did_you_mean(utterance, stt_confidence)
         if isinstance(fixed, TurnResult):
             return fixed

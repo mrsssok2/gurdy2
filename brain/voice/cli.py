@@ -50,6 +50,7 @@ def main() -> None:
     ap.add_argument("--stt-model", default="/models/whisper-turbo-ct2")
     ap.add_argument("--tts-model", default="/models/tts/piper-lessac.onnx")
     ap.add_argument("--device", default="cpu", help="Whisper device: cpu | cuda")
+    ap.add_argument("--no-debug-wav", action="store_true", help="do not save each utterance to brain/runs/voice_debug/")
     ap.add_argument("--no-bias", action="store_true", help="no Whisper vocabulary bias")
     a = ap.parse_args()
     if not (a.mic or a.wav):
@@ -79,7 +80,8 @@ def main() -> None:
     from .live import LivePipeline, LockedSpeaker, run_live, stdin_controls
     mode = "vad" if a.vad else "ptt"
     host.start()
-    pipe = LivePipeline(stt, LockedSpeaker(Speaker(tts, AplaySink())), host, VoiceConfig(mode=mode))
+    pipe = LivePipeline(stt, LockedSpeaker(Speaker(tts, AplaySink())), host, VoiceConfig(mode=mode),
+                        debug_dir=None if a.no_debug_wav else os.environ.get("VOICE_DEBUG_DIR", "brain/runs/voice_debug"))
     ctl: queue.Queue = queue.Queue()
     src = ArecordSource()
     print("opening the microphone (1.5 s warm-up) ...", flush=True)

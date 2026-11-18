@@ -158,3 +158,61 @@ def test_tcp_bridge_say_state_estop_and_push_messages():
         fn("Battery low.")
     assert wait(lambda: got == ["Battery low."])
     c.close(); host.close()
+
+
+# ---- low confidence, debug WAVs, soft onsets, confirmation keeps the whole plan
+def test_low_confidence_repeats_what_was_heard_without_acting():
+    b = MockBackend()
+    agent = Agent(ToolLayer(b), KeywordLLM(b.known_places))
+    for text in ("That up.", "Are you?"):
+        r = agent.say(text, 0.3)
+        assert r.reply == f"I heard '{text}'. Can you say that again?" and r.llm_calls == 0 and b.task is None
+    assert agent.say("where are you", 0.83).reply != "I heard 'where are you'. Can you say that again?"
+
+
+def test_low_confidence_never_blocks_stop_or_yes_no():
+    from brain.agent import ScriptedLLM
+    from test_agent import agent_for, call
+    b, _, agent = agent_for(ScriptedLLM(plans=[{"calls": [call("go_to", place="room B")]}]))
+    agent.say("go to room B", 0.9)
+    assert agent.executor.state == "running"
+    assert "heard" not in agent.say("stop", 0.2).reply and agent.executor.state != "running"
+    b2 = MockBackend()
+    a2 = Agent(ToolLayer(b2), KeywordLLM(b2.known_places))
+    a2.gate.hold("go_to", {"calls": []}, "Shall I go?")
+    assert "heard" not in a2.say("yes", 0.2).reply
+
+
+def test_confirmation_resumes_the_whole_plan():
+    from brain.agent import ScriptedLLM
+    from test_agent import RED, agent_for, call
+    plan = {"calls": [call("go_to", place="room B"), call("find", object=RED)]}
+    b, l, a = agent_for(ScriptedLLM(plans=[plan, {"reply": "x"}]), explored=False)
+    assert "Shall I go" in a.say("Go to room B and find the red box").reply
+    a.say("yes")
+    assert [s.tool for s in a.executor.steps] == ["go_to", "find"]
+    b.advance(120)
+    a.pump()
+    assert [s.status for s in a.executor.steps][0] == "done" and a.executor.steps[1].status in ("running", "done")
+
+
+def test_every_utterance_is_saved_as_wav_with_index(tmp_path):
+    import json
+    b = MockBackend()
+    host = AgentHost(Agent(ToolLayer(b), KeywordLLM(b.known_places)))
+    pipe = LivePipeline(ScriptedSTT(["where are you"]), LockedSpeaker(Speaker(SineTTS(), NullSink())), host, VoiceConfig(mode="vad"),
+                        out=lambda *_: None, debug_dir=tmp_path / "vd")
+    feed(pipe, utterance())
+    time.sleep(0.5)
+    rows = [json.loads(x) for x in (tmp_path / "vd" / "index.jsonl").read_text().splitlines()]
+    assert len(rows) == 1 and rows[0]["text"] == "where are you" and (tmp_path / "vd" / rows[0]["wav"]).exists()
+
+
+def test_trim_keeps_a_soft_onset():
+    from brain.voice.vad import Segmenter
+    seg = Segmenter()
+    n = FRAME_N
+    soft = (RNG.normal(0, 0.004, 8 * n)).astype(np.float32)      # "Wh-": quiet start
+    audio = np.concatenate([quiet(0.5), soft, speech(0.6), quiet(0.5)])
+    out = seg._trim(audio)
+    assert len(out) >= len(soft) + len(speech(0.6)) - n
