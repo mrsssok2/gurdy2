@@ -17,6 +17,7 @@ from langgraph.graph import END, StateGraph
 
 from ..tools import TOOLS, ToolLayer
 from . import templates
+from .alerts import ALERT_TYPES, AlertManager
 from .executor import MissionExecutor
 from .grounding import GroundedReply, collect_facts, grounded_reply, violations
 from .guard import _is_state_change, guard_plan, normalize_call, unknown_noun
@@ -72,13 +73,14 @@ class TurnResult:
 
 class Agent:
     def __init__(self, layer: ToolLayer, llm: LLM, safety: SafetyChecker | None = None,
-                 executor: MissionExecutor | None = None):
+                 executor: MissionExecutor | None = None, alerts: AlertManager | None = None):
         self.layer, self.llm = layer, llm
         self.safety = safety or SafetyChecker(layer)
         self.executor = executor or MissionExecutor(layer, self.safety)
         self.gate = ConfirmationGate(layer, self.safety.cfg["confirmation_timeout_s"])
         self.replan_used = False        # at most one re-plan per user request (a re-plan's own failure is only reported)
         self.replans: list[dict] = []   # log of re-plan attempts (evaluation / debugging)
+        self.alerts = alerts or AlertManager()
         self.graph = self._build()
 
     # ------------------------------------------------------------------ public API
@@ -102,6 +104,9 @@ class Agent:
         for e in evs:
             if e["type"] == "mission_failed":
                 out += self._on_mission_failed(e)
+            elif e["type"] in ALERT_TYPES:       # alerts: rate-limited, info only when idle
+                if (m := self.alerts.handle(e, idle=self.executor.state == "idle")):
+                    out.append(m)
             elif (m := templates.describe_event(e)):
                 out.append(m)
         return out

@@ -91,8 +91,11 @@ scripts/start_agent_chat.sh                   # Gazebo + Nav2 + policy + detecto
 
 **The `gurdy-sft-400` model is not published yet** (publishing it on Hugging Face is planned), so build it yourself. The script expects an Ollama model with that name:
 1. Generate the SFT data and fine-tune Qwen3-1.7B with QLoRA: `scripts/p5_datagen.sh`, then `scripts/p5_sft.sh` ([data](docs/results/phase5_datagen.md)).
-2. Merge the LoRA adapter into the fp16 base, convert to GGUF with llama.cpp `convert_hf_to_gguf.py` (tag b12494), quantise to Q4_K_M with `llama-quantize` ([details](docs/results/phase5_eval_sft.md)). These two steps were done by hand, there is no single script yet.
-3. `ollama create gurdy-sft-400 -f brain/tools/Modelfile.sft` (the Modelfile carries the exact training prompt template; put the `.gguf` next to it).
+2. Start this project's Ollama (`OLLAMA_MODELS=~/ollama_models LD_LIBRARY_PATH=/usr/lib/wsl/lib ~/ollama/bin/ollama serve`, it listens on 11435), then build and register the model with one command (CPU only, pinned llama.cpp b12494, no GPU needed):
+   ```bash
+   scripts/build_gguf.sh brain/runs/sft_v1 400 gurdy-sft-400     # <run_dir> <step|final|best> <ollama_name>   (--dry-run prints the plan)
+   ```
+   It merges the LoRA adapter into the fp16 base, converts to GGUF, quantises to Q4_K_M and runs `ollama create` with `brain/tools/Modelfile.sft` (the exact training prompt template). Finished stages are skipped on re-run ([details](docs/results/phase5_eval_sft.md)).
 
 Without the LLM: `docker compose up sim` starts the walking robot in Gazebo (teleop commands in [docs/RESULTS.md](docs/RESULTS.md)). Retraining the walking policy: [docs/RESULTS.md](docs/RESULTS.md#rl-training-commands-phase-2).
 

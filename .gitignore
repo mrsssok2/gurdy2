@@ -51,3 +51,6 @@ vision/runs/
 models/detector/*.pt
 *.pt
 brain/data/
+
+# Persistent agent memory (Phase 5)
+data/memory/

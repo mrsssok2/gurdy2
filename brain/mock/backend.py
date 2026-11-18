@@ -176,7 +176,11 @@ class MockBackend:
             return self._finish(task, "reached" if task.tool in ("go_to", "return_home") else "done")
         seg = task.segments[0]
         kind = seg[0]
-        self.battery = max(0.0, self.battery - BATTERY_DRAIN_PCT_PER_S * h)
+        prev, self.battery = self.battery, max(0.0, self.battery - BATTERY_DRAIN_PCT_PER_S * h)
+        for lim, typ, sev in ((25.0, "battery_low", "warning"), (10.0, "battery_critical", "critical")):
+            if prev > lim >= self.battery:
+                self._emit(typ, sev, f"Battery {typ.split('_')[1]}: {self.battery:.0f} percent (simulated).",
+                           battery_pct=round(self.battery, 1), simulated=True)
         if self.battery <= 0:
             return self._finish(task, "timeout")
         if kind == "rotate_to" or kind == "rotate":

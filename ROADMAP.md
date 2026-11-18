@@ -194,6 +194,7 @@ criteria are 5.A–5.K below (formerly numbered 5.1–5.11); the build order is 
 - [ ] 5.7 Status, event bus, alerts, safety (e-stop gate, no-go zones) in ROS → 5.D, 5.H, 5.I
 - [ ] 5.8 Voice (VAD, Whisper, TTS, streaming e-stop) → 5.B
 - [ ] 5.9 Memory (SQLite, per map) + mission reports → 5.G, 5.J
+  — memory + alerts done in the mock world (2026-11-18, `brain/memory`, `brain/agent/alerts.py`, `brain/tests/test_memory.py`); open: wire `MemoryBackend` into `start_agent_chat.sh` / RosBackend (live restart test), change detection (`object_moved`), mission report file (HTML/Markdown + photos), alert-manager latency log
 - [ ] 5.10 **[EXTRA]** VLM `describe_view` → 5.E
 - [ ] 5.11 Full evaluation (mock + Gazebo subset) + demo video → 5.K  (core: keyword vs base vs SFT, no VLM/DPO; the four-system table follows with the DPO extra)
 

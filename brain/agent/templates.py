@@ -69,6 +69,25 @@ def ack(tool: str, args: dict, data: dict) -> str:
     return "Okay."
 
 
+def _age(s: float) -> str:
+    if s < 90:
+        return "just now"
+    m = s / 60
+    return f"{m:.0f} minutes ago" if m < 90 else f"{m / 60:.0f} hours ago"
+
+
+def _record(r: dict) -> str:
+    """One recall record: object (with age when it comes from memory), mission (tool, target, outcome) or place."""
+    if "class" in r:
+        age = f", last seen {_age(r['age_s'])}" if r.get("from_memory") else ""
+        stale = " (may be out of date)" if r.get("stale") else ""
+        return f"{obj_name(r)} in {r['place']}{age}{stale}"
+    if "tool" in r and "state" in r:
+        tgt = f" {r['target']}" if r.get("target") else ""
+        return f"{r['tool'].replace('_', ' ')}{tgt}, {r['state']}, {_age(r['age_s'])}"
+    return str(r.get("name", r.get("tool")))
+
+
 def summarize(tool: str, args: dict, res: dict) -> str:
     """One sentence for a tool result (ok or error)."""
     if not res["ok"]:
@@ -100,7 +119,7 @@ def summarize(tool: str, args: dict, res: dict) -> str:
         recs = d["records"]
         if not recs:
             return "I have no record of that."
-        return "; ".join(f"{obj_name(r)} in {r['place']}" if "class" in r else str(r.get("name", r.get("tool"))) for r in recs) + "."
+        return "; ".join(_record(r) for r in recs) + "."
     if tool == "describe_view":
         return d["text"]
     if tool == "report":
