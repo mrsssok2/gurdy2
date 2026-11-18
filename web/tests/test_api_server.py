@@ -114,7 +114,7 @@ class Base(unittest.TestCase):
 
 class RestTests(Base):
     def test_health_is_public(self):
-        self.assertEqual(request(self.srv, "GET", "/api/health", token=None), (200, {"ok": True, "version": "0.1"}))
+        self.assertEqual(request(self.srv, "GET", "/api/health", token=None), (200, {"ok": True, "version": "0.1", "demo": False}))
 
     def test_auth_required_everywhere(self):
         for m, p in (("GET", "/api/state"), ("GET", "/api/map"), ("GET", "/api/messages"), ("POST", "/api/say"), ("POST", "/api/estop")):
@@ -338,6 +338,226 @@ class PwaAssets(Base):
         r = c.getresponse()
         r.read()
         self.assertEqual(r.getheader("Cache-Control"), "no-cache")      # a new worker is picked up on the next visit
+
+
+class Clock:
+    def __init__(self):
+        self.t = 1000.0
+
+    def __call__(self):
+        return self.t
+
+
+class DemoBase(unittest.TestCase):
+    def setUp(self):
+        self.host, self.clock = FakeHost(), Clock()
+        self.made = []
+        self.srv = None
+
+    def make(self, **kw):
+        def factory():
+            a = FakeAgent()
+            self.made.append(a)
+            return a
+        args = dict(port=0, state_s=0.05, demo=True, agent_factory=factory, clock=self.clock)
+        args.update(kw)
+        self.srv = GurdyWebServer(self.host, **args).start()
+        return self.srv
+
+    def tearDown(self):
+        if self.srv:
+            self.srv.close()
+
+
+class DemoMode(DemoBase):
+    def test_no_token_needed_and_flagged_as_demo(self):
+        srv = self.make()
+        self.assertEqual(request(srv, "GET", "/api/health", token=None), (200, {"ok": True, "version": "0.1", "demo": True}))
+        st, state = request(srv, "GET", "/api/state", token=None)
+        self.assertEqual((st, state["demo"], state["source"]), (200, True, "mock"))
+        self.assertEqual(request(srv, "GET", "/api/map", token="anything")[0], 200)
+        c = WsClient(srv, path="/ws")
+        self.assertEqual(c.status, 101)
+        self.assertTrue(c.recv_json("hello")["demo"])
+        c.close()
+
+    def test_private_mode_still_needs_token_and_is_not_demo(self):
+        srv = GurdyWebServer(self.host, token=TOKEN, port=0).start()
+        try:
+            self.assertEqual(request(srv, "GET", "/api/state", token=None)[0], 401)
+            self.assertFalse(request(srv, "GET", "/api/health", token=None)[1]["demo"])
+            self.assertNotIn("demo", request(srv, "GET", "/api/state")[1])
+        finally:
+            srv.close()
+
+    def test_refuses_anything_but_the_mock_backend(self):
+        class RealishBackend:
+            pass
+
+        class RealishHost(FakeHost):
+            def __init__(self):
+                super().__init__()
+                self.agent.layer.backend = RealishBackend()
+
+        class RemoteLike:                                   # like RemoteHost: no .agent at all
+            lock = threading.Lock()
+            def say(self, *a, **k): return ""
+            def estop(self): pass
+
+        class OtherTelemetry:
+            def snapshot(self): return {}
+            def map(self): return {}
+
+        with self.assertRaises(ValueError):
+            GurdyWebServer(RealishHost(), port=0, demo=True)
+        with self.assertRaises(ValueError):
+            GurdyWebServer(RemoteLike(), telemetry=OtherTelemetry(), port=0, demo=True)
+        with self.assertRaises(ValueError):
+            GurdyWebServer(FakeHost(), telemetry=OtherTelemetry(), port=0, demo=True)
+        GurdyWebServer(FakeHost(), port=0, demo=True).httpd.server_close()        # the mock itself is fine
+
+    def test_reset_refuses_a_non_mock_replacement(self):
+        class Bad:
+            class layer:
+                backend = object()
+        srv = self.make(agent_factory=lambda: Bad())
+        with self.assertRaises(ValueError):
+            srv.reset_demo()
+
+    def test_message_length_cap(self):
+        srv = self.make()
+        self.assertEqual(request(srv, "POST", "/api/say", {"text": "x" * 201}, token=None)[0], 400)
+        self.assertEqual(request(srv, "POST", "/api/say", {"text": "x" * 200}, token=None)[0], 200)
+        self.assertEqual(request(srv, "POST", "/api/say", b"x" * 5000, token=None)[0], 413)         # body cap 4 KB
+        c = WsClient(srv, path="/ws")
+        c.send({"op": "say", "text": "y" * 201})
+        self.assertEqual(c.recv_json("error")["error"], "bad 'text'")
+        c.close()
+
+    def test_say_rate_limit_per_ip_with_retry_after(self):
+        srv = self.make()
+        codes = [request(srv, "POST", "/api/say", {"text": "hi"}, token=None)[0] for _ in range(7)]
+        self.assertEqual(codes, [200] * 5 + [429] * 2)
+        c = http.client.HTTPConnection("127.0.0.1", srv.port)
+        c.request("POST", "/api/say", json.dumps({"text": "hi"}))
+        r = c.getresponse()
+        r.read()
+        self.assertEqual(r.status, 429)
+        self.assertGreaterEqual(int(r.getheader("Retry-After")), 1)
+        self.clock.t += 4.1                                              # one token refilled
+        self.assertEqual(request(srv, "POST", "/api/say", {"text": "hi"}, token=None)[0], 200)
+        self.assertEqual(request(srv, "POST", "/api/say", {"text": "hi"}, token=None)[0], 429)
+
+    def test_proxy_header_only_trusted_when_configured(self):
+        srv = self.make()                                               # not trusted: header ignored, all requests are one client
+        for i in range(5):
+            self.assertEqual(request(srv, "POST", "/api/say", {"text": "hi"}, token=None, headers={"X-Forwarded-For": f"9.9.9.{i}"})[0], 200)
+        self.assertEqual(request(srv, "POST", "/api/say", {"text": "hi"}, token=None, headers={"X-Forwarded-For": "9.9.9.99"})[0], 429)
+        srv.close()
+        srv = self.make(trust_proxy=True)                               # trusted: the proxy-appended (last) entry is the client
+        for i in range(5):
+            self.assertEqual(request(srv, "POST", "/api/say", {"text": "hi"}, token=None, headers={"X-Forwarded-For": "1.1.1.1, 2.2.2.2"})[0], 200)
+        self.assertEqual(request(srv, "POST", "/api/say", {"text": "hi"}, token=None, headers={"X-Forwarded-For": "6.6.6.6, 2.2.2.2"})[0], 429)
+        self.assertEqual(request(srv, "POST", "/api/say", {"text": "hi"}, token=None, headers={"X-Forwarded-For": "1.1.1.1, 3.3.3.3"})[0], 200)
+
+    def test_estop_and_general_limits(self):
+        srv = self.make()
+        codes = [request(srv, "POST", "/api/estop", {}, token=None)[0] for _ in range(12)]
+        self.assertEqual(codes, [200] * 10 + [429] * 2)
+        self.assertEqual(self.host.estops, 10)                            # limited requests never reached the robot
+        srv2 = self.make(clock=Clock())
+        codes = [request(srv2, "GET", "/api/state", token=None)[0] for _ in range(62)]
+        self.assertEqual((codes.count(200), codes.count(429)), (60, 2))
+
+    def test_ws_say_limit_and_per_ip_connection_cap(self):
+        srv = self.make()
+        c = WsClient(srv, path="/ws")
+        for _ in range(5):
+            c.send({"op": "say", "text": "hi"})
+            c.recv_json("ack")
+        c.send({"op": "say", "text": "hi"})
+        self.assertIn("slow down", c.recv_json("error")["error"])
+        more = [WsClient(srv, path="/ws") for _ in range(2)]
+        fourth = WsClient(srv, path="/ws")
+        self.assertEqual(fourth.status, 503)                              # 3 per IP
+        for x in [c, fourth, *more]:
+            x.close()
+        for _ in range(100):
+            if srv.n_clients == 0:
+                break
+            time.sleep(0.05)
+        again = WsClient(srv, path="/ws")                                 # slots are released
+        self.assertEqual(again.status, 101)
+        again.close()
+
+    def test_reset_gives_a_fresh_world_and_tells_clients(self):
+        srv = self.make()
+        old_agent = self.host.agent
+        old_agent.layer.backend.walk("forward", 2.0)
+        old_agent.layer.backend.advance(30)
+        request(srv, "GET", "/api/state", token=None)
+        request(srv, "POST", "/api/say", {"text": "hello"}, token=None)
+        c = WsClient(srv, path="/ws")
+        c.recv_json("hello")
+        srv.reset_demo()
+        hello = c.recv_json("hello")
+        self.assertEqual([m["role"] for m in hello["chat"]], [])
+        self.assertIn("reset", c.recv_json("chat")["text"])
+        self.assertIsNot(self.host.agent, old_agent)
+        st = request(srv, "GET", "/api/state", token=None)[1]
+        self.assertEqual((st["mode"], st["pose"]["x"], st["pose"]["y"]), ("idle", 0.0, 0.0))
+        self.assertEqual(len(st["trail"]), 1)
+        msgs = request(srv, "GET", "/api/messages", token=None)[1]["messages"]
+        self.assertEqual([m["text"] for m in msgs], ["The demo world was reset."])
+        c.close()
+
+    def test_automatic_reset_timer(self):
+        srv = self.make(reset_every_s=0.15)
+        first = self.host.agent
+        for _ in range(60):
+            if self.made:
+                break
+            time.sleep(0.05)
+        self.assertTrue(self.made, "no reset happened")
+        self.assertIsNot(self.host.agent, first)
+
+    def test_reset_is_off_outside_demo_and_without_factory(self):
+        srv = GurdyWebServer(FakeHost(), token=TOKEN, port=0, agent_factory=lambda: FakeAgent())
+        before = srv.host.agent
+        srv.reset_demo()
+        self.assertIs(srv.host.agent, before)
+        srv.httpd.server_close()
+
+    def test_cli_rejects_llm_in_demo_and_needs_a_mode(self):
+        import subprocess
+        import sys
+        for args in (["--demo", "--ollama", "x"], []):
+            r = subprocess.run([sys.executable, "-m", "web.api", *args], capture_output=True, text=True, timeout=30)
+            self.assertEqual(r.returncode, 2, args)
+
+    def test_demo_banner_in_page(self):
+        from pathlib import Path
+        app = Path(__file__).resolve().parents[1] / "app"
+        self.assertIn('id="demoBanner"', (app / "index.html").read_text())
+        self.assertIn("Demo: simulated robot", (app / "index.html").read_text())
+        self.assertIn("S.demo", (app / "app.js").read_text())
+
+
+class RateLimiterUnit(unittest.TestCase):
+    def test_bucket_and_memory_bound(self):
+        from web.api.limits import RateLimiter
+        clk = Clock()
+        rl = RateLimiter(2, 10.0, clock=clk, max_keys=5)
+        self.assertEqual([rl.allow("a")[0] for _ in range(3)], [True, True, False])
+        ok, wait = rl.allow("a")
+        self.assertFalse(ok)
+        self.assertAlmostEqual(wait, 10.0, delta=0.01)
+        self.assertTrue(rl.allow("b")[0])                                 # other keys independent
+        clk.t += 10
+        self.assertTrue(rl.allow("a")[0])
+        for i in range(50):                                               # many addresses: dictionary stays bounded
+            rl.allow(f"ip{i}")
+        self.assertLessEqual(len(rl._b), 6)
 
 
 class WebSocketFrames(unittest.TestCase):

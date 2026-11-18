@@ -36,7 +36,7 @@ export function newAlerts(active, seen, now) {
 }
 
 export function wsUrl(loc, token) {
-  return `${loc.protocol === "https:" ? "wss" : "ws"}://${loc.host}/ws?token=${encodeURIComponent(token)}`;
+  return `${loc.protocol === "https:" ? "wss" : "ws"}://${loc.host}/ws${token ? "?token=" + encodeURIComponent(token) : ""}`;
 }
 
 /** Reconnect delay: 0.5 s doubling to 8 s. */

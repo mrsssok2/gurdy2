@@ -29,6 +29,11 @@ class MockTelemetry:
         self._last: dict[str, Any] | None = None
         self._trail: deque[tuple[float, float]] = deque(maxlen=TRAIL_MAX)
 
+    def reset(self) -> None:
+        """New world behind the host: forget the trail and the cached snapshot."""
+        self._last = None
+        self._trail.clear()
+
     @property
     def backend(self):
         return self.host.agent.layer.backend

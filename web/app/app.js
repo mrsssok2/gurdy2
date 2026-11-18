@@ -3,7 +3,7 @@ import { makeView, fmtTime, fmtNum, batteryClass, legSummary, newAlerts, wsUrl, 
 const $ = (id) => document.getElementById(id);
 const C = { bg: "#0B0E13", room: "#121821", wall: "#3A4552", obstacle: "#4B5563", zone: "#D93036", accent: "#2DD4BF", text: "#E6EDF3", muted: "#8B98A5" };
 
-const S = { token: "", ws: null, attempt: 0, timer: null, map: null, state: null, lastSeq: 0, seen: new Set(), history: [], tab: "map" };
+const S = { demo: false, token: "", ws: null, attempt: 0, timer: null, map: null, state: null, lastSeq: 0, seen: new Set(), history: [], tab: "map" };
 
 function store(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode: fine */ } }
 function load(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }
@@ -12,7 +12,8 @@ function load(k) { try { return localStorage.getItem(k) || ""; } catch { return 
 function setConn(kind, text) { $("conn").className = "conn " + kind; $("connText").textContent = text; }
 
 async function api(path, opts = {}) {
-  const r = await fetch(path, { ...opts, headers: { Authorization: "Bearer " + S.token, "Content-Type": "application/json", ...(opts.headers || {}) } });
+  const auth = S.demo ? {} : { Authorization: "Bearer " + S.token };      // the public demo has no token
+  const r = await fetch(path, { ...opts, headers: { ...auth, "Content-Type": "application/json", ...(opts.headers || {}) } });
   if (r.status === 401) throw Object.assign(new Error("unauthorized"), { code: 401 });
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
   return r.json();
@@ -20,14 +21,18 @@ async function api(path, opts = {}) {
 
 async function connect() {
   clearTimeout(S.timer);
-  if (!S.token) return askToken();
+  try {                                                // public, needs no token: tells us whether this is the demo server
+    S.demo = !!(await (await fetch("/api/health")).json()).demo;
+    $("demoBanner").hidden = !S.demo;
+  } catch { return retry("server not reachable"); }
+  if (!S.token && !S.demo) return askToken();
   try {
     S.map = await api("/api/map");                     // also validates the token (a WebSocket cannot report a 401 to the page)
   } catch (e) {
     if (e.code === 401) return askToken("That token was not accepted.");
     return retry("server not reachable");
   }
-  const ws = new WebSocket(wsUrl(location, S.token));
+  const ws = new WebSocket(wsUrl(location, S.demo ? "" : S.token));
   S.ws = ws;
   ws.onopen = () => { S.attempt = 0; setConn("on", "connected"); };
   ws.onmessage = (ev) => { try { onMessage(JSON.parse(ev.data)); } catch { /* ignore malformed */ } };
@@ -41,7 +46,7 @@ function retry(text) {
 }
 
 function onMessage(m) {
-  if (m.type === "hello") { S.map = m.map; S.lastSeq = 0; $("chatList").replaceChildren(); m.chat.forEach(addChat); }
+  if (m.type === "hello") { S.map = m.map; S.lastSeq = 0; S.seen.clear(); S.history = []; $("chatList").replaceChildren(); m.chat.forEach(addChat); }   // also sent after a demo reset
   else if (m.type === "state") onState(m);
   else if (m.type === "chat") addChat(m);
   else if (m.type === "error") addChat({ seq: -1, role: "system", text: m.error });
