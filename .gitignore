@@ -54,3 +54,4 @@ brain/data/
 
 # Persistent agent memory (Phase 5)
 data/memory/
+tmp_audio/

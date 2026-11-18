@@ -23,10 +23,17 @@ class STT(Protocol):
 
 
 class FasterWhisperSTT:
-    def __init__(self, model_path: str, device: str = "cpu", compute_type: str | None = None, beam_size: int = 1, language: str = "en"):
+    def __init__(self, model_path: str, device: str = "cpu", compute_type: str | None = None, beam_size: int = 1, language: str = "en",
+                 places=None, bias: bool = True):
         from faster_whisper import WhisperModel
         self.model = WhisperModel(model_path, device=device, compute_type=compute_type or ("int8_float16" if device == "cuda" else "int8"))
         self.beam, self.language = beam_size, language
+        self.set_vocabulary(places, bias)
+
+    def set_vocabulary(self, places=None, bias: bool = True) -> None:
+        """Bias decoding towards the current place names / object classes / colours (call again when places change)."""
+        from .vocab import hotwords, initial_prompt
+        self.prompt, self.hotwords = (initial_prompt(places), hotwords(places)) if bias else (None, None)
 
     def transcribe(self, audio: np.ndarray, sr: int = SAMPLE_RATE) -> Transcript:
         if sr != SAMPLE_RATE:
@@ -34,7 +41,8 @@ class FasterWhisperSTT:
             audio = resample(audio, sr)
         t0 = time.perf_counter()
         segs, _ = self.model.transcribe(np.asarray(audio, np.float32), language=self.language, beam_size=self.beam,
-                                        condition_on_previous_text=False, vad_filter=False, without_timestamps=True)
+                                        condition_on_previous_text=False, vad_filter=False, without_timestamps=True,
+                                        initial_prompt=self.prompt, hotwords=self.hotwords)
         segs = list(segs)
         text = "".join(s.text for s in segs).strip()
         conf = float(np.exp(np.mean([s.avg_logprob for s in segs]))) if segs else None

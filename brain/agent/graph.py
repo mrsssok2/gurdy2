@@ -20,9 +20,10 @@ from . import templates
 from .alerts import ALERT_TYPES, AlertManager
 from .executor import MissionExecutor
 from .grounding import GroundedReply, collect_facts, grounded_reply, violations
+from .fuzzy import suggest_object, suggest_place
 from .guard import _is_state_change, guard_plan, normalize_call, unknown_noun
 from .llm import LLM
-from .safety import ConfirmationGate, SafetyChecker, Verdict, is_unsafe_request
+from .safety import ConfirmationGate, is_clear_yes, SafetyChecker, Verdict, is_unsafe_request
 
 MAX_LLM_CALLS = 4
 SYSTEM_PROMPT = ("You are Gurdy, a hexapod robot. Turn the user's request into tool calls, or ask / refuse. "
@@ -81,15 +82,42 @@ class Agent:
         self.replan_used = False        # at most one re-plan per user request (a re-plan's own failure is only reported)
         self.replans: list[dict] = []   # log of re-plan attempts (evaluation / debugging)
         self.alerts = alerts or AlertManager()
+        self.pending_fix: dict | None = None    # "Did you mean room B?" waiting for a yes: {options: {name: corrected text}, expires_at}
         self.graph = self._build()
 
     # ------------------------------------------------------------------ public API
     def say(self, utterance: str, stt_confidence: float | None = None) -> TurnResult:
+        fixed = self._did_you_mean(utterance, stt_confidence)
+        if isinstance(fixed, TurnResult):
+            return fixed
+        utterance = fixed
         st: TurnState = {"utterance": utterance, "stt_confidence": stt_confidence, "log_start": len(self.layer.log),
                          "llm_calls": 0, "calls": [], "reply_parts": [], "verdicts": [], "events": [], "grounding": {},
                          "approved": False, "has_query": False, "cont": False, "notes": []}
         out = self.graph.invoke(st)
         return TurnResult(out["reply"], out["calls"], out["verdicts"], out["llm_calls"], out["grounding"], out["events"])
+
+    # ---- speech-recognition repair: unknown place / object close to a known one -> ask, never run it unconfirmed
+    def _did_you_mean(self, text: str, conf: float | None) -> "str | TurnResult":
+        """Returns the text to process (the corrected one after a clear yes) or a TurnResult carrying the question."""
+        now = self.layer.backend.now()
+        pf, self.pending_fix = self.pending_fix, None
+        if pf is not None and now <= pf["expires_at"]:
+            if is_clear_yes(text) and len(pf["options"]) == 1:
+                return next(iter(pf["options"].values()))
+            for name, corrected in pf["options"].items():              # several options: the answer names one ("room B")
+                if re.search(rf"\b{re.escape(name)}\b", text, re.I) and not is_estop_phrase(text):
+                    return corrected
+        if self.gate.pending is not None or is_estop_phrase(text) or is_unsafe_request(text):
+            return text
+        places = self.layer.backend.known_places()
+        sug = suggest_place(text, places) or suggest_object(text, places)
+        if sug is None:
+            return text
+        self.pending_fix = {"options": dict(sug.corrected), "expires_at": now + self.safety.cfg["confirmation_timeout_s"]}
+        q = sug.question
+        self.layer.call("ask_user", {"question": q, "options": sug.options[:6]})
+        return TurnResult(q, [], [{"outcome": "clarify", "rule": "did_you_mean"}], 0, {})
 
     def pump(self) -> list[str]:
         """Advance the executor with backend events; returns what the robot says about them."""

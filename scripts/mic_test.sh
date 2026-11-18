@@ -11,10 +11,10 @@ docker compose run --rm voice bash -c '
   echo "== sinks"; pactl list short sinks
   [ "'"${1:-}"'" = list ] && exit 0
   echo; echo "RECORDING 5 s in 2 s ... say: go to room B and then find the red box"; sleep 2; echo ">>> SPEAK NOW"
-  parecord --rate=16000 --channels=1 --format=s16le --file-format=wav /tmp/mic_test.wav & P=$!
+  mkdir -p tmp_audio; parecord --rate=16000 --channels=1 --format=s16le --file-format=wav tmp_audio/mic_test.wav & P=$!
   sleep 5; kill -INT $P; wait $P 2>/dev/null || true
-  python3 -I scripts/mic_level.py /tmp/mic_test.wav
-  echo ">>> PLAYBACK"; paplay /tmp/mic_test.wav
+  python3 -I scripts/mic_level.py tmp_audio/mic_test.wav
+  echo ">>> PLAYBACK"; paplay tmp_audio/mic_test.wav
   echo "== Whisper turbo, CPU int8"
-  python3 scripts/mic_transcribe.py /tmp/mic_test.wav
+  python3 scripts/mic_transcribe.py tmp_audio/mic_test.wav
 '
