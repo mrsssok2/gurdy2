@@ -24,6 +24,7 @@ from .fuzzy import suggest_object, suggest_place, suggest_verb
 from .guard import _is_state_change, guard_plan, normalize_call, unknown_noun
 from .llm import LLM
 from . import rooms
+from .answer_clock import AnswerClock
 from .safety import ConfirmationGate, is_clear_no, is_clear_yes, SafetyChecker, Verdict, is_unsafe_request
 
 MAX_LLM_CALLS = 4
@@ -78,11 +79,12 @@ class TurnResult:
 
 class Agent:
     def __init__(self, layer: ToolLayer, llm: LLM, safety: SafetyChecker | None = None,
-                 executor: MissionExecutor | None = None, alerts: AlertManager | None = None):
+                 executor: MissionExecutor | None = None, alerts: AlertManager | None = None, clock: AnswerClock | None = None):
         self.layer, self.llm = layer, llm
         self.safety = safety or SafetyChecker(layer)
         self.executor = executor or MissionExecutor(layer, self.safety)
-        self.gate = ConfirmationGate(layer, self.safety.cfg["confirmation_timeout_s"])
+        self.clock = clock or AnswerClock()      # wall-clock timeouts for every pending question (see answer_clock.py)
+        self.gate = ConfirmationGate(layer, self.safety.cfg["confirmation_timeout_s"], self.clock)
         self.replan_used = False        # at most one re-plan per user request (a re-plan's own failure is only reported)
         self.replans: list[dict] = []   # log of re-plan attempts (evaluation / debugging)
         self.alerts = alerts or AlertManager()
@@ -108,14 +110,14 @@ class Agent:
     def _room_turn(self, text: str, conf: float | None) -> "str | TurnResult":
         """Room names by voice (see rooms.py): answer to "Which room?", "no, Delta" corrections, phonetic names, a missing letter,
         a room that does not exist. Returns the text to process, or a TurnResult."""
-        now = self.layer.backend.now()
+        timeout = self.safety.cfg["confirmation_timeout_s"]
         pr, self.pending_room = self.pending_room, None
-        if pr is not None and now <= pr["expires_at"]:
+        if pr is not None and not self.clock.expired(pr["asked_at"], timeout):
             ch = rooms.answer_letter(text)
             if ch:
                 text = re.sub(r"\broom\b", f"room {ch}", pr["template"], count=1, flags=re.I)
         rr = self.recent_room
-        if rr is not None and now - rr["t"] <= 60 and not is_estop_phrase(text):
+        if rr is not None and not self.clock.expired(rr["t"], 60.0) and not is_estop_phrase(text):
             ch = rooms.correction_letter(text)
             if ch:                                               # "no, Delta": drop what is running / asked, redo with the new room
                 self.gate.clear(); self.pending_fix = None; self.followup = None
@@ -128,17 +130,20 @@ class Agent:
         if not is_estop_phrase(text):
             q = rooms.missing_letter_question(text, places)
             if q:
-                self.pending_room = {"template": text, "expires_at": now + self.safety.cfg["confirmation_timeout_s"]}
+                self.pending_room = {"template": text, "asked_at": self.clock.stamp()}
                 self.layer.call("ask_user", {"question": q})
                 return TurnResult(q, [], [{"outcome": "clarify", "rule": "missing_room_letter"}], 0, {})
             msg = rooms.unknown_room_message(text, places)
             if msg:
                 return TurnResult(msg, [], [{"outcome": "none", "rule": "unknown_room"}], 0, {})
         if rooms.mentioned_letters(text):
-            self.recent_room = {"utterance": text, "t": now}
+            self.recent_room = {"utterance": text, "t": self.clock.stamp()}
         return text
 
-    def say(self, utterance: str, stt_confidence: float | None = None) -> TurnResult:
+    def say(self, utterance: str, stt_confidence: float | None = None, started_at: float | None = None) -> TurnResult:
+        """`started_at`: wall-clock (self.clock.wall) time the user STARTED speaking; pending questions are judged by that, not by
+        when the transcript arrived."""
+        self.clock.begin_turn(started_at)
         room = self._room_turn(utterance, stt_confidence)
         if isinstance(room, TurnResult):
             return room
@@ -162,9 +167,8 @@ class Agent:
     # ---- speech-recognition repair: unknown place / object close to a known one -> ask, never run it unconfirmed
     def _did_you_mean(self, text: str, conf: float | None) -> "str | TurnResult":
         """Returns the text to process (the corrected one after a clear yes) or a TurnResult carrying the question."""
-        now = self.layer.backend.now()
         pf, self.pending_fix = self.pending_fix, None
-        if pf is not None and now <= pf["expires_at"]:
+        if pf is not None and not self.clock.expired(pf["asked_at"], self.safety.cfg["confirmation_timeout_s"]):
             if is_clear_yes(text) and len(pf["options"]) == 1:
                 return next(iter(pf["options"].values()))
             if is_clear_no(text):
@@ -178,7 +182,7 @@ class Agent:
         sug = suggest_verb(text, places) or suggest_place(text, places) or suggest_object(text, places)
         if sug is None:
             return text
-        self.pending_fix = {"options": dict(sug.corrected), "expires_at": now + self.safety.cfg["confirmation_timeout_s"]}
+        self.pending_fix = {"options": dict(sug.corrected), "asked_at": self.clock.stamp()}
         q = sug.question
         self.layer.call("ask_user", {"question": q, "options": sug.options[:6]})
         return TurnResult(q, [], [{"outcome": "clarify", "rule": "did_you_mean"}], 0, {})

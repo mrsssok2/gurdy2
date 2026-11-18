@@ -162,11 +162,15 @@ def test_confirmation_yes_returns_exact_call_once():
 
 def test_confirmation_anything_else_cancels_and_expires():
     b, l, s = make()
-    g = ConfirmationGate(l, 30)
+    t = [100.0]
+    from brain.agent.answer_clock import AnswerClock
+    g = ConfirmationGate(l, 30, AnswerClock(lambda: t[0]))
     g.hold("x", {"calls": []}, "r")
     assert g.answer("go to room A instead")[0] == "cancelled"
     g.hold("x", {"calls": []}, "r")
-    b.advance(31)
+    b.advance(500)                                           # the sim clock does not matter ...
+    assert g.clock.expired(g.pending.asked_at, 30) is False
+    t[0] += 31                                               # ... wall-clock seconds do
     assert g.answer("yes")[0] == "expired"
 
 

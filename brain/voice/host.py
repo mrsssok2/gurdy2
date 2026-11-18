@@ -27,9 +27,15 @@ class AgentHost:
         self._thread: threading.Thread | None = None
 
     # ---- interface shared with RemoteHost
-    def say(self, text: str, conf: float | None = None) -> str:
+    def say(self, text: str, conf: float | None = None, started_ago: float | None = None) -> str:
+        """`started_ago`: seconds (wall) since the user started speaking this utterance (None: typed, now)."""
         with self.lock:
-            return self.agent.say(text, conf).reply
+            clk = self.agent.clock
+            return self.agent.say(text, conf, None if started_ago is None else clk.wall() - started_ago).reply
+
+    def spoken_done(self) -> None:
+        """The robot finished speaking (a question's answer window starts now)."""
+        self.agent.clock.spoken_done()
 
     def estop(self) -> None:
         """Fast path: cancel the mission and stop the robot without taking the agent lock (idempotent)."""
@@ -106,11 +112,13 @@ def serve(host: AgentHost, port: int, bind: str = "0.0.0.0") -> threading.Thread
                 op = r.get("op")
                 if op == "estop":
                     host.estop(); send({"op": "ok"})
+                elif op == "spoken":
+                    host.spoken_done()
                 elif op == "state":
                     send({"op": "state", "moving": host.is_moving(), "places": host.places()})
                 elif op == "say":
                     # off the reading thread: a slow LLM turn must not delay an {"op":"estop"} that arrives meanwhile
-                    threading.Thread(target=lambda r=r: send({"op": "reply", "id": r.get("id"), "text": host.say(r.get("text", ""), r.get("conf"))}),
+                    threading.Thread(target=lambda r=r: send({"op": "reply", "id": r.get("id"), "text": host.say(r.get("text", ""), r.get("conf"), r.get("started_ago"))}),
                                      daemon=True).start()
         finally:
             if f in clients:
@@ -178,11 +186,17 @@ class RemoteHost:
                 return
             time.sleep(self.state_s)
 
-    def say(self, text: str, conf: float | None = None) -> str:
+    def spoken_done(self) -> None:
+        try:
+            self._send({"op": "spoken"})
+        except OSError:
+            pass
+
+    def say(self, text: str, conf: float | None = None, started_ago: float | None = None) -> str:
         with self._cv:
             self._id += 1
             i = self._id
-        self._send({"op": "say", "id": i, "text": text, "conf": conf})
+        self._send({"op": "say", "id": i, "text": text, "conf": conf, "started_ago": started_ago})
         end = time.monotonic() + self.timeout_s
         with self._cv:
             while i not in self._replies and not self._closed and time.monotonic() < end:

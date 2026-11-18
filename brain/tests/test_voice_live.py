@@ -356,3 +356,77 @@ def test_host_advances_the_mock_clock_so_a_trip_ends():
     time.sleep(1.0)
     host.close()
     assert b.task is None and any("arrived" in m for m in got)
+
+
+# ---- answer timeouts: wall clock, from "question spoken" to "user started speaking"
+def _clocked_host(sim_speed_note=True):
+    from brain.agent.answer_clock import AnswerClock
+    from test_safety import make
+    t = [1000.0]
+    clk = AnswerClock(lambda: t[0])
+    b, l, _ = make(explored=False)
+    agent = Agent(l, KeywordLLM(b.known_places), clock=clk)
+    return b, agent, AgentHost(agent), t
+
+
+def test_slow_stt_and_3x_sim_clock_never_expire_an_answer():
+    b, agent, host, t = _clocked_host()
+    assert "Shall I go" in host.say("Go to room B Bravo", 0.9)             # t = 1000: question created
+    t[0] += 2.0
+    host.spoken_done()                                                    # t = 1002: robot finished speaking
+    b.advance(3 * 60)                                                     # the 3x sim clock ran far past 30 s meanwhile
+    t[0] += 3.0                                                           # t = 1005: the user starts to speak "yes"
+    t[0] += 9.8                                                           # Whisper needs 9.8 s: transcript at t = 1014.8
+    reply = host.say("yes", 0.9, started_ago=9.8)
+    assert "expired" not in reply and "Going to room B" in reply
+
+
+def test_answer_started_too_late_does_expire_on_wall_clock():
+    b, agent, host, t = _clocked_host()
+    host.say("Go to room B", 0.9)
+    host.spoken_done()
+    t[0] += 45.0                                                          # the user waited 45 s before speaking
+    assert "expired" in host.say("yes", 0.9, started_ago=1.0)
+
+
+def test_typed_answer_counts_from_now_and_old_sim_time_is_irrelevant():
+    b, agent, host, t = _clocked_host()
+    host.say("Go to room B", None)
+    b.advance(1000)
+    t[0] += 5.0
+    assert "Going to room B" in host.say("yes", None)
+
+
+def test_no_delta_window_is_wall_clock_too():
+    b, agent, host, t = _clocked_host()
+    b.places["room D"] = (5.0, -2.0)
+    agent.layer.backend.explored = True if hasattr(b, "explored") else None
+    host.say("go to room B", 0.9)
+    host.say("yes", 0.9)
+    host.spoken_done(); b.advance(600)                                    # sim time irrelevant
+    t[0] += 20.0
+    assert "room D, Delta" in host.say("no, Delta", 0.8, started_ago=10.0)  # started 10 s ago: 10 s after the read-back
+    t[0] += 100.0
+    host.say("go to room B", 0.9); host.spoken_done()
+    t[0] += 70.0
+    assert "room D" not in host.say("no, Delta", 0.8, started_ago=1.0)    # 69 s after the command: window over
+
+
+def test_live_pipeline_passes_when_the_user_started_speaking_and_signals_spoken_done():
+    calls = {"say": [], "spoken": 0}
+
+    class H:
+        def say(self, text, conf=None, started_ago=None):
+            calls["say"].append((text, started_ago)); return "ok"
+        def spoken_done(self): calls["spoken"] += 1
+        def estop(self): pass
+        def is_moving(self): return False
+        def on_message(self, fn): pass
+    pipe = LivePipeline(ScriptedSTT(["yes"]), LockedSpeaker(Speaker(SineTTS(), NullSink())), H(), VoiceConfig(mode="vad"), out=lambda *_: None)
+    feed(pipe, utterance())
+    time.sleep(1.0)
+    pipe.feed(np.zeros(FRAME_N, np.float32))
+    assert calls["say"] and calls["say"][0][0] == "yes" and calls["say"][0][1] is not None and calls["say"][0][1] >= 0.0
+    for _ in range(200):                                                  # let "ok" finish playing
+        pipe.feed(np.zeros(FRAME_N, np.float32))
+    assert calls["spoken"] >= 1

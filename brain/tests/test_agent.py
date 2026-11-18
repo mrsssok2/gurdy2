@@ -122,8 +122,10 @@ def test_confirmation_expires():
     llm = ScriptedLLM(plans=[{"calls": [call("no_go_zone", action="remove", place="room B")]}])
     b, l, a = agent_for(llm)
     b.no_go_zone("add", place="room B")
+    t = [0.0]
+    a.clock.wall = lambda: t[0]
     a.say("remove it")
-    b.advance(40)
+    t[0] += 40                                   # wall-clock seconds (the sim clock plays no role)
     assert "expired" in a.say("yes").reply and len(b.zones) == 1
 
 

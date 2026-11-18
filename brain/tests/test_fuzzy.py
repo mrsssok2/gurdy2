@@ -75,7 +75,7 @@ def test_stop_beats_pending_fix():
 def test_fix_expires():
     b, a = _agent()
     a.say("go to room V")
-    a.pending_fix["expires_at"] = -1
+    a.clock.wall = lambda t0=a.clock.wall(): t0 + 100.0       # 100 wall-clock seconds later
     r = a.say("yes")
     assert not any(c["tool"] == "go_to" for c in r.calls)
 

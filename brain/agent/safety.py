@@ -218,21 +218,22 @@ class PendingConfirmation:
     tool: str
     args: dict
     reason: str
-    expires_at: float
+    asked_at: float                  # wall clock (AnswerClock) when the question was created
 
     def as_dict(self) -> dict:
-        return {"tool": self.tool, "args": self.args, "reason": self.reason, "expires_at": self.expires_at}
+        return {"tool": self.tool, "args": self.args, "reason": self.reason}
 
 
 class ConfirmationGate:
     """Holds at most one pending call; mirrors it into `layer.pending_confirmation` for the prompt state block."""
 
-    def __init__(self, layer: ToolLayer, timeout_s: float = 30.0):
-        self.layer, self.timeout_s = layer, timeout_s
+    def __init__(self, layer: ToolLayer, timeout_s: float = 30.0, clock=None):
+        from .answer_clock import AnswerClock
+        self.layer, self.timeout_s, self.clock = layer, timeout_s, clock or AnswerClock()
         self.pending: PendingConfirmation | None = None
 
     def hold(self, tool: str, args: dict, reason: str) -> PendingConfirmation:
-        self.pending = PendingConfirmation(tool, dict(args), reason, self.layer.backend.now() + self.timeout_s)
+        self.pending = PendingConfirmation(tool, dict(args), reason, self.clock.stamp())
         self.layer.pending_confirmation = self.pending.as_dict()
         return self.pending
 
@@ -246,6 +247,6 @@ class ConfirmationGate:
         if p is None:
             return "none", None
         self.clear()
-        if self.layer.backend.now() > p.expires_at:
+        if self.clock.expired(p.asked_at, self.timeout_s):
             return "expired", p
         return ("confirmed" if is_clear_yes(text) else "cancelled"), p

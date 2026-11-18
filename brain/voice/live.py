@@ -53,10 +53,12 @@ class LockedSpeaker:
 class LivePipeline(VoicePipeline):
     def __init__(self, stt, speaker, host, cfg: VoiceConfig | None = None, say_prefix: str = "", out=print, debug_dir=None, **kw):
         sp = speaker if isinstance(speaker, LockedSpeaker) else LockedSpeaker(speaker)
-        super().__init__(stt, sp, lambda t, c: host.say(t, c), host.estop, host.is_moving, cfg, **kw)
+        super().__init__(stt, sp, lambda t, c, sa=None: host.say(t, c, sa), host.estop, host.is_moving, cfg, **kw)
         self.host, self.out = host, out
         self.debug_dir, self._n_saved = debug_dir, 0     # every utterance is saved as a WAV (+ index.jsonl) to listen to later
         self.jobs: queue.Queue = queue.Queue()
+        self._start_wall: float | None = None          # wall clock when the current utterance started (answer timeouts count to HERE)
+        self._was_speaking = False
         self._partial_busy = threading.Event()
         self._held: list[str] = []                    # robot messages waiting until the user stops talking
         self._held_lock = threading.Lock()
@@ -83,11 +85,19 @@ class LivePipeline(VoicePipeline):
 
     def feed(self, frame: np.ndarray) -> None:
         super().feed(frame)
+        sp = bool(self.speaker.speaking)
+        if self._was_speaking and not sp:                # the robot just finished speaking: a question's answer window starts now
+            self.host.spoken_done()
+        self._was_speaking = sp
         self._flush_held()
 
     # ---- user -> robot, off the mic thread
+    def press(self):
+        self._start_wall = time.monotonic()
+        super().press()
+
     def _on_utterance(self, audio: np.ndarray) -> None:
-        self.jobs.put(("audio", audio))
+        self.jobs.put(("audio", (audio, self._start_wall)))
 
     def submit_text(self, text: str) -> None:
         self.jobs.put(("text", text))
@@ -100,7 +110,7 @@ class LivePipeline(VoicePipeline):
                 continue
             try:
                 if kind == "audio":
-                    self._utterance_job(payload)
+                    self._utterance_job(*payload)
                 else:
                     self._text_job(payload, None)
             except Exception as e:                      # never let one bad turn kill the loop
@@ -124,7 +134,7 @@ class LivePipeline(VoicePipeline):
         with open(d / "index.jsonl", "a") as f:
             f.write(json.dumps(rec) + "\n")
 
-    def _utterance_job(self, audio: np.ndarray) -> None:
+    def _utterance_job(self, audio: np.ndarray, started_wall: float | None = None) -> None:
         tr = self.stt.transcribe(audio)
         try:
             self._save_debug(audio, tr)
@@ -135,19 +145,21 @@ class LivePipeline(VoicePipeline):
             self.out("(heard nothing)")
             return
         self.out(f"You: {tr.text}   [STT {tr.seconds:.1f} s, confidence {'?' if tr.confidence is None else f'{tr.confidence:.2f}'}]")
-        self._text_job(tr.text, tr.confidence)
+        self._text_job(tr.text, tr.confidence, started_wall)
 
-    def _text_job(self, text: str, conf: float | None) -> None:
+    def _text_job(self, text: str, conf: float | None, started_wall: float | None = None) -> None:
         if self.is_stop(text):                       # idempotent: a second stop after a partial one changes nothing
             self._fire_estop(text, "final", 0.0)
         t0 = time.monotonic()
-        reply = self.on_text(text, conf)
+        reply = self.on_text(text, conf, None if started_wall is None else time.monotonic() - started_wall)
         if reply:
             self.out(f"Gurdy: {reply}   [{time.monotonic() - t0:.1f} s]")
             self.say(reply)
 
     def _handle(self, events: list) -> None:
         for kind, audio in events:
+            if kind == "start":
+                self._start_wall = time.monotonic()
             if kind == "partial":
                 if self.is_moving() and not self._estop_this_utt and not self._partial_busy.is_set():
                     self._partial_busy.set()
