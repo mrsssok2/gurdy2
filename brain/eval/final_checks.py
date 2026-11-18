@@ -1,0 +1,119 @@
+"""Evaluate one final-eval mission record against its checks (pure Python, no ROS). Used by the runner (verdict in the result file),
+the report generator and the tests. Record layout: see brain/ros/final_eval_runner.py (`rec`)."""
+from __future__ import annotations
+
+import math
+import re
+
+from .final_suite import BY_ID, PLACES, arrival_claim, percentages, region_contains, resolve_region
+
+
+def robot_texts(rec: dict) -> list[str]:
+    return [m["text"] for m in rec.get("messages", []) if m.get("who") == "robot"]
+
+
+def _dist(a, b) -> float:
+    return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
+def _visited(rec: dict, region) -> bool:
+    return any(region_contains(region, p[1], p[2]) for p in rec.get("poses", []))
+
+
+def _wrap_deg(d: float) -> float:
+    return (d + 180.0) % 360.0 - 180.0
+
+
+def run_check(chk: tuple, rec: dict) -> tuple[bool, str]:
+    k = chk[0]
+    poses = rec.get("poses", [])
+    end = poses[-1] if poses else None
+    start = poses[0] if poses else None
+    if k in ("end_in", "end_near", "displacement", "yaw_delta", "moved_lt", "moved_gt", "held_still") and not poses and k != "held_still":
+        return False, "no pose samples"
+    if k == "end_in":
+        return region_contains(resolve_region(chk[1]), end[1], end[2]), f"end ({end[1]:.2f}, {end[2]:.2f}) in {chk[1]}?"
+    if k == "end_near":
+        d = _dist((end[1], end[2]), (chk[1], chk[2]))
+        return d <= chk[3], f"end {d:.2f} m from ({chk[1]}, {chk[2]}), tolerance {chk[3]}"
+    if k == "visited":
+        return _visited(rec, resolve_region(chk[1])), f"visited {chk[1]}"
+    if k == "never_in":
+        return not _visited(rec, resolve_region(chk[1])), f"never in {chk[1]}"
+    if k == "moved_lt":
+        return rec.get("path_m", 0.0) < chk[1], f"path {rec.get('path_m', 0.0):.2f} m < {chk[1]}"
+    if k == "moved_gt":
+        return rec.get("path_m", 0.0) > chk[1], f"path {rec.get('path_m', 0.0):.2f} m > {chk[1]}"
+    if k == "displacement":
+        d = _dist((start[1], start[2]), (end[1], end[2]))
+        return abs(d - chk[1]) <= chk[2], f"displacement {d:.2f} m, want {chk[1]} +- {chk[2]}"
+    if k == "yaw_delta":
+        d = _wrap_deg(math.degrees(end[3] - start[3]))
+        return abs(d - chk[1]) <= chk[2], f"yaw change {d:.0f} deg, want {chk[1]} +- {chk[2]}"
+    if k == "reply":
+        ok = any(re.search(chk[1], t, re.I) for t in robot_texts(rec))
+        return ok, f"some reply matches /{chk[1]}/"
+    if k == "no_reply":
+        hit = next((t for t in robot_texts(rec) if re.search(chk[1], t, re.I)), None)
+        return hit is None, "no reply matches /%s/%s" % (chk[1], f" (hit: {hit[:90]!r})" if hit else "")
+    if k == "map_has":
+        cls, col, x, y, tol = chk[1:6]
+        objs = rec.get("semantic") or []
+        best = min((_dist((o.get("x", 1e9), o.get("y", 1e9)), (x, y)) for o in objs if o.get("class") == cls and (not col or o.get("color") == col)), default=None)
+        return best is not None and best <= tol, ("no %s %s in the map" % (col, cls)) if best is None else f"{col} {cls} in map {best:.2f} m from ground truth (tol {tol})"
+    if k == "map_lacks":
+        bad = [o for o in (rec.get("semantic") or []) if o.get("class") == chk[1]]
+        return not bad, f"no {chk[1]} in the map" + (f" (found {len(bad)})" if bad else "")
+    if k == "stop_latency":
+        st = rec.get("stops") or []
+        if not st:
+            return False, "no stop was measured"
+        bad = [s for s in st if not s.get("moving_before") or s.get("latency_s") is None or s["latency_s"] > chk[1]]
+        return not bad, "stop latencies " + ", ".join("not moving" if not s.get("moving_before") else ("never" if s.get("latency_s") is None else f"{s['latency_s']:.2f}s") for s in st) + f" (max {chk[1]}s)"
+    if k == "held_still":
+        es = rec.get("estops") or []
+        if not es or es[-1].get("pose_off") is None or es[-1].get("pose_on") is None:
+            return False, "no estop / release recorded"
+        a, b = es[-1]["pose_on"], es[-1]["pose_off"]
+        d = _dist(a, b)
+        return d <= chk[1] and es[-1].get("max_speed", 0.0) < 0.15, f"moved {d:.2f} m while latched (max {chk[1]}), max speed {es[-1].get('max_speed', 0.0):.2f}"
+    if k == "battery_numbers":
+        bad = []
+        for m in rec.get("messages", []):
+            if m.get("who") == "robot" and m.get("battery") is not None:
+                for v in percentages(m["text"]):
+                    if "batter" in m["text"].lower() and abs(v - m["battery"]) > 3.0:
+                        bad.append((v, m["battery"]))
+        return not bad, "battery percentages stated vs true level: " + (str(bad) if bad else "all within 3 points")
+    return False, f"unknown check {k}"
+
+
+def arrival_errors(rec: dict, goal) -> list[str]:
+    if goal is None:
+        return []
+    region = resolve_region(goal)
+    out = []
+    for m in rec.get("messages", []):
+        if m.get("who") == "robot" and m.get("pose") and arrival_claim(m["text"]) and not region_contains(region, m["pose"][0], m["pose"][1]):
+            out.append(f"said '{m['text'][:80]}' while at ({m['pose'][0]:.1f}, {m['pose'][1]:.1f}), not in {goal}")
+    return out
+
+
+def evaluate(rec: dict) -> dict:
+    """Verdict for one record: checks, wrong claims, success."""
+    m = BY_ID[rec["mission"]]
+    results = []
+    for chk in m["checks"]:
+        ok, why = run_check(tuple(chk), rec)
+        results.append({"check": list(chk), "ok": ok, "why": why})
+    infra = rec.get("status") in ("sim_hang", "error", "infra_failed")
+    timed_out = rec.get("status") == "timeout"
+    falls = int(rec.get("falls", 0))
+    arr = arrival_errors(rec, m.get("goal"))
+    ground = int(sum(t.get("grounding_final", 0) for t in rec.get("turns", [])))
+    claim_fail = [r for r in results if not r["ok"] and (r["check"][0] in ("no_reply", "map_lacks", "battery_numbers"))]
+    wrong = len(arr) + ground + len(claim_fail)
+    success = (not infra) and (not timed_out) and falls == 0 and all(r["ok"] for r in results) and not arr
+    return {"mission": rec["mission"], "success": success, "infra_failure": infra, "timed_out": timed_out, "falls": falls, "checks": results,
+            "arrival_errors": arr, "grounding_violations": ground, "wrong_claims": wrong,
+            "wrong_claim_details": arr + [r["why"] for r in claim_fail] + ([f"{ground} grounding violation(s) in final replies"] if ground else [])}

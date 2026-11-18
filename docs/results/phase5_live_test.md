@@ -53,3 +53,13 @@ GPU utilisation spikes to 100 % during LLM turns. CPU temperature is not readabl
 8. `no_go_zone add` writes into the places file (repo copy changes); the live runs use a copy.
 9. flat_lab has only boxes; `where is the fire extinguisher` / class variety needs `semantic_lab` + a places file for it.
 10. Detector runs on CPU in the sim image (GPU detector only in the vision image).
+
+
+## Live voice + Gazebo test (2026-11-18, typed + voice, `gurdy-sft-400`)
+Passed: `go_to` (arrived within 0.1 m), honest object report, go home, stop in 0.3 s.
+
+### Open issue: "the other box" (logged, NOT fixed)
+"Walk towards the other box" went to the red box that had just been discussed. Expected: "the other X" excludes the **last-mentioned X**;
+if several remain, ask a question ("Which one: the blue box or the yellow box?"); if exactly one remains, go to it.
+Where it probably belongs: reference resolution (dialogue state: last-mentioned object per class) before planning, plus training / test cases
+(`testset_v1_1` has no "the other ..." case). Not covered by the final eval (5.11) headline rate; add a test case when it is fixed.
