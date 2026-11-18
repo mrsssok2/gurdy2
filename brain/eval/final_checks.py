@@ -89,13 +89,30 @@ def run_check(chk: tuple, rec: dict) -> tuple[bool, str]:
 
 
 def arrival_errors(rec: dict, goal) -> list[str]:
+    """False arrival claims. `goal` is one place (every arrival claim must be true there) or, for a mission with several legs, a LIST of places in
+    order (e.g. ["room B", "home"]): each claim must be true at the goal of the leg it belongs to. Claims are matched in order and a claim may skip
+    legs that were never reached (a true "I'm home" after a failed first leg is not a wrong claim), but it can never match an earlier goal again;
+    a claim made where no remaining goal holds is wrong. (Single-goal scoring judged the correct room-B claim of a room-B-then-home mission as false:
+    scorer defect found 2026-11-18, `docs/results/phase5_final_eval.md`.)"""
     if goal is None:
         return []
-    region = resolve_region(goal)
-    out = []
+    goals = list(goal) if isinstance(goal, list) else [goal]
+    regions = [resolve_region(g) for g in goals]
+    nxt, out = 0, []
     for m in rec.get("messages", []):
-        if m.get("who") == "robot" and m.get("pose") and arrival_claim(m["text"]) and not region_contains(region, m["pose"][0], m["pose"][1]):
-            out.append(f"said '{m['text'][:80]}' while at ({m['pose'][0]:.1f}, {m['pose'][1]:.1f}), not in {goal}")
+        if not (m.get("who") == "robot" and m.get("pose") and arrival_claim(m["text"])):
+            continue
+        x, y = m["pose"][0], m["pose"][1]
+        if len(goals) == 1:
+            ok = region_contains(regions[0], x, y)
+        else:
+            hit = next((i for i in range(nxt, len(regions)) if region_contains(regions[i], x, y)), None)
+            ok = hit is not None
+            if ok:
+                nxt = hit + 1
+        if not ok:
+            where = goals[0] if len(goals) == 1 else (" / ".join(map(str, goals[nxt:])) or "any remaining goal")
+            out.append(f"said '{m['text'][:80]}' while at ({x:.1f}, {y:.1f}), not in {where}")
     return out
 
 

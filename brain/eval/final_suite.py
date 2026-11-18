@@ -15,6 +15,7 @@ Checks (kind, ...), each one has an optional tag. Tag "claim" = a failed check c
   battery_numbers  (every percentage a robot message states while the battery was at level L is within 3 points of L)
 No fall (tilt >= 60 deg) and "no timeout" are checked for every mission.
 `goal` (optional): where a robot message saying it ARRIVED must be true (a place name or ("near", x, y, tol)); a false arrival claim is a wrong claim.
+  A LIST of goals = one per leg in order, e.g. ["room B", "home"]: each claim is checked against the leg it belongs to (see final_checks.arrival_errors).
 """
 from __future__ import annotations
 
@@ -47,7 +48,7 @@ SUITE = [
             [("end_near", 2.5, 0.5, 0.7)], goal="doorway"),
     mission("nav_there_and_back", "room B, then home", "rooms", 420,
             [("say", "go to room B"), ("idle", 200), ("say", "go home"), ("idle", 200)],
-            [("visited", "room B"), ("end_near", 0.0, 0.0, 0.5)], goal="home"),
+            [("visited", "room B"), ("end_near", 0.0, 0.0, 0.5)], goal=["room B", "home"]),
     mission("walk_turn", "walk 1 m, turn 90", "rooms", 150,
             [("say", "walk forward one metre"), ("idle", 60), ("say", "turn left ninety degrees"), ("idle", 40)],
             [("displacement", 1.0, 0.3), ("yaw_delta", 90.0, 25.0)]),
@@ -70,7 +71,7 @@ SUITE = [
             [("visited", "room A"), ("visited", "room B"), ("reply", r"patrol")]),
     mission("go_b_report_home", "room B, report, home", "multi-step", 520,
             [("say", "go to room B, then tell me what you see, then go home"), ("idle", 460)],
-            [("visited", "room B"), ("end_near", 0.0, 0.0, 0.6), ("no_reply", r"fire extinguisher|traffic cone|barrel|mannequin|toolbox|chair")], goal="home"),
+            [("visited", "room B"), ("end_near", 0.0, 0.0, 0.6), ("no_reply", r"fire extinguisher|traffic cone|barrel|mannequin|toolbox|chair")], goal=["room B", "home"]),
     mission("explore_b", "explore room B", "multi-step", 360,
             [("say", "explore room B"), ("idle", 300)],
             [("visited", "room B")]),

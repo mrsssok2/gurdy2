@@ -30,8 +30,8 @@ def test_suite_is_well_formed():
                 re.compile(c[1])
             if c[0] in ("end_in", "visited", "never_in"):
                 resolve_region(c[1])
-        if m["goal"]:
-            resolve_region(m["goal"])
+        for g in (m["goal"] if isinstance(m["goal"], list) else [m["goal"]] if m["goal"] else []):
+            resolve_region(g)
     cats = {m["category"] for m in SUITE}
     assert {"rooms", "objects", "multi-step", "stop", "safety", "unreachable", "honesty", "alerts"} <= cats
 
