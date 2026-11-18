@@ -2,7 +2,7 @@
 
 Publishes a latched String JSON {"stamp", "legs": {"front_left": "ok"|"failed", ...}} at 1 Hz and on every change.
 A failed leg stays failed until  ros2 service call /leg_health/reset std_srvs/srv/Trigger.
-Thresholds (gurdy_core.ops_monitors.LegHealthConfig) are NOT calibrated on Gazebo data yet. A leg failure cannot be seen while the
+Thresholds (gurdy_core.ops_monitors.LegHealthConfig): calibrated on flat-lab Gazebo walking (scripts/leg_health_analyze.py); rough terrain not measured. A leg failure cannot be seen while the
 robot stands still. Test aid: parameter `fake_failed_leg` (e.g. "rm") forces that leg to failed without any physics.
 """
 import json

@@ -27,7 +27,7 @@ def main() -> None:
     be = RosBackend(port, a.places)
     if a.ollama:
         from ..agent.ollama_llm import OllamaLLM
-        llm = OllamaLLM(model=a.ollama)
+        llm = OllamaLLM(model=a.ollama, constrain=not a.ollama.startswith("gurdy-sft"))   # fine-tuned model: unconstrained (phase5_eval_sft.md)
     else:
         llm = KeywordLLM(be.known_places)
     agent = Agent(ToolLayer(be), llm)
@@ -50,3 +50,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    import os
+    import sys
+    sys.stdout.flush()
+    os._exit(0)          # rclpy's spin thread otherwise dies noisily at interpreter exit

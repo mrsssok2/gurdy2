@@ -42,6 +42,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ros-jazzy-tf2-tools \
     && rm -rf /var/lib/apt/lists/*
 
+# Phase 5.6: the agent (brain/) runs in this image next to rclpy; keep in sync with docker/brain/requirements.txt.
+RUN pip3 install --no-cache-dir --break-system-packages 'langgraph>=1.0'
+
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

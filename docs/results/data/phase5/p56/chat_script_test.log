@@ -1,0 +1,31 @@
+ Container gurdy_agent Creating 
+ Container gurdy_agent Created 
+starting the simulation (about 2 minutes) ...
+waiting for TF map->base_link ...
+waiting for TF map->base_link ...
+Gurdy (ROS). Empty line = show progress; 'quit' to exit.
+> Gurdy: I am in room a, 0.0 metres from home.
+  t=20s pose=(-3.736953162675917e-08, 5.814994603025403e-18, -3.836378075490611e-17) mission=idle
+> Gurdy: Walking forward 0.5 metres.
+  t=23s pose=(0.2396267539050379, -0.006626374323617045, -0.027616024395800468) mission=running
+> Gurdy: New object: green box.
+  t=25s pose=(0.4856290848958485, -0.013973003044961447, 0.0003135719783763341) mission=running
+> Gurdy: walk done.
+  t=29s pose=(0.5160500627619183, -0.019020613493294376, -0.016485936099867107) mission=done
+>   t=32s pose=(0.5160484072381064, -0.01902094992334673, -0.016485082110763594) mission=done
+>   t=35s pose=(0.5160459327761776, -0.019021451927658847, -0.016483816145917974) mission=done
+>   t=37s pose=(0.5160451098021428, -0.019021618657969547, -0.016483397899689556) mission=done
+> Exception in thread Thread-1 (spin):
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 359, in spin
+    self._spin_once_impl()
+  File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 1002, in _spin_once_impl
+    self._executor.submit(handler)
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 170, in submit
+    raise RuntimeError('cannot schedule new futures after shutdown')
+
+exit 137

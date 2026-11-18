@@ -189,7 +189,7 @@ criteria are 5.A–5.K below (formerly numbered 5.1–5.11); the build order is 
 - [ ] 5.4 Automatic data generation + SFT (0.6B, 1.7B QLoRA) → 5.A
   — data generator built + smoke-tested (2026-11-17, `docs/results/phase5_datagen.md`); full generation started 2026-11-17 (`scripts/p5_datagen.sh`, output `brain/data/full`); open: SFT training script, pilot, full SFT 0.6B / 1.7B, learning curve (sequence length must be >= 3.1k: the 24-tool system prompt alone is ~2.4k tokens)
 - [ ] 5.5 **[EXTRA]** DPO + GGUF/Ollama + four-system comparison, model card → 5.A  (core: GGUF/Ollama of the SFT model + model card is still needed for 5.6+)
-- [ ] 5.6 ROS backend `gurdy_agent` (Nav2/explorer actions, places), typed missions in Gazebo → 5.C, 5.F
+- [x] 5.6 (live test 2026-11-18, `docs/results/phase5_live_test.md`; open issues listed there) ROS backend `gurdy_agent` (Nav2/explorer actions, places), typed missions in Gazebo → 5.C, 5.F
 - [ ] 5.7 Status, event bus, alerts, safety (e-stop gate, no-go zones) in ROS → 5.D, 5.H, 5.I
 - [ ] 5.8 Voice (VAD, Whisper, TTS, streaming e-stop) → 5.B
 - [ ] 5.9 Memory (SQLite, per map) + mission reports → 5.G, 5.J

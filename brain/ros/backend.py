@@ -509,6 +509,10 @@ class RosBackend:
         if not self.p.explore_available():
             return fail("UNAVAILABLE", "The object is not in the map and the exploration action server (/explore) is not running.")
         steps: list[dict] = [{"kind": "explore", "max_time_s": max_time_s, "area": None}]
+        # On an already mapped area the explorer ends at once ("no frontiers left"); then look through the rooms instead
+        # (found in the 5.6 live test: "find the red box" timed out after 11 s). `until` stops the sweep when the object appears.
+        steps += [{"kind": "nav", "x": v["x"], "y": v["y"], "yaw": None, "name": n, "optional": True}
+                  for n, v in self.places.items() if v.get("kind") == "room" and not self._in_zone(v["x"], v["y"])]
         until = lambda: bool(self._match(object))
         if approach:      # filled in once the object is seen: the step list is replaced when `until` fires
             def until():
