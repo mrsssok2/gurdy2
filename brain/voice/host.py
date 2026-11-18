@@ -18,8 +18,9 @@ from typing import Callable
 
 
 class AgentHost:
-    def __init__(self, agent, pump_s: float = 0.25):
+    def __init__(self, agent, pump_s: float = 0.25, sim_speed: float | None = None):
         self.agent, self.pump_s = agent, pump_s
+        self.sim_speed = sim_speed          # mock world only: advance its virtual clock this many times faster than wall time (None: someone else does)
         self.lock = threading.Lock()
         self.listeners: list[Callable[[str], None]] = []
         self._stop = threading.Event()
@@ -49,10 +50,16 @@ class AgentHost:
 
     def start(self) -> None:
         def loop():
+            last = time.monotonic()
             while not self._stop.is_set():
                 time.sleep(self.pump_s)
+                now = time.monotonic()
                 with self.lock:
+                    be = self.agent.layer.backend
+                    if self.sim_speed and hasattr(be, "advance"):      # without this a mock trip never ends
+                        be.advance((now - last) * self.sim_speed)
                     msgs = self.agent.pump()
+                last = now
                 for m in msgs:
                     for fn in list(self.listeners):
                         fn(m)

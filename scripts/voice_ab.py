@@ -11,7 +11,7 @@ from brain.voice.audio import SAMPLE_RATE, read_wav
 from brain.voice.stt import FasterWhisperSTT
 
 d = Path(sys.argv[1] if len(sys.argv) > 1 else "brain/runs/voice_debug")
-stt = FasterWhisperSTT("/models/whisper-turbo-ct2", "cpu")
+stt = FasterWhisperSTT("/models/whisper-turbo-ct2", "cpu", bias="full")   # "full" so that stt.hotwords is really set (the default is prompt-only)
 full = (stt.prompt, stt.hotwords)
 cfgs = {"no_bias": (None, None, 0), "prompt_only": (full[0], None, 0), "full": (*full, 0), "lead0.3": (*full, 0.3)}
 rows = [json.loads(l) for l in (d / "index.jsonl").read_text().splitlines()] if (d / "index.jsonl").exists() else [{"wav": p.name} for p in sorted(d.glob("*.wav"))]

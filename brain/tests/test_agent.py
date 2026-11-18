@@ -109,8 +109,8 @@ def test_remove_no_go_zone_asks_then_yes_executes_exact_call():
 
 
 def test_remove_no_go_zone_no_or_other_words_cancel():
-    for answer in ("no", "go to room A instead", "yes but also go left"):
-        llm = ScriptedLLM(plans=[{"calls": [call("no_go_zone", action="remove", place="room B")]}])
+    for answer in ("no", "go to room A instead", "yes but also go left"):     # a new command drops the question (and then runs itself)
+        llm = ScriptedLLM(plans=[{"calls": [call("no_go_zone", action="remove", place="room B")]}, {"reply": "ok"}])
         b, l, a = agent_for(llm)
         b.no_go_zone("add", place="room B")
         a.say("remove the zone")
@@ -170,12 +170,13 @@ def test_unsafe_request_refused_without_llm():
     assert "will not" in r.reply and llm.plan_calls == []
 
 
-def test_busy_robot_says_so_instead_of_queueing():
+def test_new_motion_command_replaces_the_running_one_with_a_note():
     llm = ScriptedLLM(plans=[{"calls": [call("go_to", place="room B")]}, {"calls": [call("turn", direction="left", angle_deg=90)]}])
     b, l, a = agent_for(llm)
     a.say("go to room B")
     r = a.say("turn left")
-    assert "busy" in r.reply
+    assert r.reply.startswith("Okay, switching to: turn left.") and "busy" not in r.reply
+    assert [st.tool for st in a.executor.steps] == ["turn"] and b.task.tool == "turn"
 
 
 def test_planner_free_text_is_grounded_too():

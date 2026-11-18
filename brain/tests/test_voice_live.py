@@ -254,3 +254,105 @@ def test_continue_flag_survives_the_confirmation_and_never_repeats_the_walk():
     assert any(r["tool"] == "go_to" for r in seen[0])                 # the planner sees the finished walk
     assert [t for t, _ in walks[-1]] == ["find"] and walks[-1][0][1] == "done"
     assert any("Found the red box" in m for m in msgs)
+
+
+# ---- rooms by voice: phonetic names, read-back, "no, Delta", missing letter, unknown room, new command vs pending question, replace
+def _agent(plans=None, explored=True):
+    from brain.agent import ScriptedLLM
+    from test_agent import agent_for
+    from test_safety import make
+    if plans is not None:
+        b, _, a = agent_for(ScriptedLLM(plans=plans), explored=explored)
+        return b, a
+    b, l, _ = make(explored=explored)
+    return b, Agent(l, KeywordLLM(b.known_places))
+
+
+def test_phonetic_room_names_normalise():
+    from brain.agent import rooms
+    assert rooms.normalize("Go to room Bravo and find the box") == "Go to room B and find the box"
+    assert rooms.normalize("go to room D as in dog") == "go to room D"
+    assert rooms.normalize("go to room, delta") == "go to room D"
+    assert rooms.answer_letter("Delta.") == "D" and rooms.answer_letter("room b") == "B" and rooms.answer_letter("go home") is None
+    assert rooms.correction_letter("No, Delta") == "D" and rooms.correction_letter("no") is None
+
+
+def test_voice_goto_reads_the_letter_back_and_typed_does_not():
+    b, a = _agent()
+    assert "Going to room B, Bravo, " in a.say("go to room bravo", 0.9).reply
+    b, a = _agent()
+    r = a.say("go to room B").reply
+    assert "Going to room B, " in r and "Bravo" not in r
+
+
+def test_no_delta_corrects_the_room():
+    b, a = _agent()
+    b.places["room D"] = (5.0, -2.0)
+    a.say("go to room B", 0.9)
+    r = a.say("no, Delta", 0.8)
+    assert "Going to room D, Delta" in r.reply
+    assert [(s.tool, s.args.get("place")) for s in a.executor.steps] == [("go_to", "room D")]
+
+
+def test_missing_letter_asks_which_room_and_the_answer_completes_it():
+    b, a = _agent()
+    r = a.say("Go to room.", 0.9)
+    assert r.reply == "Which room: A or B?" and b.task is None
+    r = a.say("Bravo", 0.9)
+    assert "Going to room B, Bravo" in r.reply
+
+
+def test_room_that_does_not_exist_is_said_plainly():
+    b, a = _agent()
+    r = a.say("Go to room C", 0.9)
+    assert r.reply == "There is no room C. I know rooms A and B." and b.task is None
+    assert "Did you mean" in a.say("go to room V", 0.9).reply          # not a plausible room label: still the repair question
+
+
+def test_new_command_while_confirmation_pending_runs_instead_of_cancelling():
+    b, a = _agent(explored=False)
+    assert "Shall I go" in a.say("go to room B").reply
+    r = a.say("turn left")
+    assert "cancelled" not in r.reply and "Turning left" in r.reply and a.gate.pending is None
+
+
+def test_repeating_the_same_command_counts_as_yes():
+    b, a = _agent(explored=False)
+    assert "Shall I go" in a.say("Go to room B").reply
+    r = a.say("go to room B.")
+    assert "Going to room B" in r.reply and a.executor.state == "running"
+
+
+def test_no_still_cancels_the_pending_question():
+    b, a = _agent(explored=False)
+    a.say("go to room B")
+    assert a.say("no").reply == "Okay, cancelled." and b.task is None
+
+
+def test_find_after_a_finished_short_trip_is_not_busy():
+    b, a = _agent()
+    a.say("go to room A")
+    b.advance(30)                                    # the trip is over, nobody called pump() yet
+    r = a.say("find the red box")
+    assert "busy" not in r.reply and "switching" not in r.reply and "Found the red box" in r.reply
+
+
+def test_find_while_walking_switches_with_a_note_and_stop_still_stops():
+    b, a = _agent()
+    a.say("go to room B")
+    r = a.say("find the red box")
+    assert r.reply.startswith("Okay, switching to: find the red box.") and [s.tool for s in a.executor.steps] == ["find"]
+    a.say("stop")
+    assert a.executor.state in ("cancelled", "idle", "failed", "done") and b.task is None
+
+
+def test_host_advances_the_mock_clock_so_a_trip_ends():
+    b = MockBackend()
+    host = AgentHost(Agent(ToolLayer(b), KeywordLLM(b.known_places)), pump_s=0.02, sim_speed=500.0)
+    got = []
+    host.on_message(got.append)
+    host.start()
+    host.say("go to room A", None)
+    time.sleep(1.0)
+    host.close()
+    assert b.task is None and any("arrived" in m for m in got)

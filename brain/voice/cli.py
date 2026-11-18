@@ -36,7 +36,7 @@ def build_local_host(ollama: str | None):
     else:
         from ..agent.llm import KeywordLLM
         llm = KeywordLLM(b.known_places)
-    return AgentHost(Agent(ToolLayer(b), llm)), b
+    return AgentHost(Agent(ToolLayer(b), llm), sim_speed=3.0), b      # mock world: virtual clock runs 3x wall time
 
 
 def main() -> None:

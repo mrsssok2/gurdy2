@@ -29,8 +29,11 @@ def initial_prompt(places=None) -> str:
     """A short example command in the robot's own vocabulary (Whisper treats the prompt as preceding text)."""
     p = list(places if places is not None else PLACES)
     rooms = [x for x in p if x.lower().startswith("room")] or p
+    from ..agent.rooms import NATO, known_letters
+    ph = ", ".join(f"room {l} {NATO[l]}" for l in known_letters(p) if l in NATO)
     return (f"Commands for the robot Gurdy: go to {', '.join(rooms)}, the doorway or home. Go to room A and then go home. "
-            f"Where is the red box? What is near you? Look for the barrel. Patrol. Stop. "
+            + (f"Rooms can be said phonetically: {ph}. " if ph else "")
+            + f"Where is the red box? What is near you? Look for the barrel. Patrol. Stop. "
             f"Find the red box, blue box, yellow box, green box, barrel, fire extinguisher, traffic cone, toolbox, mannequin or chair.")
 
 

@@ -23,6 +23,7 @@ from .grounding import GroundedReply, collect_facts, grounded_reply, violations
 from .fuzzy import suggest_object, suggest_place, suggest_verb
 from .guard import _is_state_change, guard_plan, normalize_call, unknown_noun
 from .llm import LLM
+from . import rooms
 from .safety import ConfirmationGate, is_clear_no, is_clear_yes, SafetyChecker, Verdict, is_unsafe_request
 
 MAX_LLM_CALLS = 4
@@ -52,6 +53,7 @@ class TurnState(TypedDict, total=False):
     calls: list[dict]
     cont: bool
     followup_skip: set
+    voice: bool
     followup: bool          # a motion plan said `continue`: plan the rest when the mission has finished
     approved: bool
     reply_parts: list[str]
@@ -85,6 +87,8 @@ class Agent:
         self.replans: list[dict] = []   # log of re-plan attempts (evaluation / debugging)
         self.alerts = alerts or AlertManager()
         self.followup: dict | None = None        # {utterance, log_start, done}: plan the rest of the request once the mission is done
+        self.pending_room: dict | None = None   # "Which room: A, B or D?" waiting for a letter: {template, expires_at}
+        self.recent_room: dict | None = None    # last command that named a room: {utterance, t}; "no, Delta" corrects it
         self.pending_fix: dict | None = None    # "Did you mean room B?" waiting for a yes: {options: {name: corrected text}, expires_at}
         self.graph = self._build()
 
@@ -101,7 +105,44 @@ class Agent:
         return TurnResult(f"I heard '{heard}'. Can you say that again?", [],
                           [{"outcome": "clarify", "rule": "low_stt_confidence"}], 0, {})
 
+    def _room_turn(self, text: str, conf: float | None) -> "str | TurnResult":
+        """Room names by voice (see rooms.py): answer to "Which room?", "no, Delta" corrections, phonetic names, a missing letter,
+        a room that does not exist. Returns the text to process, or a TurnResult."""
+        now = self.layer.backend.now()
+        pr, self.pending_room = self.pending_room, None
+        if pr is not None and now <= pr["expires_at"]:
+            ch = rooms.answer_letter(text)
+            if ch:
+                text = re.sub(r"\broom\b", f"room {ch}", pr["template"], count=1, flags=re.I)
+        rr = self.recent_room
+        if rr is not None and now - rr["t"] <= 60 and not is_estop_phrase(text):
+            ch = rooms.correction_letter(text)
+            if ch:                                               # "no, Delta": drop what is running / asked, redo with the new room
+                self.gate.clear(); self.pending_fix = None; self.followup = None
+                if self.executor.active:
+                    self.executor.cancel()
+                    self.layer.call("stop")
+                text = re.sub(r"\broom [A-Z]\b", f"room {ch}", rr["utterance"], count=1)
+        text = rooms.normalize(text)
+        places = self.layer.backend.known_places()
+        if not is_estop_phrase(text):
+            q = rooms.missing_letter_question(text, places)
+            if q:
+                self.pending_room = {"template": text, "expires_at": now + self.safety.cfg["confirmation_timeout_s"]}
+                self.layer.call("ask_user", {"question": q})
+                return TurnResult(q, [], [{"outcome": "clarify", "rule": "missing_room_letter"}], 0, {})
+            msg = rooms.unknown_room_message(text, places)
+            if msg:
+                return TurnResult(msg, [], [{"outcome": "none", "rule": "unknown_room"}], 0, {})
+        if rooms.mentioned_letters(text):
+            self.recent_room = {"utterance": text, "t": now}
+        return text
+
     def say(self, utterance: str, stt_confidence: float | None = None) -> TurnResult:
+        room = self._room_turn(utterance, stt_confidence)
+        if isinstance(room, TurnResult):
+            return room
+        utterance = room
         again = self._reask(utterance, stt_confidence)
         if again is not None:
             return again
@@ -111,7 +152,8 @@ class Agent:
         utterance = fixed
         st: TurnState = {"utterance": utterance, "stt_confidence": stt_confidence, "log_start": len(self.layer.log),
                          "llm_calls": 0, "calls": [], "reply_parts": [], "verdicts": [], "events": [], "grounding": {},
-                         "approved": False, "has_query": False, "cont": False, "notes": []}
+                         "approved": False, "has_query": False, "cont": False, "notes": [],
+                         "voice": stt_confidence is not None}
         out = self.graph.invoke(st)
         if out.get("followup"):
             self.followup = {"utterance": out["utterance"], "log_start": self.executor.log_start}
@@ -268,11 +310,17 @@ class Agent:
             return {"reply_parts": ["I will not do that."], "next": "finish",
                     "verdicts": [{"outcome": "refuse", "rule": "unsafe_request"}]}
         if self.gate.pending is not None:
-            status, p = self.gate.answer(text)
+            held = self.gate.pending.args.get("utterance")
+            same = held and _norm(held) == _norm(text) and not is_clear_no(text)      # repeating the command = yes
+            status, p = self.gate.answer("yes" if same else text)
+            if status in ("cancelled", "expired") and not is_clear_no(text) and not is_clear_yes(text):
+                status = "new_command"                  # a different command: forget the old question, run the new one
             if status == "expired":
                 return {"reply_parts": ["That confirmation has expired, so I did nothing."], "next": "finish"}
             if status == "cancelled":
                 return {"reply_parts": ["Okay, cancelled."], "next": "finish"}
+            if status == "new_command" and self.executor.state == "awaiting_confirmation":
+                self.executor.cancel()                  # the mission that was waiting for that yes is dropped too
             if status == "confirmed":
                 if p.tool == "mission_step":           # executor was waiting on its next step
                     ev = self.executor.approve_and_continue()
@@ -389,8 +437,13 @@ class Agent:
         events: list[dict] = []
         if motion:
             if self.executor.active:
-                parts.append(f"I am busy with {self.executor.steps[0].tool}; say stop first.")
-            else:
+                parts += self._announce(self.executor.pump())      # a trip that has just finished must not count as "busy"
+            if self.executor.active:                               # a new motion command replaces the running one (stop is handled earlier)
+                events += self.executor.cancel()
+                self.layer.call("stop")
+                self.followup = None
+                parts.append("Okay, switching to: " + re.sub(r"[\s.!?,;:]+$", "", s["utterance"].strip()).lower() + ".")
+            if motion:
                 self.replan_used = False
                 events = self.executor.submit(motion, approved=s["approved"])
                 for step in self.executor.steps:
@@ -398,7 +451,11 @@ class Agent:
                         # a find that is answered from memory finishes inside submit(): say the RESULT (where, how far), not "Looking for"
                         done = next((e for e in events if e["type"] in ("task_finished", "task_failed") and step.tool == "find"
                                      and e["data"].get("task_id") == getattr(step, "task_id", None) and e["data"].get("tool") == "find"), None)
-                        parts.append(templates.describe_event(done) if done else templates.ack(step.tool, step.args, step.result))
+                        ack = templates.describe_event(done) if done else templates.ack(step.tool, step.args, step.result)
+                        pl = step.args.get("place", "")
+                        if s.get("voice") and step.tool == "go_to" and not done and re.fullmatch(r"room [A-Z]", pl) and rooms.phonetic(pl[-1]):
+                            ack = ack.replace(f"Going to {pl}", f"Going to {pl}, {rooms.phonetic(pl[-1])}", 1)   # read the letter back
+                        parts.append(ack)
                     elif step.status == "failed":
                         parts.append(templates.error_text(step.result) if step.result and step.result.get("error") else "I could not start that.")
                 later = [templates.ack(st.tool, st.args, {}) for st in self.executor.steps if st.status == "pending"]
@@ -434,6 +491,10 @@ class Agent:
     def n_finish(self, s: TurnState) -> dict:
         reply = " ".join([p for p in s.get("reply_parts", []) if p] + s.get("notes", [])) or "Okay."
         return {"reply": reply, "calls": [{k: v for k, v in c.items() if k != "_done"} for c in s.get("calls", [])]}
+
+
+def _norm(t: str) -> str:
+    return re.sub(r"[^a-z0-9 ]", "", t.lower()).strip()
 
 
 def _g(gr: GroundedReply) -> dict:
