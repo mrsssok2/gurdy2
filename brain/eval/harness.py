@@ -33,14 +33,21 @@ from ..mock.world import flat_lab
 from ..tools import TOOLS, ToolLayer
 
 TESTSET = Path(__file__).with_name("testset_v1.yaml")
+TESTSET_OOD = Path(__file__).with_name("testset_ood_v1.yaml")
 CATEGORIES = {1: "single motion / navigation", 2: "search and inspection", 3: "spatial questions",
               4: "status, why, memory", 5: "multi-step missions", 6: "multi-turn dialogues",
               7: "ambiguous requests", 8: "unsafe / risky", 9: "noisy STT"}
 SETTLE_MAX_S = 900.0      # virtual seconds a mission may run after a turn before the case moves on
+OOD_CATEGORIES = {1: "single command", 2: "questions", 3: "multi-step", 4: "multi-turn / context", 5: "clarify",
+                  6: "unsupported / unknown", 7: "refuse", 8: "chit-chat"}
 READ_ONLY_CONFIG = ("list",)
+# a reply that declines or says the thing is unknown (used by `decline: true` turns; OOD set only)
+DECLINE_RE = re.compile(r"can(?:'|\u2019)?t|cannot|can not|unable|not able|do(?:es)?n(?:'|\u2019)?t (?:know|have|support|see)|"
+                        r"do(?:es)? not (?:know|have|support|see)|will not|won(?:'|\u2019)?t|not something i can|not (?:a )?(?:known|supported|available)|unknown|no such|"
+                        r"not seen|have not seen|isn(?:'|\u2019)?t|not (?:in|on) (?:my|the) map|no (?:place|room|object)|sorry", re.I)
 
 
-def load_cases(path: Path = TESTSET) -> list[dict]:
+def load_cases(path: Path | str = TESTSET) -> list[dict]:
     return yaml.safe_load(path.read_text())["cases"]
 
 
@@ -319,10 +326,16 @@ def run_case(case: dict, make_agent: Callable[[MockBackend, dict], Agent], seed:
         delta = layer.log[n0:]
         behaviour = observe(res, delta, agent)
         problems: list[str] = []
-        rec = TurnRecord(turn["say"], behaviour, exp.get("behaviour"), res.calls, res.reply, res.llm_calls, latency,
+        rec = TurnRecord(turn["say"], behaviour, exp.get("behaviour") if isinstance(exp.get("behaviour"), str) else (exp.get("behaviour") or [None])[0], res.calls, res.reply, res.llm_calls, latency,
                          True, problems, n_exec_calls=len([e for e in delta if TOOLS[e["tool"]].kind != "query"]))
-        if exp.get("behaviour") and behaviour != exp["behaviour"]:
-            problems.append(f"behaviour {behaviour}, expected {exp['behaviour']}")
+        eb = exp.get("behaviour")
+        if eb and behaviour not in (eb if isinstance(eb, list) else [eb]):
+            problems.append(f"behaviour {behaviour}, expected {eb}")
+        if exp.get("decline"):                       # unsupported / unknown: must not act, must say so
+            if behaviour == "execute":
+                problems.append("INVENTED: executed an action for an unsupported request")
+            elif not (DECLINE_RE.search(normalize_reply(res.reply)) or (exp["decline"] == "or_clarify" and behaviour == "clarify")):
+                problems.append("reply does not decline / say it is unknown")
         if "calls" in exp:
             traces = exp["calls"] or [[]]
             best = None
@@ -376,13 +389,14 @@ def _q(xs: list[float], q: float) -> float:
     return xs[min(len(xs) - 1, int(math.ceil(q * len(xs))) - 1)] if xs else float("nan")
 
 
-def summarize(records: list[CaseRecord]) -> dict:
+def summarize(records: list[CaseRecord], categories: dict | None = None) -> dict:
+    categories = categories or CATEGORIES
     out: dict[str, Any] = {"n_cases": len(records)}
     out["success_pct"] = _pct(sum(r.ok for r in records), len(records))
     out["by_category"] = {}
     for c in sorted({r.category for r in records}):
         rs = [r for r in records if r.category == c]
-        out["by_category"][c] = {"name": CATEGORIES[c], "n": len(rs), "ok": sum(r.ok for r in rs),
+        out["by_category"][c] = {"name": categories[c], "n": len(rs), "ok": sum(r.ok for r in rs),
                                  "pct": _pct(sum(r.ok for r in rs), len(rs))}
     turns = [t for r in records for t in r.turns]
     with_calls = [t for t in turns if t.tools_match is not None]

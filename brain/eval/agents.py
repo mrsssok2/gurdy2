@@ -15,16 +15,18 @@ from ..tools import ToolLayer
 
 class OracleLLM:
     def __init__(self, case: dict):
-        self.script: list[tuple[str, list[dict]]] = []
+        self.script: list[tuple[str, list[dict], str | None]] = []
+        self.reply: str | None = None
         for t in case["turns"]:
             traces = t.get("expect", {}).get("calls")
             if traces:
-                self.script.append((t["say"], traces[0]))
+                self.script.append((t["say"], traces[0], t["expect"].get("oracle_reply")))
 
     def plan(self, system, state, tools, utterance, tool_results):
-        for i, (say, trace) in enumerate(self.script):
+        for i, (say, trace, oreply) in enumerate(self.script):
             if say == utterance:
                 self.script.pop(i)
+                self.reply = oreply
                 calls = [{"tool": c["tool"], "args": dict(c.get("args", {}))} for c in trace]
                 for c in calls:
                     if c["tool"] == "ask_user" and "question" not in c["args"]:
@@ -33,7 +35,7 @@ class OracleLLM:
         return {"reply": "Sorry, I did not understand that."}
 
     def respond(self, system, utterance, tool_results, feedback=None):
-        return summarize_results(tool_results)
+        return self.reply or summarize_results(tool_results)
 
 
 def keyword(b: MockBackend, case: dict) -> Agent:

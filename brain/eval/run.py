@@ -6,7 +6,7 @@ import json
 from dataclasses import asdict
 
 from .agents import AGENTS
-from .harness import CATEGORIES, load_cases, run_all, summarize
+from .harness import CATEGORIES, OOD_CATEGORIES, TESTSET_OOD, load_cases, run_all, summarize
 
 
 def main() -> None:
@@ -15,11 +15,12 @@ def main() -> None:
     ap.add_argument("--cat", type=int, nargs="*", help="only these categories")
     ap.add_argument("--json", help="write per-case records + summary here")
     ap.add_argument("--failures", action="store_true", help="print every failed case with the reasons")
+    ap.add_argument("--set", default="v1", choices=["v1", "ood_v1"], help="ood_v1 = assistant-written out-of-distribution set")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
-    cases = [c for c in load_cases() if not a.cat or c["cat"] in a.cat]
+    cases = [c for c in (load_cases(TESTSET_OOD) if a.set == "ood_v1" else load_cases()) if not a.cat or c["cat"] in a.cat]
     recs = run_all(cases, AGENTS[a.agent], a.seed)
-    s = summarize(recs)
+    s = summarize(recs, OOD_CATEGORIES if a.set == "ood_v1" else None)
     print(f"agent={a.agent}  cases={s['n_cases']}  success={s['success_pct']}%")
     for c, v in s["by_category"].items():
         print(f"  {c} {v['name']:<28} {v['ok']:>3}/{v['n']:<3} {v['pct']:>5}%")
