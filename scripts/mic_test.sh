@@ -13,16 +13,8 @@ docker compose run --rm voice bash -c '
   echo; echo "RECORDING 5 s in 2 s ... say: go to room B and then find the red box"; sleep 2; echo ">>> SPEAK NOW"
   parecord --rate=16000 --channels=1 --format=s16le --file-format=wav /tmp/mic_test.wav & P=$!
   sleep 5; kill -INT $P; wait $P 2>/dev/null || true
-  python3 -I - <<PY
-import wave, numpy as np
-w = wave.open("/tmp/mic_test.wav"); a = np.frombuffer(w.readframes(w.getnframes()), "<i2").astype(float) / 32768
-print(f"recorded {len(a)/w.getframerate():.1f} s, peak {abs(a).max():.3f}, rms {np.sqrt((a**2).mean()):.4f}  (peak < 0.01 = mic silent / muted)")
-PY
+  python3 -I scripts/mic_level.py /tmp/mic_test.wav
   echo ">>> PLAYBACK"; paplay /tmp/mic_test.wav
   echo "== Whisper turbo, CPU int8"
-  python3 - <<PY
-import time; from faster_whisper import WhisperModel
-t=time.time(); m = WhisperModel("/models/whisper-turbo-ct2", device="cpu", compute_type="int8", cpu_threads=4); print(f"load {time.time()-t:.1f} s")
-t=time.time(); segs,_ = m.transcribe("/tmp/mic_test.wav", language="en", beam_size=1, vad_filter=True); print(\"TEXT:\", \" \".join(s.text for s in segs).strip(), f\"({time.time()-t:.1f} s)\")
-PY
+  python3 scripts/mic_transcribe.py /tmp/mic_test.wav
 '
