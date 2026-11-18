@@ -1,17 +1,63 @@
 # Gurdy 2.0
 
-An 18-DOF hexapod robot in simulation: English voice commands, an offline fine-tuned LLM
-mission planner, an RL gait for rough terrain, mapping + navigation, object finding by name, and a
-robot-ops system that clusters failures into incidents and diagnoses root causes.
-ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL2). License: MIT.
+An 18-DOF hexapod robot in simulation that takes plain-English commands, plans missions with an offline fine-tuned LLM (Qwen3-1.7B + LoRA, runs locally on a 6 GB laptop GPU),
+walks with a PPO-trained RL gait over slopes and steps, builds maps and navigates (slam_toolbox + Nav2), and finds objects by name with a YOLO detector trained on self-generated synthetic data.
+Everything runs offline: ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL2). License: MIT.
 
-**Demo (75 s):** [docs/videos/gurdy2_demo.mp4](docs/videos/gurdy2_demo.mp4) — tripod gait vs the RL policy on a 12° slope and 4 cm steps
+**Demo (68 s):** [docs/videos/gurdy2_demo.mp4](docs/videos/gurdy2_demo.mp4) — tripod gait vs the RL policy on a 12° slope and 4 cm steps
 (MuJoCo), then autonomous exploration of a lab from an empty map (Gazebo + Nav2 + slam_toolbox).
 
 ![map from autonomous exploration](docs/results/phase3_explore_gt_map.png)
 
-**Status (2026-11-16):** Phases 0–3 done (robot + ROS 2 base, RL locomotion, mapping + navigation + exploration). Experiment B (leg-failure
-adaptation) is done — negative result, see below. Phase 4 (perception): synthetic dataset rendering started. Phases 5–9 not started. See [ROADMAP.md](ROADMAP.md) and [docs/results/](docs/results/).
+<!-- PLACEHOLDER: screenshot of the live LLM-driven Gazebo run. Save it as docs/images/live_llm_run.png, then replace this comment with:
+![live LLM-driven run in Gazebo](docs/images/live_llm_run.png) -->
+> **[Screenshot placeholder: live LLM-driven Gazebo run (`docs/images/live_llm_run.png` not added yet).]**
+
+## Architecture
+
+```
+ English text/voice ──► LLM brain (Qwen3-1.7B LoRA, Ollama) ──► typed tools + safety checker + grounding check
+                                                                     │  (go_to, find, patrol, explore, stop, ...)
+                                                                     ▼
+ detector (YOLO) ─► semantic map ─►  Nav2 + slam_toolbox  ──/cmd_vel──►  RL gait policy (ONNX, 50 Hz)
+                                                                     │ joint targets
+                                                                     ▼
+                                    ros2_control PD (500 Hz)  ─►  18-DOF hexapod (Gazebo / MuJoCo)
+```
+Everything above the gait speaks only `/cmd_vel`, so planner, teleop and LLM are swappable.
+
+## Headline results (all measured; details linked)
+
+| Area | Result | Details |
+|---|---|---|
+| RL walking vs tripod gait (MuJoCo) | tracking error 10.6 % vs 15.9 %; cost of transport 5.77 vs 7.35; 0 % falls in all randomisation scenarios; slope 12° 93 % (tripod 100 %); steps 4 cm 83 % (tripod 57 %) | [Experiment A](docs/results/exp_A_terrain.md) |
+| Sim-to-sim (MuJoCo → Gazebo) | 0 falls, but tracking differs by up to 14 points on single axes (target ≤ 10 **not met**) | [deploy](docs/results/phase2_deploy_gazebo.md) |
+| Mapping (Gazebo) | mean map error 3.1 cm (policy) / 2.4 cm (tripod); autonomous exploration 99.1 % of the lab mapped, Nav2 5/5 goals | [Phase 3](docs/results/phase3_explore.md) |
+| Object detection (YOLO11s, synthetic data) | test mAP50 0.922 (v1 test) / 0.871 (harder v2 test); 11/11 objects found in a Gazebo lab, median position error 0.031 m (xy) | [Phase 4](docs/results/phase4c_v2.md) |
+| LLM brain, 100 in-distribution commands | base Qwen3-1.7B 59 % → fine-tuned **94 %** (keyword baseline 55 %); 0 risky actions executed | [SFT eval](docs/results/phase5_eval_sft.md) |
+| LLM brain, 40 unseen casual phrasings | base 35 % → fine-tuned **65 %** (test set written by an AI assistant, not by humans) | [OOD eval](docs/results/phase5_eval_ood.md) |
+| Hallucinated replies | 0 in the final replies (28 checked; a grounding check rejects any fact not in that turn's tool results) | [SFT eval](docs/results/phase5_eval_sft.md) |
+| Live LLM-driven Gazebo missions | 9/9 typed missions completed (go-to, find, patrol, stop, refusal, clarification) | [live test](docs/results/phase5_live_test.md) |
+| Leg-failure adaptation (negative result) | missed the < 40 % criterion, worse than the open-loop tripod; not deployed | [Experiment B](docs/results/exp_B_leg_failure.md) |
+
+Full per-phase tables are below; all write-ups are in [docs/results/](docs/results/).
+
+## Quick start
+
+```bash
+scripts/start_agent_chat.sh     # Gazebo + Nav2 + policy + detector + Ollama brain, then a text chat with the robot
+```
+Needs Docker (with the NVIDIA runtime), the project's Ollama + the `gurdy-sft-400` model (see [phase5_ros_backend.md](docs/results/phase5_ros_backend.md)). Basic Gazebo demo without the LLM: see "Phase 1 demo" below.
+
+**Status (2026-11-18):** Phases 0–4 done, Phase 5 core (LLM brain, live Gazebo test) in progress; SFT v2 training is under way. Phases 6–9 not started. See [ROADMAP.md](ROADMAP.md).
+
+## Known limitations
+- **LLM:** 65 % on unseen casual phrasing; it still invents tool names and unsupported actions on some inputs (nothing invented was executed). The OOD set is assistant-written; noisy-speech cases in the main set are hand-written, not real Whisper output. No voice loop in the live test (typed commands).
+- **Hexapod walking:** policies stand still for tiny commands from rest (handled at deployment by lifting Nav2 commands to ≥ 0.09 m/s); steps ≥ 4 cm still fail 17–37 % of episodes for every controller.
+- **Sim only:** no real robot. Sim-to-sim gap up to 14 points (31 on one combined segment). Leg-failure adaptation did not work.
+- **Single runs:** Nav2, exploration and detector-in-Gazebo were run once per setting, in one world (`flat_lab` / `semantic_lab`); no variance estimates.
+- **Perception:** a table and a cylinder are still labelled `box` (7 false tracks in the lab run); detector trained on synthetic images only. Battery is simulated.
+- Gazebo RTF drops to ~0.35–0.6 with Nav2 + policy + detector; results are in sim time.
 
 ## Results (all measured; MuJoCo unless stated)
 
@@ -62,18 +108,6 @@ Time-lapse: [GIF](docs/results/phase3_explore_gt_timelapse.gif) · [MP4](docs/re
 Details: [flat](docs/results/phase2_flat.md) · [DR](docs/results/phase2_dr.md) · [terrain](docs/results/phase2_terrain.md) ·
 [Gazebo transfer](docs/results/phase2_deploy_gazebo.md) · [Phase 3 mapping/Nav2](docs/results/phase3_gazebo_results.md) ·
 [3-way video](docs/videos/phase2_3way_tripod_flat_dr.mp4).
-
-## Known limitations
-- **Small commands from rest:** the policies stand still for |v| ≈ 0.03 m/s from rest (`terrain_dr2` start gate: 65/144 fail). Handled at deployment:
-  Nav2 commands below 0.09 m/s / 0.23 rad/s are *lifted* to that minimum (smaller values fail the start check); direct teleop of tiny speeds still stands.
-- **Sim-to-sim gap:** in Gazebo the policy's tracking differs from MuJoCo by up to 14 points on single axes (target ≤ 10 not met) and 31 on the
-  combined segment (MuJoCo overshoots there). 0 falls in Gazebo.
-- **Single runs:** Nav2 (5 goals) and exploration were run once per odometry source (ground truth, EKF), in one world (`flat_lab`); no variance
-  estimates. EKF vs ground-truth differences (468 vs 345 s, one goal timeout) are not statistically meaningful. Terrain results are n = 30 per cell.
-- Steps ≥ 4 cm still fail 17–37 % of episodes for every controller; Nav2 start-up occasionally hangs (detected and restarted by the run scripts).
-- Gazebo RTF drops to ~0.35–0.5 with slam_toolbox + Nav2 + policy running; results are in sim time. The demo video has no Nav2 goal clip
-  (no recording exists), only exploration.
-- Phases 4–9 (perception, voice, LLM, ops, web, air-ground) are not started.
 
 ## Quick start (Phase 1 demo)
 
