@@ -166,7 +166,8 @@ def test_low_confidence_repeats_what_was_heard_without_acting():
     agent = Agent(ToolLayer(b), KeywordLLM(b.known_places))
     for text in ("That up.", "Are you?"):
         r = agent.say(text, 0.3)
-        assert r.reply == f"I heard '{text}'. Can you say that again?" and r.llm_calls == 0 and b.task is None
+        assert r.reply == f"I heard '{text.rstrip('.?')}'. Can you say that again?" and r.llm_calls == 0 and b.task is None
+    assert agent.say("Bad, odd.", 0.3).reply == "I heard 'Bad, odd'. Can you say that again?"
     assert agent.say("where are you", 0.83).reply != "I heard 'where are you'. Can you say that again?"
 
 

@@ -94,7 +94,8 @@ class Agent:
         if (self.gate.pending is not None or self.pending_fix is not None or is_estop_phrase(text)
                 or is_clear_yes(text) or is_clear_no(text)):
             return None
-        return TurnResult(f"I heard '{text.strip()}'. Can you say that again?", [],
+        heard = text.strip().rstrip(" .,;:!?-") or text.strip()      # "Bad, odd." -> "Bad, odd" (no double full stop)
+        return TurnResult(f"I heard '{heard}'. Can you say that again?", [],
                           [{"outcome": "clarify", "rule": "low_stt_confidence"}], 0, {})
 
     def say(self, utterance: str, stt_confidence: float | None = None) -> TurnResult:
