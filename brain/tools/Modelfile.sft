@@ -1,0 +1,13 @@
+FROM ./gurdy-sft-400-q4km.gguf
+TEMPLATE """<|im_start|>system
+{{ .System }}<|im_end|>
+<|im_start|>user
+{{ .Prompt }}<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+
+"""
+PARAMETER stop <|im_end|>
+PARAMETER temperature 0

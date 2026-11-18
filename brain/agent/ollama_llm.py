@@ -72,12 +72,13 @@ def _results(entries: list[dict]) -> str:
 
 class OllamaLLM:
     def __init__(self, model: str, host: str | None = None, num_ctx: int = 4096, num_predict: int = 400,
-                 keep_alive: str = "30m", timeout: float = 120.0, prompt_style: str = "compact"):
+                 keep_alive: str = "30m", timeout: float = 120.0, prompt_style: str = "compact", constrain: bool = True):
         self.model = model
         self.host = host or os.environ.get("OLLAMA_URL") or "http://127.0.0.1:11435"
         self.options = {"temperature": 0, "num_ctx": num_ctx, "num_predict": num_predict}
         self.keep_alive, self.timeout = keep_alive, timeout
         self.prompt_style = prompt_style
+        self.constrain = constrain      # False for the fine-tuned model: it was trained without a grammar and a free-form `args` schema derails it (phase5_eval_sft.md)
         self.system = build_system(prompt_style)
         self.schema, self.schema_results = plan_schema(), plan_schema(True)
         self.stats: list[dict] = []
@@ -88,7 +89,7 @@ class OllamaLLM:
         body: dict[str, Any] = {"model": self.model, "stream": False, "think": False, "keep_alive": self.keep_alive,
                                 "options": self.options,
                                 "messages": [{"role": "system", "content": self.system}, {"role": "user", "content": user}]}
-        if fmt:
+        if fmt and self.constrain:
             body["format"] = fmt
         t0 = time.perf_counter()
         req = urllib.request.Request(self.host + "/api/chat", json.dumps(body).encode(), {"Content-Type": "application/json"})
