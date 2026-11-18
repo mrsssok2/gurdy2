@@ -16,6 +16,7 @@ from typing import Any, Callable
 from ..agent import templates
 from ..tools.schema import validate
 from ..tools.specs import TOOLS
+from ..tools.why import select_why
 from ..tools.types import Result, bearing_word, fail, ok
 from .world import GtObject, World, flat_lab
 
@@ -652,10 +653,7 @@ class MockBackend:
                  "alert": ("leg_failure", "battery_low", "path_blocked", "object_missing"),
                  "refusal": ("refusal",)}[about]
         evs = [e for e in self.events if e["type"] in types]
-        if about == "stop":
-            evs = [e for e in evs if e["type"] != "task_started"][-3:]
-        else:
-            evs = evs[-5:]
+        evs = select_why(about, self.events, evs)
         return ok(events=[{k: e[k] for k in ("stamp", "type", "severity", "text")} for e in evs])
 
     def recall(self, what: str, query: dict | None = None) -> Result:

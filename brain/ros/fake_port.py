@@ -30,6 +30,7 @@ class FakePort:
         self._alerts: list[dict] = []
         self.estop = False
         self.explore_ok = True
+        self.explore_finish_after = 60.0                        # sim seconds until the fake explorer reports "done" (0 = nothing left to explore)
         self.nav_up = True
         self.mapped = 0.4
         self.reveal: list[tuple[float, dict]] = []                # (explore seconds, object json) shown while exploring
@@ -42,10 +43,18 @@ class FakePort:
         self.plan_requests = 0
         self.zero_holds: list[tuple[float, float]] = []         # (time, seconds) of every hold_zero call
         self.cancelled_goals: list[int] = []
+        self.hidden: list[dict] = []                            # objects the camera has NOT seen yet: revealed when inside the camera cone (see set_camera)
+        self.cam_range, self.cam_half_fov = 3.5, math.radians(35)
 
     # ---- scenario
     def set_objects(self, objs: list[dict]) -> None:
         self.objects = [dict(o) for o in objs]
+
+    def hide_objects(self, objs: list[dict], cam_range: float = 3.5, cam_half_fov_deg: float = 35.0) -> None:
+        """Objects that only appear in `semantic_objects()` once the robot's camera cone (range, half field of view) covers them: a robot that does not
+        turn never sees what is behind it."""
+        self.hidden = [dict(o) for o in objs]
+        self.cam_range, self.cam_half_fov = cam_range, math.radians(cam_half_fov_deg)
 
     def alert(self, typ: str, severity: str, text: str, **data) -> None:
         self._alerts.append({"stamp": self.t, "type": typ, "severity": severity, "text": text, "data": data})
@@ -84,6 +93,12 @@ class FakePort:
                 self.x += (g["x"] - self.x) / d * step
                 self.y += (g["y"] - self.y) / d * step
                 self.yaw = math.atan2(g["y"] - self.y, g["x"] - self.x)
+        for o in list(self.hidden):
+            d = math.hypot(o["x"] - self.x, o["y"] - self.y)
+            diff = (math.atan2(o["y"] - self.y, o["x"] - self.x) - self.yaw + math.pi) % (2 * math.pi) - math.pi
+            if d <= self.cam_range and abs(diff) <= self.cam_half_fov:
+                self.objects.append(dict(o, last_seen=self.t, first_seen=self.t))
+                self.hidden.remove(o)
         for e in self.explores.values():
             if e["state"] != NAV_RUNNING:
                 continue
@@ -179,7 +194,7 @@ class FakePort:
 
     def explore_start(self, max_time_s, area_rect):
         self._h += 1
-        self.explores[self._h] = {"state": NAV_RUNNING, "elapsed": 0.0, "max_time_s": max_time_s, "finish_after": 60.0, "area_rect": area_rect}
+        self.explores[self._h] = {"state": NAV_RUNNING, "elapsed": 0.0, "max_time_s": max_time_s, "finish_after": self.explore_finish_after, "area_rect": area_rect}
         return self._h
 
     def explore_state(self, h):

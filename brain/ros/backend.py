@@ -14,6 +14,7 @@ from ..agent import templates
 from ..mock.backend import STALE_AFTER_S, _norm, _wrap
 from ..tools.schema import validate
 from ..tools.specs import TOOLS
+from ..tools.why import select_why
 from ..tools.types import Result, bearing_word, fail, ok
 from .port import NAV_ABORTED, NAV_CANCELED, NAV_OK, RosPort
 from .relmotion import RelativeMotion
@@ -347,7 +348,8 @@ class RosBackend:
                 return self._finish(t, ("reached" if t.tool in ("go_to", "return_home") else "done") if t.until is None else "timeout")
             t.cur = {**t.steps.pop(0), "started": False, "t0": self.now(), "best": None, "progress_t": self.now()}
         s = t.cur
-        {"nav": self._step_nav, "rel": self._step_rel, "explore": self._step_explore, "rotate": self._step_rotate}[s["kind"]](t, s, pose)
+        {"nav": self._step_nav, "rel": self._step_rel, "explore": self._step_explore, "rotate": self._step_rotate,
+         "wait": self._step_wait}[s["kind"]](t, s, pose)
 
     def _next(self, t: _Task, outcome: dict | None = None) -> None:
         if outcome is not None:
@@ -421,15 +423,53 @@ class RosBackend:
         s["started"] = True
         self.p.send_cmd(0.0, 0.0, math.copysign(0.3 if abs(err) > 0.3 else 0.23, err))
 
+    def _step_wait(self, t: _Task, s: dict, pose) -> None:
+        """Stand still for s["secs"] sim seconds (the camera / detector needs a moment on each heading of a scan)."""
+        if not s["started"]:
+            s["started"], s["t_end"] = True, self.now() + s["secs"]
+            self.p.send_cmd(0.0, 0.0, 0.0)
+        if self.now() >= s["t_end"]:
+            self._next(t)
+
+    # ---- looking around: a sweep visits rooms and turns a full circle in each (the camera sees only a cone ahead)
+    SCAN_QUARTERS = 4           # headings per scan: 90 degrees apart
+    SCAN_DWELL_S = 2.5          # stand still per heading, sim seconds (detector confirmation needs several frames)
+    EXPLORE_TRIVIAL_S = 30.0    # an explore step that ended within this time and moved less than 1 m found nothing left to explore
+
+    def _scan_steps(self) -> list[dict]:
+        steps: list[dict] = []
+        for _ in range(self.SCAN_QUARTERS):
+            steps += [{"kind": "wait", "secs": self.SCAN_DWELL_S},
+                      {"kind": "rel", "motion": "turn", "direction": "left", "amount": 360.0 / self.SCAN_QUARTERS}]
+        return steps
+
+    def _sweep_steps(self, only: str | None = None) -> list[dict]:
+        """Go to every room (or the one named place) that is not inside a no-go zone and look all around there. Used by `find` (object not in
+        memory) and by `explore` when the explorer has nothing left to explore (an already mapped area): the robot still goes and looks."""
+        steps: list[dict] = []
+        for n, v in self.places.items():
+            if only is not None:
+                if _norm(n) != _norm(only):
+                    continue
+            elif v.get("kind") != "room":
+                continue
+            if v.get("kind") == "hazard" or self._in_zone(v["x"], v["y"]):
+                continue
+            steps.append({"kind": "nav", "x": v["x"], "y": v["y"], "yaw": None, "name": n, "optional": True})
+            steps += self._scan_steps()
+        return steps
+
     def _step_explore(self, t: _Task, s: dict, pose) -> None:
         if not s["started"]:
             s["h"] = self.p.explore_start(s.get("max_time_s") or 600.0, s.get("area"))
-            s["started"] = True
+            s["started"], s["travel0"] = True, t.travelled
             if s["h"] is None:
                 return self._finish(t, "blocked")
             return
         st = self.p.explore_state(s["h"])
         if st["state"] == NAV_OK:
+            if s.get("sweep") is not None and self.now() - s["t0"] < self.EXPLORE_TRIVIAL_S and t.travelled - s["travel0"] < 1.0:
+                t.steps[:0] = s["sweep"]                     # nothing left to explore: look around where the user asked instead of reporting "done"
             self._next(t)
         elif st["state"] == NAV_ABORTED:
             self._finish(t, "blocked")
@@ -528,7 +568,8 @@ class RosBackend:
                     "new_objects": [self._obj(x) for x in self._tracks() if x["id"] not in before],
                     "travelled_m": round(t.travelled, 2), "duration_s": round(self.now() - t.t0, 1)}
         args = {"max_time_s": max_time_s, **({"area": area} if area else {})}
-        return self._start("explore", args, [{"kind": "explore", "max_time_s": max_time_s, "area": self._area_rect(area)}], final, max_time_s,
+        return self._start("explore", args, [{"kind": "explore", "max_time_s": max_time_s, "area": self._area_rect(area), "sweep": self._sweep_steps(area)}],
+                           final, max_time_s,
                            estimate={"distance_m": 0.0, "duration_s": float(max_time_s)})
 
     def find(self, object: dict, approach: bool = False, max_time_s: float = 300) -> Result:
@@ -555,8 +596,7 @@ class RosBackend:
         steps: list[dict] = [{"kind": "explore", "max_time_s": max_time_s, "area": None}]
         # On an already mapped area the explorer ends at once ("no frontiers left"); then look through the rooms instead
         # (found in the 5.6 live test: "find the red box" timed out after 11 s). `until` stops the sweep when the object appears.
-        steps += [{"kind": "nav", "x": v["x"], "y": v["y"], "yaw": None, "name": n, "optional": True}
-                  for n, v in self.places.items() if v.get("kind") == "room" and not self._in_zone(v["x"], v["y"])]
+        steps += self._sweep_steps()
         until = lambda: bool(self._match(object))
         if approach:      # filled in once the object is seen: the step list is replaced when `until` fires
             def until():
@@ -752,20 +792,7 @@ class RosBackend:
                  "alert": ("leg_failure", "battery_low", "battery_critical", "path_blocked", "object_missing", "stuck", "fall"),
                  "refusal": ("refusal",)}[about]
         evs = [e for e in self.events if e["type"] in types]
-        if about == "stop":
-            evs = evs[-1:]         # the LATEST cause only (older events are history, not the answer)
-            if evs and evs[0]["type"] == "user_stop":      # a user stop also leaves "x finished: cancelled" just before it: same cause
-                pass
-            elif evs and evs[0]["type"] == "task_finished":
-                evs = [dict(evs[0], text=f"I stopped because the {evs[0]['data'].get('tool', 'task').replace('_', ' ')} task finished.")]
-            elif evs and evs[0]["type"] == "task_failed" and evs[0]["data"].get("stopped_reason") == "blocked" \
-                    and (pb := [e for e in self.events if e["type"] == "path_blocked" and 0 <= evs[0]["stamp"] - e["stamp"] <= 5.0]):
-                evs = pb[-1:]      # the blockage is the cause, the failed task is its consequence
-            elif evs and evs[0]["type"] == "task_failed":
-                evs = [dict(evs[0], text=f"I stopped because the {evs[0]['data'].get('tool', 'task').replace('_', ' ')} task ended: "
-                                         f"{evs[0]['data'].get('stopped_reason', 'failed')}.")]
-        else:
-            evs = evs[-5:]
+        evs = select_why(about, self.events, evs)
         return ok(events=[{k: e[k] for k in ("stamp", "type", "severity", "text")} for e in evs])
 
     def recall(self, what: str, query: dict | None = None) -> Result:

@@ -70,6 +70,49 @@ def _results(entries: list[dict]) -> str:
     return s if len(s) < 6000 else s[:6000] + "...(truncated)"
 
 
+def repair_json(text: str) -> str | None:
+    """Fix the small structural slips a small model makes in otherwise correct JSON: a stray extra closing bracket / brace (seen 2026-11-18:
+    `...{"tool":"describe_view","args":{}}},{"tool":"return_home"...` turned a correct 3-step plan into "I did not understand"), missing closers at
+    the end, trailing text after the object, markdown fences. Strings are respected. Returns the repaired text, or None if it still does not parse
+    (the caller then falls back to "did not understand"). It never invents content: it only drops unmatched closers and appends missing ones."""
+    t = text.strip()
+    if t.startswith("```"):
+        t = t.strip("`")
+        t = t[4:] if t.lower().startswith("json") else t
+    start = min((i for i in (t.find("{"), t.find("[")) if i >= 0), default=-1)
+    if start < 0:
+        return None
+    out, stack, in_str, esc = [], [], False, False
+    pair = {"{": "}", "[": "]"}
+    for ch in t[start:]:
+        if in_str:
+            out.append(ch)
+            esc = (not esc and ch == "\\")
+            if ch == '"' and not esc:
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in pair:
+            stack.append(pair[ch])
+        elif ch in "}]":
+            if not stack or stack[-1] != ch:           # unmatched closer: drop it
+                continue
+            stack.pop()
+            out.append(ch)
+            if not stack:                              # the top-level value is complete; anything after it is ignored
+                break
+            continue
+        out.append(ch)
+    out.append("".join(reversed(stack)))
+    fixed = "".join(out)
+    try:
+        json.loads(fixed)
+    except json.JSONDecodeError:
+        return None
+    return fixed
+
+
 class OllamaLLM:
     def __init__(self, model: str, host: str | None = None, num_ctx: int = 4096, num_predict: int = 400,
                  keep_alive: str = "30m", timeout: float = 120.0, prompt_style: str = "compact", constrain: bool = True):
@@ -83,6 +126,7 @@ class OllamaLLM:
         self.schema, self.schema_results = plan_schema(), plan_schema(True)
         self.stats: list[dict] = []
         self.parse_failures = 0
+        self.repaired = 0            # outputs that needed repair_json
 
     # ------------------------------------------------------------------ transport
     def _chat(self, kind: str, user: str, fmt: dict | None) -> str:
@@ -107,7 +151,15 @@ class OllamaLLM:
             if isinstance(out, dict) and ("calls" in out or "reply" in out or "done" in out):
                 return out
         except json.JSONDecodeError:
-            pass
+            fixed = repair_json(text)
+            if fixed is not None:
+                try:
+                    out = json.loads(fixed)
+                    if isinstance(out, dict) and ("calls" in out or "reply" in out or "done" in out):
+                        self.repaired += 1
+                        return out
+                except json.JSONDecodeError:
+                    pass
         self.parse_failures += 1
         return {"reply": "Sorry, I did not understand that."}
 

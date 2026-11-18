@@ -18,11 +18,13 @@ from langgraph.graph import END, StateGraph
 from ..tools import TOOLS, ToolLayer
 from . import templates
 from .alerts import ALERT_TYPES, AlertManager
+from .capabilities import unsupported_request
 from .executor import MissionExecutor
 from .grounding import GroundedReply, collect_facts, grounded_reply, violations
 from .fuzzy import suggest_object, suggest_place, suggest_verb
 from .guard import _is_state_change, guard_plan, normalize_call, unknown_noun
 from .llm import LLM
+from .refs import resolve_other
 from . import rooms
 from .answer_clock import AnswerClock
 from .safety import ConfirmationGate, is_clear_no, is_clear_yes, SafetyChecker, Verdict
@@ -174,6 +176,10 @@ class Agent:
         fixed = self._did_you_mean(utterance, stt_confidence)
         if isinstance(fixed, TurnResult):
             return fixed
+        other = self._other_turn(fixed)
+        if isinstance(other, TurnResult):
+            return other
+        fixed = other
         if fixed != utterance and rooms.mentioned_letters(fixed):        # a confirmed room choice: "no, Delta" still works afterwards
             self.recent_room = {"utterance": fixed, "t": self.clock.stamp()}
         utterance = fixed
@@ -208,6 +214,27 @@ class Agent:
         q = sug.question
         self.layer.call("ask_user", {"question": q, "options": sug.options[:6]})
         return TurnResult(q, [], [{"outcome": "clarify", "rule": "did_you_mean"}], 0, {})
+
+    def _other_turn(self, text: str) -> "str | TurnResult":
+        """"the other box" / "another barrel": resolve against what was just talked about (refs.py) before the planner sees it."""
+        if self.gate.pending is not None or is_estop_phrase(text):
+            return text
+
+        def records(cls: str) -> list[dict]:
+            try:
+                return list(self.layer.backend.recall("object", {"class": cls}).data.get("records", []))
+            except Exception:                                    # noqa: BLE001
+                return []
+        res = resolve_other(text, self.layer.focus, records)
+        if res is None:
+            return text
+        if res.text is not None:
+            return res.text
+        if res.reply is not None:
+            return TurnResult(res.reply, [], [{"outcome": "none", "rule": res.rule}], 0, {})
+        self.pending_fix = {"options": dict(res.options), "asked_at": self.clock.stamp()}
+        self.layer.call("ask_user", {"question": res.question, "options": list(res.options)[:6]})
+        return TurnResult(res.question, [], [{"outcome": "clarify", "rule": res.rule}], 0, {})
 
     def pump(self) -> list[str]:
         """Advance the executor with backend events; returns what the robot says about them."""
@@ -386,6 +413,8 @@ class Agent:
                 return {"calls": p.args["calls"], "approved": True, "next": "execute",
                         "cont": bool(p.args.get("cont")), "utterance": p.args.get("utterance", text),
                         "verdicts": [{"outcome": "confirmed", "rule": p.reason}]}
+        if self.gate.pending is None and (cap := unsupported_request(text)):
+            return {"reply_parts": [cap], "next": "finish", "verdicts": [{"outcome": "none", "rule": "unsupported_capability"}]}
         noun = unknown_noun(text, self.layer.backend.known_places())
         if noun:                                   # no concept of this thing: say so, never substitute a known one (no LLM call)
             from .guard import UNKNOWN_PLACE_NOUNS
