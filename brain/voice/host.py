@@ -37,6 +37,9 @@ class AgentHost:
         """The robot finished speaking (a question's answer window starts now)."""
         self.agent.clock.spoken_done()
 
+    def answer_hint(self) -> "str | None":
+        return self.agent.answer_hint()
+
     def estop(self) -> None:
         """Fast path: cancel the mission and stop the robot without taking the agent lock (idempotent)."""
         try:
@@ -115,7 +118,7 @@ def serve(host: AgentHost, port: int, bind: str = "0.0.0.0") -> threading.Thread
                 elif op == "spoken":
                     host.spoken_done()
                 elif op == "state":
-                    send({"op": "state", "moving": host.is_moving(), "places": host.places()})
+                    send({"op": "state", "moving": host.is_moving(), "places": host.places(), "hint": host.answer_hint()})
                 elif op == "say":
                     # off the reading thread: a slow LLM turn must not delay an {"op":"estop"} that arrives meanwhile
                     threading.Thread(target=lambda r=r: send({"op": "reply", "id": r.get("id"), "text": host.say(r.get("text", ""), r.get("conf"), r.get("started_ago"))}),
@@ -211,6 +214,9 @@ class RemoteHost:
 
     def places(self) -> list[str]:
         return list(self._state.get("places", []))
+
+    def answer_hint(self) -> "str | None":
+        return self._state.get("hint")
 
     def on_message(self, fn) -> None:
         self.listeners.append(fn)

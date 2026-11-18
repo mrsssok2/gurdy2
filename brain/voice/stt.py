@@ -55,7 +55,7 @@ def reject_reason(tr: "Transcript", audio=None) -> str | None:
 
 
 class STT(Protocol):
-    def transcribe(self, audio: np.ndarray, sr: int = SAMPLE_RATE) -> Transcript: ...
+    def transcribe(self, audio: np.ndarray, sr: int = SAMPLE_RATE, prompt: str | None = None) -> Transcript: ...
 
 
 class FasterWhisperSTT:
@@ -80,7 +80,8 @@ class FasterWhisperSTT:
         self.prompt = initial_prompt(places) if bias in ("prompt", "full") else None
         self.hotwords = hotwords(places) if bias == "full" else None
 
-    def transcribe(self, audio: np.ndarray, sr: int = SAMPLE_RATE) -> Transcript:
+    def transcribe(self, audio: np.ndarray, sr: int = SAMPLE_RATE, prompt: str | None = None) -> Transcript:
+        """`prompt`: question-specific initial_prompt (the expected answers); replaces the command prompt, hotwords off."""
         if sr != SAMPLE_RATE:
             from .audio import resample
             audio = resample(audio, sr)
@@ -91,7 +92,7 @@ class FasterWhisperSTT:
                                         condition_on_previous_text=False, vad_filter=self.vad_filter,
                                         vad_parameters={"threshold": 0.4, "min_silence_duration_ms": 500},
                                         no_speech_threshold=0.6, compression_ratio_threshold=2.4, log_prob_threshold=-1.0,
-                                        without_timestamps=True, initial_prompt=self.prompt, hotwords=self.hotwords)
+                                        without_timestamps=True, initial_prompt=prompt or self.prompt, hotwords=None if prompt else self.hotwords)
         segs = list(segs)
         text = "".join(s.text for s in segs).strip()
         conf = float(np.exp(np.mean([s.avg_logprob for s in segs]))) if segs else None
@@ -105,7 +106,8 @@ class ScriptedSTT:
     def __init__(self, texts=None, fn=None):
         self.texts, self.fn, self.calls = list(texts or []), fn, []
 
-    def transcribe(self, audio: np.ndarray, sr: int = SAMPLE_RATE) -> Transcript:
+    def transcribe(self, audio: np.ndarray, sr: int = SAMPLE_RATE, prompt: str | None = None) -> Transcript:
         self.calls.append(len(audio) / sr)
+        self.prompts = getattr(self, "prompts", []) + [prompt]
         text = self.fn(audio) if self.fn else (self.texts.pop(0) if self.texts else "")
         return Transcript(text, 0.9, 0.0)

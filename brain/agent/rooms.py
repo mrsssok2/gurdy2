@@ -73,3 +73,36 @@ def unknown_room_message(text: str, places: list[str]) -> str | None:
             known = letters[0] if len(letters) == 1 else ", ".join(letters[:-1]) + " and " + letters[-1]
             return f"There is no room {ch}. I know {plural} {known}."
     return None
+
+
+# spoken names of the letters (Whisper writes "bee" / "be" / "dee" / "sea" for a lone letter)
+_LETTER_NAMES = {"a": "A", "ay": "A", "eh": "A", "b": "B", "bee": "B", "be": "B", "c": "C", "see": "C", "sea": "C", "cee": "C",
+                 "d": "D", "dee": "D", "e": "E", "f": "F", "eff": "F", "g": "G", "gee": "G", "h": "H"}
+
+
+def fuzzy_answer(text: str, letters: list[str]) -> str | None:
+    """An answer to "Which room: A or B?" that Whisper garbled ("Alfa", "alpa", "bee", "Bravvo"): the OPTION that is clearly closest by
+    spelling (difflib ratio >= 0.6, runner-up at least 0.1 worse), looking at the whole short answer and at each word. Only short answers
+    (<= 3 words). The caller always reads the choice back, so a wrong match cannot move the robot."""
+    from difflib import SequenceMatcher
+    t = re.sub(r"[^a-z ]", " ", text.lower()).split()
+    if not t or len(t) > 3 or not letters:
+        return None
+    t = [w for w in t if w not in ("room", "the", "to", "go")] or t
+    cands = t + ["".join(t)]
+    scores: dict[str, float] = {}
+    for ch in letters:
+        names = [NATO[ch].lower(), ch.lower()] + [k for k, v in _LETTER_NAMES.items() if v == ch and len(k) > 1]
+        scores[ch] = max((1.0 if c == n else SequenceMatcher(None, c, n).ratio()) for c in cands for n in names
+                         if len(n) > 1 or c == n)
+    ranked = sorted(scores.items(), key=lambda kv: -kv[1])
+    best = ranked[0]
+    if best[1] < 0.6 or (len(ranked) > 1 and ranked[1][1] > best[1] - 0.1):
+        return None
+    return best[0]
+
+
+def answer_hint(letters: list[str]) -> str:
+    """Whisper initial_prompt while "Which room?" is pending: the expected answers."""
+    return " ".join([f"{NATO[l]}." for l in letters if l in NATO] + [f"Room {l}." for l in letters] + [f"{l}." for l in letters]
+                    + ["Yes. No. Stop."])

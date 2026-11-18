@@ -113,9 +113,14 @@ class Agent:
         timeout = self.safety.cfg["confirmation_timeout_s"]
         pr, self.pending_room = self.pending_room, None
         if pr is not None and not self.clock.expired(pr["asked_at"], timeout):
-            ch = rooms.answer_letter(text)
+            ch = rooms.answer_letter(text) or rooms.fuzzy_answer(text, rooms.known_letters(self.layer.backend.known_places()))
             if ch:
                 text = re.sub(r"\broom\b", f"room {ch}", pr["template"], count=1, flags=re.I)
+                if conf is not None:             # heard by voice: read the choice back and wait for a yes (a wrong match cannot move the robot)
+                    q = f"Room {ch}, {rooms.phonetic(ch) or ch}. Shall I go?"
+                    self.pending_fix = {"options": {f"room {ch}": text}, "asked_at": self.clock.stamp()}
+                    self.layer.call("ask_user", {"question": q, "options": [f"room {ch}"]})
+                    return TurnResult(q, [], [{"outcome": "clarify", "rule": "room_answer_readback"}], 0, {})
         rr = self.recent_room
         if rr is not None and not self.clock.expired(rr["t"], 60.0) and not is_estop_phrase(text):
             ch = rooms.correction_letter(text)
@@ -140,6 +145,15 @@ class Agent:
             self.recent_room = {"utterance": text, "t": self.clock.stamp()}
         return text
 
+    def answer_hint(self) -> str | None:
+        """Text to bias speech recognition while a question is pending (Whisper initial_prompt): the expected answers."""
+        if self.pending_room is not None and not self.clock.expired(self.pending_room["asked_at"], self.safety.cfg["confirmation_timeout_s"]):
+            return rooms.answer_hint(rooms.known_letters(self.layer.backend.known_places()))
+        if self.gate.pending is not None or self.pending_fix is not None:
+            opts = list(self.pending_fix["options"]) if self.pending_fix else []
+            return " ".join(["Yes. No. Yes, go. No, cancel. Stop."] + [o.capitalize() + "." for o in opts])
+        return None
+
     def say(self, utterance: str, stt_confidence: float | None = None, started_at: float | None = None) -> TurnResult:
         """`started_at`: wall-clock (self.clock.wall) time the user STARTED speaking; pending questions are judged by that, not by
         when the transcript arrived."""
@@ -151,6 +165,8 @@ class Agent:
         fixed = self._did_you_mean(utterance, stt_confidence)
         if isinstance(fixed, TurnResult):
             return fixed
+        if fixed != utterance and rooms.mentioned_letters(fixed):        # a confirmed room choice: "no, Delta" still works afterwards
+            self.recent_room = {"utterance": fixed, "t": self.clock.stamp()}
         utterance = fixed
         st: TurnState = {"utterance": utterance, "stt_confidence": stt_confidence, "log_start": len(self.layer.log),
                          "llm_calls": 0, "calls": [], "reply_parts": [], "verdicts": [], "events": [], "grounding": {},

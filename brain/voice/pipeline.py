@@ -30,6 +30,7 @@ class VoiceConfig:
     partial_every_s: float = 0.6            # stop-word check cadence while moving
     partial_window_s: float = 1.5           # transcribe only the last N seconds of the running utterance
     speaking_boost_db: float = 8.0          # VAD threshold raise while the robot talks
+    ptt_postroll_s: float = 0.5             # push-to-talk keeps recording this long after Enter (the last word is often still being said)
     min_confidence: float = 0.0             # below this the agent gets None confidence-flagged text (it may ask again)
 
 
@@ -39,7 +40,7 @@ class VoicePipeline:
                  cfg: VoiceConfig | None = None, segmenter: Segmenter | None = None, is_stop_phrase=None):
         self.cfg = cfg or VoiceConfig()
         self.stt, self.speaker, self.on_text, self.on_estop, self.is_moving = stt, speaker, on_text, on_estop, is_moving
-        self.seg = segmenter or Segmenter(mode=self.cfg.mode, partial_every_s=self.cfg.partial_every_s)
+        self.seg = segmenter or Segmenter(mode=self.cfg.mode, partial_every_s=self.cfg.partial_every_s, ptt_postroll_s=self.cfg.ptt_postroll_s)
         if is_stop_phrase is None:
             from ..agent.graph import is_estop_phrase as is_stop_phrase
         self.is_stop = is_stop_phrase

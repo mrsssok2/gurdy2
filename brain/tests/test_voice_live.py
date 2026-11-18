@@ -132,7 +132,8 @@ def test_ptt_press_release_via_controls():
             if n == len(fr):
                 ctl.put(("release",))
             yield f
-        yield fr[0]                                          # one more frame so the release is processed
+        for _ in range(40):                                  # the 0.5 s post-roll after the key release (25 frames) + one to finish
+            yield fr[0] * 0.0
     run_live(pipe, src(), ctl)
     assert wait(lambda: pipe.events("transcript"))
 
@@ -319,7 +320,11 @@ def test_missing_letter_asks_which_room_and_the_answer_completes_it():
     r = a.say("Go to room.", 0.9)
     assert r.reply == "Which room: A or B?" and b.task is None
     r = a.say("Bravo", 0.9)
-    assert "Going to room B, Bravo" in r.reply
+    assert r.reply == "Room B, Bravo. Shall I go?" and b.task is None          # a spoken answer is always read back first
+    assert "Going to room B, Bravo" in a.say("yes", 0.9).reply
+    b, a = _agent()
+    a.say("Go to room.", None)
+    assert "Going to room B" in a.say("B", None).reply                          # typed: unambiguous, no read-back
 
 
 def test_room_that_does_not_exist_is_said_plainly():
@@ -506,7 +511,7 @@ def test_push_to_talk_is_one_at_a_time_and_prints_thinking():
     n = [0]
 
     def src():
-        for i, f in enumerate(frames(np.concatenate([speech(0.6), quiet(0.2)]))):
+        for i, f in enumerate(frames(np.concatenate([speech(0.6), quiet(1.0)]))):
             if i == 20:
                 ctl.put(("enter",))                       # send
             if i == 25:
@@ -536,3 +541,77 @@ def test_index_logs_whether_the_robot_was_speaking_during_the_recording(tmp_path
     time.sleep(0.6)
     rows = [json.loads(x) for x in (tmp_path / "index.jsonl").read_text().splitlines()]
     assert len(rows) == 2 and rows[0]["robot_speaking"] is False and rows[1]["robot_speaking"] is True
+
+
+# ---- question-specific recognition + fuzzy room answers; push-to-talk post-roll
+def test_fuzzy_room_answers():
+    from brain.agent import rooms
+    for heard, want in (("Alfa.", "A"), ("alpa", "A"), ("Bravvo", "B"), ("bee", "B"), ("room alpha", "A"), ("Bravo", "B"), ("Bye.", "B")):        # "Bye" ~ "bee": a guess, always read back
+        assert (rooms.fuzzy_answer(heard, ["A", "B"]) or rooms.answer_letter(heard)) == want, heard
+    for heard in ("And follow.", "yes please do it now", "hello"):
+        assert rooms.fuzzy_answer(heard, ["A", "B"]) is None, heard
+    assert rooms.fuzzy_answer("Delta", ["A", "B", "D"]) == "D" and rooms.fuzzy_answer("Delta", ["A", "B"]) is None
+
+
+def test_garbled_answer_is_matched_and_read_back_before_moving():
+    b, a = _agent()
+    a.say("Go to room.", 0.9)
+    r = a.say("Alfa.", 0.4)
+    assert r.reply == "Room A, Alpha. Shall I go?" and b.task is None
+    assert "Going to room A, Alpha" in a.say("yes", 0.9).reply
+    b, a = _agent()
+    a.say("Go to room.", 0.9)
+    r = a.say("And follow.", 0.29)                    # cannot be matched: ask again, nothing moves
+    assert b.task is None and r.reply == "I heard 'And follow'. Can you say that again?"
+
+
+def test_answer_hint_while_a_question_is_pending():
+    b, a = _agent()
+    assert a.answer_hint() is None
+    a.say("Go to room.", 0.9)
+    h = a.answer_hint()
+    assert "Alpha." in h and "Bravo." in h and "Room A." in h and "Yes." in h
+    a.say("Alpha", 0.9)                               # read-back pending (Did-you-mean style): yes / no expected
+    assert a.answer_hint().startswith("Yes. No.") and "Room a." in a.answer_hint()
+    a.say("no", 0.9)
+    assert a.answer_hint() is None
+
+
+def test_live_pipeline_gives_whisper_the_question_prompt():
+    class H:
+        def __init__(self): self.hint = "Alpha. Bravo. Yes. No."
+        def say(self, text, conf=None, started_ago=None): return "ok"
+        def spoken_done(self): pass
+        def estop(self): pass
+        def is_moving(self): return False
+        def on_message(self, fn): pass
+        def answer_hint(self): return self.hint
+    stt = ScriptedSTT(["Alpha", "Bravo"])
+    h = H()
+    pipe = LivePipeline(stt, LockedSpeaker(Speaker(SineTTS(), NullSink())), h, VoiceConfig(mode="vad"), out=lambda *_: None)
+    feed(pipe, utterance()); time.sleep(0.5)
+    h.hint = None
+    feed(pipe, utterance()); time.sleep(0.5)
+    assert stt.prompts == ["Alpha. Bravo. Yes. No.", None]
+
+
+def test_ptt_post_roll_keeps_the_last_word_after_enter():
+    from brain.voice.vad import Segmenter
+    seg = Segmenter(mode="ptt", ptt_postroll_s=0.5)
+    seg.press()
+    ev = []
+    for f in frames(speech(1.0)):
+        ev += seg.feed(f)
+    assert seg.release() == [] and seg.finishing                   # the key is up but the recording goes on
+    last_word = speech(0.4)                                         # the word that was still being said
+    got = []
+    for f in frames(np.concatenate([last_word, quiet(1.0)])):
+        got += seg.feed(f)
+    ends = [a for k, a in got if k == "end"]
+    assert len(ends) == 1 and ends[0] is not None and not seg.finishing
+    assert len(ends[0]) >= int(1.35 * SAMPLE_RATE)                  # 1.0 s + the whole 0.4 s word (trim keeps the loud part + padding)
+    seg0 = Segmenter(mode="ptt")                                    # default (library) post-roll 0: ends at once, as before
+    seg0.press()
+    for f in frames(speech(1.0)):
+        seg0.feed(f)
+    assert [k for k, _ in seg0.release()] == ["end"]

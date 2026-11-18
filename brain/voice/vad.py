@@ -40,13 +40,15 @@ class EnergyVad:
 
 class Segmenter:
     def __init__(self, vad=None, mode: str = "vad", start_s: float = 0.12, hangover_s: float = 0.5, preroll_s: float = 0.4, ptt_preroll_s: float = 0.3,
-                 max_s: float = 15.0, min_s: float = 0.2, partial_every_s: float | None = None):
+                 max_s: float = 15.0, min_s: float = 0.2, partial_every_s: float | None = None, ptt_postroll_s: float = 0.0):
         if mode not in ("vad", "ptt"):
             raise ValueError("mode: vad | ptt")
         self.vad = vad or EnergyVad()
         self.mode = mode
         self.n_start = max(1, round(start_s / FRAME_S))
         self.lead_pad, self.tail_pad = 12, 8          # frames kept before the first / after the last loud frame (0.24 s / 0.16 s)
+        self.n_post = round(ptt_postroll_s / FRAME_S)     # push-to-talk: keep recording this long after the key is released (last word!)
+        self.tail = 0                                      # post-roll frames still to record
         self.n_hang = max(1, round(hangover_s / FRAME_S))
         self.n_max = round(max_s / FRAME_S)
         self.n_min = max(1, round(min_s / FRAME_S))
@@ -62,11 +64,20 @@ class Segmenter:
     # ---- push-to-talk
     def press(self):
         self.ptt_down = True
-        self.buf, self.active, self.run, self._since_partial = [], False, 0, 0
+        self.buf, self.active, self.run, self._since_partial, self.tail = [], False, 0, 0, 0
 
     def release(self) -> list:
         self.ptt_down = False
-        return self._finish() if self.buf else []
+        if not self.buf:
+            return []
+        if self.n_post > 0:                      # people press Enter while / just after the last word: record a little longer
+            self.tail = self.n_post
+            return []
+        return self._finish()
+
+    @property
+    def finishing(self) -> bool:
+        return self.tail > 0
 
     # ---- frames
     def feed(self, frame: np.ndarray) -> list[tuple[str, np.ndarray | None]]:
@@ -74,6 +85,10 @@ class Segmenter:
         ev: list = []
         if self.mode == "ptt":
             if not self.ptt_down:
+                if self.tail > 0:                    # post-roll after the key was released
+                    self.buf.append(frame)
+                    self.tail -= 1
+                    return ev + self._finish() if self.tail == 0 else ev
                 self.ptt_preroll.append(frame)       # people start talking a moment before / while pressing
                 return ev
             if not self.buf:

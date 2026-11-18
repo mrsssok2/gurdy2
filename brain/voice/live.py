@@ -162,7 +162,8 @@ class LivePipeline(VoicePipeline):
             f.write(json.dumps(rec) + "\n")
 
     def _utterance_job(self, audio: np.ndarray, started_wall: float | None = None, robot_speaking: bool = False) -> None:
-        tr = self.stt.transcribe(audio)
+        hint = getattr(self.host, "answer_hint", lambda: None)()          # a question is pending: bias Whisper to the expected answers
+        tr = self.stt.transcribe(audio, prompt=hint) if hint else self.stt.transcribe(audio)
         why = reject_reason(tr, audio) if tr.text or len(audio) else None
         if why and tr.text and self.is_stop(tr.text):
             why = None                                   # a stop is never discarded
@@ -232,8 +233,8 @@ def run_live(pipe: LivePipeline, source, ctl: "queue.Queue", stop: threading.Eve
             if c[0] == "enter" and pipe.cfg.mode == "ptt":      # push-to-talk key: strictly one recording at a time
                 if recording:
                     pipe.release(); recording = False
-                    pipe.out("  ■ sent  (thinking...)" if pipe.busy else "  ■ (too short, nothing sent)")
-                elif pipe.busy:
+                    pipe.out("  ■ sent  (thinking...)" if pipe.busy or pipe.seg.finishing else "  ■ (too short, nothing sent)")
+                elif pipe.busy or pipe.seg.finishing:
                     pipe.out("  (still thinking - wait for the answer, then press Enter)")
                 else:
                     pipe.press(); recording = True
