@@ -24,7 +24,8 @@ from rclpy.action import ActionClient
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
-from rosgraph_msgs.msg import Clock
+from rclpy.clock import Clock as RclpyClock, ClockType
+from rosgraph_msgs.msg import Clock as ClockMsg
 from sensor_msgs.msg import BatteryState, Imu, LaserScan
 from std_msgs.msg import Bool, String
 from tf2_ros import Buffer, TransformException, TransformListener
@@ -60,7 +61,7 @@ class RclpyPort:
         self._h = 0
         self.tf = Buffer()
         self._tfl = TransformListener(self.tf, n)
-        n.create_subscription(Clock, "/clock", self._on_clock, 10)
+        n.create_subscription(ClockMsg, "/clock", self._on_clock, 10)
         n.create_subscription(Odometry, odom_topic, self._on_odom, 10)
         n.create_subscription(Imu, "/imu", self._on_imu, qos_profile_sensor_data)
         n.create_subscription(String, "/policy/status", lambda m: setattr(self, "_policy", m.data), 10)
@@ -72,8 +73,7 @@ class RclpyPort:
         n.create_subscription(String, "/gurdy/leg_health", self._on_legs, _LATCHED)
         self._pub_cmd = n.create_publisher(Twist, cmd_topic, 10)
         self._zero_until = 0.0
-        from rclpy.clock import Clock, ClockType
-        n.create_timer(0.05, self._zero_tick, clock=Clock(clock_type=ClockType.STEADY_TIME))   # wall-clock timer: publishes only while a zero hold is active
+        n.create_timer(0.05, self._zero_tick, clock=RclpyClock(clock_type=ClockType.STEADY_TIME))   # wall-clock timer: publishes only while a zero hold is active
         self._pub_estop = n.create_publisher(Bool, "/estop", _LATCHED)
         self._nav = ActionClient(n, NavigateToPose, "navigate_to_pose")
         self._plan = ActionClient(n, ComputePathToPose, "compute_path_to_pose")
