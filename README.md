@@ -13,16 +13,44 @@ Everything runs offline: ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL
 
 ## Architecture
 
+Runtime:
+
+```mermaid
+flowchart TB
+  U["👤 User<br/>typed or spoken command"] --> V["🎤 Voice<br/>Whisper STT · Piper TTS"]
+  V --> B
+  subgraph B["🧠 LLM brain (LangGraph)"]
+    LLM["Qwen3-1.7B<br/>QLoRA fine-tuned · Ollama"] --> S["🛡️ Safety layer<br/>validator · confirmations · refusals"]
+    S --> G["✅ Grounding check<br/>no fact without a tool result"]
+  end
+  B -->|24 typed tools| R["RobotBackend<br/>(ROS 2 / mock world)"]
+  subgraph ROS["🤖 ROS 2 Jazzy"]
+    NAV["🗺️ Nav2 + SLAM<br/>MPPI · collision monitor"]
+    LOC["📍 EKF localisation (optional)<br/>leg odometry + IMU<br/>default: ground-truth odom"]
+    EXP["🔍 Frontier explorer"]
+    PER["👁️ Perception<br/>YOLO11 (ONNX) + depth → semantic map"]
+    MON["🚨 Monitors<br/>alerts · battery (simulated) · leg health"]
+  end
+  R --> NAV & EXP & PER & MON
+  NAV -->|cmd_vel| GATE["⛔ min-speed lift · e-stop gate"]
+  GATE --> POL["🦿 RL walking policy<br/>PPO · ONNX · 50 Hz"]
+  POL -->|18 joint targets| SIM["🌍 Gazebo Harmonic<br/>hexapod · lidar · RGB-D · IMU"]
+  SIM --> LOC --> NAV
+  SIM --> PER
 ```
- English text/voice ──► LLM brain (Qwen3-1.7B LoRA, Ollama) ──► typed tools + safety checker + grounding check
-                                                                     │  (go_to, find, patrol, explore, stop, ...)
-                                                                     ▼
- detector (YOLO) ─► semantic map ─►  Nav2 + slam_toolbox  ──/cmd_vel──►  RL gait policy (ONNX, 50 Hz)
-                                                                     │ joint targets
-                                                                     ▼
-                                    ros2_control PD (500 Hz)  ─►  18-DOF hexapod (Gazebo / MuJoCo)
+
+The LLM decides what to do, Nav2 decides where to go,
+and the RL policy decides how to move the 18 joints.
+(The live Gazebo test used typed commands; the voice path exists in `brain/voice` but was not part of it.)
+
+Training:
+
+```mermaid
+flowchart LR
+  M["MuJoCo<br/>40 parallel envs"] --> PPO["PPO + BC warm start<br/>domain randomisation · terrain curriculum"] --> ONNX1["walking policy (ONNX)"]
+  GZ["Gazebo auto-labelled<br/>synthetic images"] --> YOLO["YOLO11s training"] --> ONNX2["detector (ONNX)"]
+  MOCK["Mock world<br/>scripted expert"] --> DATA["SFT data<br/>+ noisy-speech variants"] --> QLORA["QLoRA SFT<br/>Qwen3-1.7B"] --> GGUF["GGUF Q4 · Ollama"]
 ```
-Everything above the gait speaks only `/cmd_vel`, so planner, teleop and LLM are swappable.
 
 ## Headline results (all measured; details linked)
 
