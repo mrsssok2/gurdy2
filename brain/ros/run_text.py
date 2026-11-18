@@ -13,6 +13,7 @@ def main() -> None:
     ap.add_argument("--places", default=None)
     ap.add_argument("--map-id", default="unknown")
     ap.add_argument("--odom-topic", default="/odometry/filtered")
+    ap.add_argument("--memory-db", default=None, help="SQLite file: objects / missions / places survive restarts (per --map-id)")
     ap.add_argument("--ollama", default=None, help="model name; needs OLLAMA_URL")
     a = ap.parse_args()
     from ..agent.graph import Agent
@@ -25,6 +26,10 @@ def main() -> None:
         print("waiting for TF map->base_link ...")
         time.sleep(1.0)
     be = RosBackend(port, a.places)
+    if a.memory_db:
+        from ..memory import MemoryBackend, MemoryStore
+        be = MemoryBackend(be, MemoryStore(a.memory_db, a.map_id))
+        print(f"persistent memory: {a.memory_db} (map {a.map_id})")
     if a.ollama:
         from ..agent.ollama_llm import OllamaLLM
         llm = OllamaLLM(model=a.ollama, constrain=not a.ollama.startswith("gurdy-sft"))   # fine-tuned model: unconstrained (phase5_eval_sft.md)

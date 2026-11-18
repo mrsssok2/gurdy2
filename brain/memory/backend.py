@@ -24,8 +24,9 @@ class MemoryBackend:
         self._rows: dict[Any, int] = {}              # inner task id -> mission row
         store.close_open_missions()
         if hasattr(inner, "places"):
+            as_dict = any(isinstance(v, dict) for v in inner.places.values())     # RosBackend keeps {x, y, kind}, the mock keeps (x, y)
             for p in store.places():
-                inner.places.setdefault(p["name"], (p["x"], p["y"]))
+                inner.places.setdefault(p["name"], {"x": p["x"], "y": p["y"], "kind": "waypoint"} if as_dict else (p["x"], p["y"]))
 
     def __getattr__(self, name: str):
         attr = getattr(self._inner, name)
@@ -71,8 +72,12 @@ class MemoryBackend:
         if what == "mission":
             return ok(records=self.store.missions(query.get("since_s")))
         if what == "place":
-            return ok(records=[{**p, "map_id": self.store.map_id} for p in self.store.places()] or
-                      self._inner.recall("place", query).data["records"])
+            res = self._inner.recall("place", query)
+            if not res.ok:
+                return res
+            have = {r["name"] for r in res.data["records"]}          # the inner list (rooms, home) plus the saved ones not in it
+            extra = [{**p, "map_id": self.store.map_id} for p in self.store.places() if p["name"] not in have]
+            return ok(records=res.data["records"] + extra)
         return self._inner.recall(what, query)
 
     def save_place(self, name: str) -> Result:

@@ -149,3 +149,52 @@ def test_agent_speaks_leg_failure_and_battery_once(tmp_path):
     inner.run_until_idle()
     msgs = a.pump()
     assert any(m.startswith("Battery is low") for m in msgs)
+
+
+# ---------------------------------------------------------------- MemoryBackend over RosBackend (FakePort, no ROS)
+def _ros(tmp_path, db_name="m.db", objs=()):
+    from brain.ros import RosBackend
+    from brain.ros.fake_port import FakePort
+    from brain.tests.test_ros_backend import PLACES
+    f = tmp_path / f"places_{db_name}.yaml"            # a fresh places file per "run", as start_agent_chat.sh does
+    f.write_text(PLACES)
+    port = FakePort()
+    port.set_objects(list(objs))
+    inner = RosBackend(port, f)
+    return port, inner, MemoryBackend(inner, MemoryStore(tmp_path / db_name, "fake_lab"))
+
+
+def _pump(port, b, secs=60, dt=0.2):
+    for _ in range(int(secs / dt)):
+        port.advance(dt)
+        b.tick()
+        b.poll_events()
+        if b.task is None:
+            break
+
+
+def test_ros_backend_implements_protocol_with_memory(tmp_path):
+    from brain.tools import missing_methods
+    _, _, b = _ros(tmp_path)
+    assert missing_methods(b) == []
+
+
+def test_ros_memory_survives_restart(tmp_path):
+    from brain.tests.test_ros_backend import BOX
+    port, inner, b = _ros(tmp_path, objs=[BOX])
+    assert b.go_to(place="room b").ok
+    _pump(port, b)
+    port.x = 1.0
+    assert b.save_place("desk").ok
+    assert b.recall("object", {"class": "box"}).data["records"][0]["from_memory"]
+    b.store.close()
+    # new process: fresh places file, no tracks (the detector has not seen anything yet), same DB
+    port2, inner2, b2 = _ros(tmp_path)
+    assert inner2.places["desk"] == {"x": 1.0, "y": 0.5, "kind": "waypoint"}       # restored in RosBackend's own format
+    assert "desk" in inner2.known_places()
+    names = {p["name"] for p in b2.recall("place").data["records"]}
+    assert {"desk", "room a", "room b", "home"} <= names                           # saved place does not hide the rooms
+    rec = b2.recall("object", {"class": "box"}).data["records"]
+    assert len(rec) == 1 and rec[0]["from_memory"] and rec[0]["color"] == "red"
+    missions = b2.recall("mission").data["records"]
+    assert [m["tool"] for m in missions] == ["go_to"] and missions[0]["state"] == "reached"
