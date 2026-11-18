@@ -23,6 +23,6 @@ PY
   python3 - <<PY
 import time; from faster_whisper import WhisperModel
 t=time.time(); m = WhisperModel("/models/whisper-turbo-ct2", device="cpu", compute_type="int8", cpu_threads=4); print(f"load {time.time()-t:.1f} s")
-t=time.time(); segs,_ = m.transcribe("/tmp/mic_test.wav", language="en", beam_size=1); print(\"TEXT:\", \" \".join(s.text for s in segs).strip(), f\"({time.time()-t:.1f} s)\")
+t=time.time(); segs,_ = m.transcribe("/tmp/mic_test.wav", language="en", beam_size=1, vad_filter=True); print(\"TEXT:\", \" \".join(s.text for s in segs).strip(), f\"({time.time()-t:.1f} s)\")
 PY
 '
