@@ -19,6 +19,7 @@ import rclpy
 from geometry_msgs.msg import PoseStamped, Twist
 from gurdy_interfaces.action import Explore
 from nav2_msgs.action import ComputePathToPose, NavigateToPose
+from lifecycle_msgs.srv import GetState
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.action import ActionClient
 from rclpy.executors import MultiThreadedExecutor
@@ -51,6 +52,8 @@ class RclpyPort:
         self._policy = None
         self._objects = None
         self._map = None
+        self._gcm = None
+        self._lc: dict = {}
         self._scan = None
         self._alerts: deque = deque(maxlen=500)
         self._battery = None
@@ -67,6 +70,7 @@ class RclpyPort:
         n.create_subscription(String, "/policy/status", lambda m: setattr(self, "_policy", m.data), 10)
         n.create_subscription(String, "semantic_map/objects", self._on_objects, _LATCHED)
         n.create_subscription(OccupancyGrid, "/map", lambda m: setattr(self, "_map", m), _LATCHED)
+        n.create_subscription(OccupancyGrid, "/global_costmap/costmap", lambda m: setattr(self, "_gcm", m), _LATCHED)
         n.create_subscription(LaserScan, "/scan", lambda m: setattr(self, "_scan", m), qos_profile_sensor_data)
         n.create_subscription(String, "/gurdy/alerts", self._on_alert, 50)
         n.create_subscription(BatteryState, "/battery", lambda m: setattr(self, "_battery", 100.0 * m.percentage), 10)
@@ -200,6 +204,20 @@ class RclpyPort:
     # ---- Nav2
     def nav_ready(self) -> bool:
         return self._nav.server_is_ready()
+
+    def global_costmap_ready(self) -> bool:
+        m = self._gcm
+        return m is not None and m.info.width > 0 and m.info.height > 0
+
+    def lifecycle_state(self, node: str):
+        """Lifecycle label of a Nav2 node ('active', 'inactive', ...), None when its get_state service does not answer."""
+        cl = self._lc.get(node)
+        if cl is None:
+            cl = self._lc[node] = self.node.create_client(GetState, f"/{node}/get_state")
+        if not cl.service_is_ready():
+            return None
+        res = self._wait(cl.call_async(GetState.Request()), 2.0)
+        return res.current_state.label if res is not None else None
 
     def _pose_msg(self, x, y, yaw):
         m = PoseStamped()

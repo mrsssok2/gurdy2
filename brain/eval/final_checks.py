@@ -106,7 +106,7 @@ def evaluate(rec: dict) -> dict:
     for chk in m["checks"]:
         ok, why = run_check(tuple(chk), rec)
         results.append({"check": list(chk), "ok": ok, "why": why})
-    infra = rec.get("status") in ("sim_hang", "error", "infra_failed")
+    infra = rec.get("status") in ("sim_hang", "error", "infra_failed", "setup_failed")
     timed_out = rec.get("status") in ("timeout", "wall_timeout")       # wall_timeout: the whole attempt exceeded its wall-clock budget in every retry
     falls = int(rec.get("falls", 0))
     arr = arrival_errors(rec, m.get("goal"))

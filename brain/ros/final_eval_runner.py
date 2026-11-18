@@ -1,7 +1,9 @@
 """Final Gazebo eval (5.11): run ONE mission of brain/eval/final_suite.py against the live robot through the real agent (typed input).
 Runs inside the sim container after the stack is up (scripts/p5_final_eval.sh does that, one fresh stack per mission).
   python3 -m brain.ros.final_eval_runner --mission nav_room_b --ollama gurdy-sft-400 --places /tmp/chat/places.yaml --out RESULT.json
-Exit codes: 0 = a result file was written (the mission may still have FAILED its checks), 3 = Gazebo stopped advancing (hang), 4 = other infrastructure error.
+Exit codes: 0 = a result file was written (the mission may still have FAILED its checks), 3 = Gazebo stopped advancing (hang), 4 = other infrastructure error,
+6 = Nav2 / localization not ready (readiness gate timed out, or the agent's very first reply said so within 2 s): status "setup_failed", an INFRASTRUCTURE failure
+that p5_final_eval.sh retries (brain/ros/readiness.py).
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ import traceback
 
 from ..eval.final_checks import evaluate
 from ..eval.final_suite import BY_ID
+from .readiness import SetupFailed, first_reply_setup_failure, wait_ready
 
 
 class SimHang(Exception):
@@ -31,6 +34,7 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     ap.add_argument("--places"); ap.add_argument("--map-id", default="flat_lab"); ap.add_argument("--odom-topic", default="/odom")
     ap.add_argument("--ollama", default="gurdy-sft-400"); ap.add_argument("--memory-db", default=None)
+    ap.add_argument("--ready-s", type=float, default=90.0, help="wall seconds to wait for Nav2 / costmaps / localization / a real plan before the first command")
     ap.add_argument("--hang-s", type=float, default=90.0, help="wall seconds without /clock progress = Gazebo hang")
     a = ap.parse_args()
     m = BY_ID[a.mission]
@@ -41,6 +45,8 @@ def main() -> None:
         code = run(a, m, rec)
     except SimHang as e:
         rec["status"], rec["error"], code = "sim_hang", str(e), 3
+    except SetupFailed as e:
+        rec["status"], rec["error"], code = "setup_failed", str(e), 6
     except Exception as e:                                         # noqa: BLE001  a crash is data, not silence
         rec["status"], rec["error"], rec["traceback"], code = "error", repr(e), traceback.format_exc(), 4
         traceback.print_exc()
@@ -78,6 +84,11 @@ def run(a, m: dict, rec: dict) -> int:
             return 4
         time.sleep(1.0)
     be = RosBackend(port, a.places)
+    ready = wait_ready(port, be, timeout_s=a.ready_s, log=lambda line: print(line, flush=True))      # BEFORE the first command (see readiness.py)
+    rec["ready"] = ready
+    print(f"[ready] ready={ready['ready']} after {ready['wall_s']} s wall, {ready['polls']} polls", flush=True)
+    if not ready["ready"]:
+        raise SetupFailed(f"Nav2 not ready after {ready['wall_s']} s wall; not ready: " + ", ".join(k for k, v in ready["checks"].items() if not v))
     if a.memory_db:
         from ..memory import MemoryBackend, MemoryStore
         be = MemoryBackend(be, MemoryStore(a.memory_db, a.map_id))
@@ -151,6 +162,10 @@ def run(a, m: dict, rec: dict) -> int:
                              "sim_t": round(elapsed(), 1)})
         sample()
         say_msg(r.reply, "turn")
+        if len(rec["turns"]) == 1:                                 # second line of defence: the very first reply says Nav2 / the map was not ready
+            bad = first_reply_setup_failure(rec["messages"])
+            if bad:
+                raise SetupFailed(f"the first reply, within 2 s, said: {bad!r}")
 
     def stop_turn(text: str) -> None:
         sp0 = port.speed() or 0.0

@@ -9,6 +9,8 @@ import json
 import statistics
 from pathlib import Path
 
+from ..ros.readiness import first_reply_setup_failure
+
 from .final_checks import evaluate
 from .final_suite import SUITE
 
@@ -64,7 +66,53 @@ def pct(a, b) -> str:
     return "n/a" if not b else f"{100.0 * a / b:.0f} % ({a}/{b})"
 
 
-def markdown(rows: list[dict], meta: dict, run: Path, partial_note: str = "") -> str:
+def setup_failures(rows: list[dict]) -> dict[str, str]:
+    """{mission id: first reply} for runs whose very first reply (within 2 s wall) said Nav2 / the map was not ready: an infrastructure problem at
+    t = 0, decided from the transcript alone (never from the verdict)."""
+    out = {}
+    for r in rows:
+        if r["rec"] is not None:
+            bad = first_reply_setup_failure(r["rec"].get("messages", []))
+            if bad:
+                out[r["m"]["id"]] = bad
+    return out
+
+
+def first_pass_section(first_rows: list[dict], rows: list[dict]) -> list[str]:
+    """First-pass numbers vs the numbers after re-running ONLY the setup failures (see setup_failures)."""
+    bad = setup_failures(first_rows)
+    s1, s2 = summarize(first_rows), summarize(rows)
+    L = ["## First pass vs after re-running the setup failures", "",
+         "**Why two sets of numbers.** The first pass is the complete suite exactly as it ran. Reading all 27 transcripts showed "
+         f"{len(bad)} missions whose very first reply, within 2 s of the first command, said Nav2 or the map was not ready "
+         "(`I cannot find a path there; it is blocked or in unknown space`, `Navigation (Nav2 navigate_to_pose) is not running`) - while the same kind of command worked in other missions. "
+         "That is the robot's navigation stack not being ready at t = 0, not the agent failing a task. Cause: the start-up check looked at Nav2 from outside (action servers + TF) but the "
+         "runner's own node had not yet discovered the action server / the global costmap had not got the map. Fix (runner only, the agent is unchanged): `brain/ros/readiness.py` "
+         "waits (wall-clock bounded) for the action server, bt_navigator and both costmaps to be lifecycle-active, the global costmap to hold the map, a localized pose and a real plan to room B "
+         "BEFORE the first command; and a first reply of this kind within 2 s now marks the attempt as an infrastructure failure that is retried. "
+         "Only the missions matching the pattern were re-run; every other mission keeps its first-pass result.", "",
+         "| | first pass | after re-running the setup failures |", "|---|---|---|",
+         f"| mission success rate | {pct(s1['success'], s1['valid'])} | **{pct(s2['success'], s2['valid'])}** |",
+         f"| falls | {s1['falls']} | {s2['falls']} |", f"| wrong claims | {s1['wrong_claims']} | {s2['wrong_claims']} |", ""]
+    if bad:
+        by_id = {r["m"]["id"]: r for r in rows}
+        L += ["| re-run mission | first pass | its first reply (t ~ 0) | after re-run | attempts |", "|---|---|---|---|---|"]
+        first_by_id = {r["m"]["id"]: r for r in first_rows}
+        for i, txt in bad.items():
+            def res(r):
+                if r is None or r["rec"] is None:
+                    return "not run"
+                v = r["verdict"]
+                return "INFRA FAIL (%s)" % r["rec"].get("status") if v is None or v["infra_failure"] else ("PASS" if v["success"] else "FAIL")
+            L.append(f"| `{i}` | {res(first_by_id[i])} | {txt} | {res(by_id[i])} | {by_id[i]['attempts'].get('attempts', '?')} |")
+        L.append("")
+    L += ["Caveats: choosing what to re-run after seeing the results is a risk of selection; it is limited by deciding from the first reply only (never from the verdict) and by applying the same rule "
+          "to all 27 transcripts. Re-runs can fail too, and they are a single run each. `explore_b` (explorer finished at once with nothing to explore in the already-mapped room) and "
+          "`go_b_report_home` ('did not understand') do NOT match the pattern and were not re-run.", ""]
+    return L
+
+
+def markdown(rows: list[dict], meta: dict, run: Path, partial_note: str = "", first_rows: list[dict] | None = None) -> str:
     s = summarize(rows)
     L = ["# Phase 5.11 - final Gazebo eval (gurdy-sft-400, typed input)", ""]
     L.append(f"Run: `{run.as_posix()}`  ·  started {meta.get('started', '?')}  ·  commit `{meta.get('commit', '?')}`  ·  model `{meta.get('model', '?')}`  ·  suite: {s['missions_total']} missions.")
@@ -75,6 +123,8 @@ def markdown(rows: list[dict], meta: dict, run: Path, partial_note: str = "") ->
           "GROUND TRUTH (Gazebo pose of the robot, world object positions), not against what the robot says. Per-mission sim-time limit; a mission that is still "
           "working at its limit is a timeout = failure. A Gazebo hang (no /clock progress for 90 s) or a container crash restarts the stack and the mission "
           "(max 3 attempts); a mission that never ran counts as an infrastructure failure and is excluded from the success rate (listed separately).", ""]
+    if first_rows:
+        L += ["", "**Final numbers below are AFTER re-running the navigation-setup failures; the first-pass numbers and the reason are in the section 'First pass vs after re-running'.**", ""]
     L += ["## Headline", "", "| metric | value |", "|---|---|",
           f"| **Mission success rate** | **{pct(s['success'], s['valid'])}** |",
           f"| missions run / valid / infrastructure failures / not run | {s['missions_run']} / {s['valid']} / {s['infra_failures']} / {s['not_run']} |",
@@ -127,6 +177,8 @@ def markdown(rows: list[dict], meta: dict, run: Path, partial_note: str = "") ->
         L += ["", "## Stop latency (every measured stop)", "", "| mission | text | moving before | say() s | speed < 0.02 after (s) |", "|---|---|---|---|---|"]
         for i, st in sl:
             L.append(f"| `{i}` | {st['text']} | {st['moving_before']} ({st['speed_before']} m/s) | {st['say_s']} | {st['latency_s']} |")
+    if first_rows:
+        L += [""] + first_pass_section(first_rows, rows)
     L += ["", "## What this does and does not show", "",
           "- Single run per mission (no variance estimate); one world (flat_lab, 5 objects); one model; typed input - voice is evaluated separately (`phase5_voice*.md`).",
           "- Battery is SIMULATED (`battery_sim_node`, level set by `ros2 param set`); the leg fault is SYNTHETIC (`leg_health_node fake_failed_leg`): the robot's legs keep working. "
@@ -147,7 +199,8 @@ def main() -> None:
     summ = summarize(rows)
     json.dump({"summary": summ, "missions": [{"id": r["m"]["id"], "verdict": r["verdict"], "attempts": r["attempts"]} for r in rows]},
               open(run / "summary.json", "w"), indent=1, default=str)
-    md = markdown(rows, meta, run, a.note)
+    first_rows = load(run / "first_pass")[0] if (run / "first_pass" / "missions").exists() else None
+    md = markdown(rows, meta, run, a.note, first_rows)
     (run / "report.md").write_text(md)
     if a.doc:
         Path(a.doc).write_text(md)

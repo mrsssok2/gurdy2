@@ -142,6 +142,15 @@ class FakePort:
     def nav_ready(self):
         return self.nav_up
 
+    costmap_up = True
+    lifecycle = None            # node -> label; None = every node reports "active"
+
+    def global_costmap_ready(self):
+        return self.costmap_up
+
+    def lifecycle_state(self, node):
+        return "active" if self.lifecycle is None else self.lifecycle.get(node)
+
     def nav_send(self, x, y, yaw):
         self._h += 1
         self.nav_log.append((x, y, yaw))

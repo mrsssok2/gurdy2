@@ -28,6 +28,8 @@ class RosPort(Protocol):
     def drain_alerts(self) -> list[dict]: ...                     # alert / event topic, since last call
     # ---- Nav2
     def nav_ready(self) -> bool: ...
+    def global_costmap_ready(self) -> bool: ...                    # /global_costmap/costmap has been received (the map reached the costmap)
+    def lifecycle_state(self, node: str) -> str | None: ...        # lifecycle label ("active", ...) of a Nav2 node, None if not answering
     def nav_send(self, x: float, y: float, yaw: float | None) -> int | None: ...    # navigate_to_pose -> handle
     def nav_state(self, handle: int) -> dict[str, Any]: ...       # {state, distance_remaining, recoveries}
     def nav_cancel(self, handle: int) -> None: ...
