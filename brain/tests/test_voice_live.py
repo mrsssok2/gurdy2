@@ -615,3 +615,37 @@ def test_ptt_post_roll_keeps_the_last_word_after_enter():
     for f in frames(speech(1.0)):
         seg0.feed(f)
     assert [k for k, _ in seg0.release()] == ["end"]
+
+
+# ---- soft starts in push-to-talk, bare yes / no with nothing pending
+def test_push_to_talk_turns_whispers_vad_filter_off_and_vad_mode_keeps_it():
+    class S(ScriptedSTT):
+        vad_filter = True
+    for mode, want in (("ptt", False), ("vad", True)):
+        stt = S(["x"])
+        LivePipeline(stt, LockedSpeaker(Speaker(SineTTS(), NullSink())), AgentHost(Agent(ToolLayer(MockBackend()), KeywordLLM(MockBackend().known_places))),
+                     VoiceConfig(mode=mode), out=lambda *_: None)
+        assert stt.vad_filter is want, mode
+
+
+def test_ptt_trim_keeps_a_soft_start_that_the_vad_mode_trim_would_cut():
+    from brain.voice.vad import Segmenter
+    n = FRAME_N
+    soft = (RNG.normal(0, 10 ** (-33 / 20), 12 * n)).astype(np.float32)       # "Wh-": 0.24 s at -33 dB, between floor+margin-6 and floor+margin
+    audio = np.concatenate([quiet(1.0), soft, speech(0.5), quiet(0.3)])
+    out = {}
+    for mode in ("ptt", "vad"):
+        seg = Segmenter(mode=mode)
+        seg.vad.floor = -43.0                                                  # the floor of the real mic (-42 dB) -> threshold -34 dB (vad) / -40 dB (ptt)
+        out[mode] = len(seg._trim(audio))
+    assert out["ptt"] > out["vad"] and out["ptt"] >= len(soft) + len(speech(0.5))
+
+
+def test_bare_yes_or_no_with_nothing_pending_says_so():
+    b, a = _agent()
+    for t in ("no", "Yes.", "nope"):
+        assert a.say(t, 0.9).reply == "There's nothing to confirm right now."
+    assert a.say("thank you", 0.9).reply != "There's nothing to confirm right now."
+    a.say("go to room.", 0.9)
+    assert a.say("no", 0.9).reply == "Okay, cancelled."                       # "no" to "Which room?"
+    assert a.say("no", 0.9).reply == "There's nothing to confirm right now."   # and now nothing is pending again

@@ -82,7 +82,7 @@ def test_ptt_collects_between_press_and_release():
     evs = [e for f in frames(audio) for e in seg.feed(f)]
     assert evs == [("start", None)]
     evs = seg.release()
-    assert evs[0][0] == "end" and evs[0][1] is not None and 0.3 < len(evs[0][1]) / SAMPLE_RATE < 0.9
+    assert evs[0][0] == "end" and evs[0][1] is not None and 0.3 < len(evs[0][1]) / SAMPLE_RATE < 1.1     # 0.5 s pre-roll + the word
 
 
 # ---------------------------------------------------------------- stop fast path

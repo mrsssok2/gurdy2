@@ -39,14 +39,16 @@ class EnergyVad:
 
 
 class Segmenter:
-    def __init__(self, vad=None, mode: str = "vad", start_s: float = 0.12, hangover_s: float = 0.5, preroll_s: float = 0.4, ptt_preroll_s: float = 0.3,
+    def __init__(self, vad=None, mode: str = "vad", start_s: float = 0.12, hangover_s: float = 0.5, preroll_s: float = 0.4, ptt_preroll_s: float = 0.5,
                  max_s: float = 15.0, min_s: float = 0.2, partial_every_s: float | None = None, ptt_postroll_s: float = 0.0):
         if mode not in ("vad", "ptt"):
             raise ValueError("mode: vad | ptt")
         self.vad = vad or EnergyVad()
         self.mode = mode
         self.n_start = max(1, round(start_s / FRAME_S))
-        self.lead_pad, self.tail_pad = 12, 8          # frames kept before the first / after the last loud frame (0.24 s / 0.16 s)
+        # push-to-talk: the user already delimits the speech, so trim gently (0.5 s lead, threshold 6 dB lower: soft starts like "Wh-" survive)
+        self.lead_pad, self.tail_pad = (25, 8) if mode == "ptt" else (12, 8)      # frames kept before the first / after the last loud frame
+        self.trim_relax_db = 6.0 if mode == "ptt" else 0.0
         self.n_post = round(ptt_postroll_s / FRAME_S)     # push-to-talk: keep recording this long after the key is released (last word!)
         self.tail = 0                                      # post-roll frames still to record
         self.n_hang = max(1, round(hangover_s / FRAME_S))
@@ -131,7 +133,7 @@ class Segmenter:
         lv = [self.vad.level_db(audio[i:i + n]) for i in range(0, len(audio) - n + 1, n)]
         if not lv:
             return audio
-        thr = max(self.vad.floor + self.vad.margin_db, max(lv) - 35.0)
+        thr = max(self.vad.floor + self.vad.margin_db - self.trim_relax_db, max(lv) - 35.0)
         idx = [i for i, v in enumerate(lv) if v > thr]
         if not idx:
             return audio[:0]

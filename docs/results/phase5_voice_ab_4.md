@@ -9,3 +9,14 @@
 * Hotwords ("full") are harmful on short clips (121707_008: "Don't forget to subscribe to the channel." conf 0.25): keep `prompt` as the default.
 * `question_prompt` (expected answers as initial_prompt) gave "And." 0.60 / "Bye." 0.57-0.62 on the one-word clips: slightly higher confidence, but these 0.6-0.9 s clips contain very little speech energy and "Alpha" is not
   recognised in any configuration. The room answer is therefore also matched fuzzily (`rooms.fuzzy_answer`) and ALWAYS read back ("Room A, Alpha. Shall I go?") before anything moves.
+
+## Voice test 5: "Where are you?" loses its soft start (clips 125332_008 .. 125423_011)
+`voice_ab.py` (prompt_only = what the loop used, VAD filter ON, vs `no_vad`, vs `norm`):
+| clip | live text | prompt_only (VAD on) | no_vad | norm |
+|---|---|---|---|---|
+| 125332_008 | That. Are. You. 0.74 | That. Are. You. 0.75 | That. Are. You. 0.75 | That. Are. You. 0.77 |
+| 125349_009 | What are you? 0.75 | What are you? 0.72 | **Where are you? 0.89** | What are you? 0.75 |
+| 125405_010 | R U. 0.48 | R U. 0.48 | **Where are you? 0.85** | Where are you? 0.82 |
+| 125423_011 (good) | Where are you? 0.82 | 0.84 | 0.80 | 0.78 |
+Whisper's VAD filter (added against hallucinations) clips the "Wh" of two of the three bad clips; the "Wh" is in the audio. Push-to-talk now runs with the VAD filter OFF (the key marks the speech; always-listening mode keeps it).
+Clip 008 is unchanged by every setting: its audio starts in the middle of the word (the first loud frame is frame 0), so the start was lost before Whisper (pre-roll / trim). Push-to-talk pre-roll is now 0.5 s (was 0.3), the push-to-talk trim keeps 0.5 s before the first loud frame (was 0.24 s) and uses a threshold 6 dB lower. Not provable on old clips: re-record.

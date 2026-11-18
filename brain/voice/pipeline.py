@@ -44,6 +44,10 @@ class VoicePipeline:
         if is_stop_phrase is None:
             from ..agent.graph import is_estop_phrase as is_stop_phrase
         self.is_stop = is_stop_phrase
+        if hasattr(stt, "vad_filter"):
+            # Whisper's own VAD filter ate soft starts ("Wh" of "Where are you?") in push-to-talk, where the key already marks the speech:
+            # only the always-listening mode (energy-VAD segments, more noise) keeps it
+            stt.vad_filter = self.cfg.mode == "vad"
         self.t = 0.0
         self.log: list[dict] = []
         self._speech_t0: float | None = None

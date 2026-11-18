@@ -113,6 +113,8 @@ class Agent:
         timeout = self.safety.cfg["confirmation_timeout_s"]
         pr, self.pending_room = self.pending_room, None
         if pr is not None and not self.clock.expired(pr["asked_at"], timeout):
+            if is_clear_no(text):
+                return TurnResult("Okay, cancelled.", [], [{"outcome": "cancelled", "rule": "missing_room_letter"}], 0, {})
             ch = rooms.answer_letter(text) or rooms.fuzzy_answer(text, rooms.known_letters(self.layer.backend.known_places()))
             if ch:
                 text = re.sub(r"\broom\b", f"room {ch}", pr["template"], count=1, flags=re.I)
@@ -326,6 +328,9 @@ class Agent:
         if is_unsafe_request(text):
             return {"reply_parts": ["I will not do that."], "next": "finish",
                     "verdicts": [{"outcome": "refuse", "rule": "unsafe_request"}]}
+        if self.gate.pending is None and _BARE_YES_NO.match(text):
+            return {"reply_parts": ["There's nothing to confirm right now."], "next": "finish",
+                    "verdicts": [{"outcome": "none", "rule": "nothing_pending"}]}
         if self.gate.pending is not None:
             held = self.gate.pending.args.get("utterance")
             same = held and _norm(held) == _norm(text) and not is_clear_no(text)      # repeating the command = yes
@@ -513,6 +518,9 @@ class Agent:
     def n_finish(self, s: TurnState) -> dict:
         reply = " ".join([p for p in s.get("reply_parts", []) if p] + s.get("notes", [])) or "Okay."
         return {"reply": reply, "calls": [{k: v for k, v in c.items() if k != "_done"} for c in s.get("calls", [])]}
+
+
+_BARE_YES_NO = re.compile(r"^\W*(yes|yeah|yep|yup|sure|no|nope|nah)\W*$", re.I)    # a lone answer with no question pending
 
 
 def _norm(t: str) -> str:
