@@ -151,3 +151,20 @@ def test_recording_redo_and_quit(tmp_path):
     lines = []
     assert record(prompts, tmp_path, iter([np.zeros(FRAME_N, np.float32)] * 5), ctl, out=lines.append) == []
     assert sum("[1/2]" in l for l in lines) == 2 and any("[2/2]" in l for l in lines)
+
+
+def test_parser_ignores_politeness_and_reads_number_words():
+    assert score_item("Head to room B please.", "Head to room B, please.")["command_ok"]
+    assert score_item("Walk forward two metres and then turn left.", "Walk forward 2 meters and then turn left.")["command_ok"]
+    assert not score_item("Walk forward two metres.", "Walk forward three metres.")["command_ok"]
+
+
+def test_rescore_json_uses_stored_transcripts(tmp_path):
+    from brain.voice.eval_read import rescore_json
+    item = {"id": 1, "category": "room", "ref": "Head to room B please.", "hyp": "Head to room B, please.", "rejected": None, "confidence": 0.6}
+    rej = {"id": 2, "category": "stop", "ref": "Stop.", "hyp": "Roo. Roo. Roo.", "rejected": "repetition", "confidence": 0.5}
+    p = tmp_path / "s.json"
+    p.write_text(json.dumps({"folder": "x", "items": {"prompt": [item, rej]}}))
+    r = rescore_json(p)
+    assert r["items"]["prompt"][0]["command_ok"] and not r["items"]["prompt"][1]["command_ok"]
+    assert r["modes"]["prompt"]["overall"]["command_acc_pct"] == 50.0

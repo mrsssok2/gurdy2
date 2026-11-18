@@ -485,9 +485,15 @@ class Agent:
                         parts.append(ack)
                     elif step.status == "failed":
                         parts.append(templates.error_text(step.result) if step.result and step.result.get("error") else "I could not start that.")
-                later = [templates.ack(st.tool, st.args, {}) for st in self.executor.steps if st.status == "pending"]
+                later = []
+                for st in self.executor.steps:
+                    if st.status == "pending":
+                        try:
+                            later.append(templates.preview(st.tool, st.args))
+                        except (KeyError, TypeError, ValueError):       # malformed args from the planner: the step fails on its own later
+                            pass
                 if later and self.executor.state == "running":        # say the rest of the plan, so it is not lost to the listener
-                    parts.append("Next: " + "; then ".join(t.rstrip(".") for t in later) + ".")
+                    parts.append("Next: " + "; then ".join(later) + ".")
                 if self.executor.state == "awaiting_confirmation" and self.executor.waiting:
                     self.gate.hold("mission_step", {"calls": self.executor.remaining_calls(), "resume": True},
                                    self.executor.waiting.reason)

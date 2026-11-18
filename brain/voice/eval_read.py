@@ -73,6 +73,9 @@ def wer(ref: str, hyp: str) -> tuple[int, int]:
     return d[len(h)], len(r)
 
 
+_NUM_WORDS_TO_DIGITS = {v: k for k, v in _NUM_WORDS.items() if k != "0"}
+
+
 def parse_command(text: str, places: list[str] | None = None) -> str:
     """The command a transcript means, as a canonical string: the keyword planner's calls (tool + args), "YES" / "NO" for a bare
     answer, "NONE" when it parses to nothing. Room names go through the same normalisation as the agent (Alpha -> room A)."""
@@ -80,6 +83,8 @@ def parse_command(text: str, places: list[str] | None = None) -> str:
     from ..agent.safety import is_clear_no, is_clear_yes
     from ..eval.keyword_parser import parse
     t = rooms.normalize(text)
+    t = re.sub(r"[,;]?\s*\b(please|for me|now)\b", "", t, flags=re.I)                 # politeness is not a clause ("Head to room B, please.")
+    t = re.sub(r"\b(" + "|".join(_NUM_WORDS_TO_DIGITS) + r")\b", lambda m: _NUM_WORDS_TO_DIGITS[m.group(1).lower()], t, flags=re.I)   # "two metres" == "2 meters"
     if is_clear_yes(t):
         return "YES"
     if is_clear_no(t):
@@ -135,6 +140,20 @@ def score_folder(folder: Path | str, stt_for_mode, modes: list[str], places: lis
                           "confidence": tr.confidence, "stt_s": round(tr.seconds, 2)})
         res["modes"][mode] = summarize(items)
         res["items"][mode] = items
+    return res
+
+
+def rescore_json(path: Path | str, places: list[str] | None = None) -> dict:
+    """Re-score a saved score_*.json with the CURRENT parser (no Whisper): uses the stored transcripts (rejected ones count as heard nothing)."""
+    old = json.loads(Path(path).read_text())
+    res: dict = {"folder": old["folder"], "device": old.get("device"), "modes": {}, "items": {}}
+    for mode, items in old["items"].items():
+        new = []
+        for x in items:
+            hyp = "" if x.get("rejected") else x["hyp"]
+            new.append({**x, **score_item(x["ref"], hyp, places)})
+        res["items"][mode] = new
+        res["modes"][mode] = summarize(new)
     return res
 
 
@@ -297,6 +316,9 @@ def main() -> None:
     r = sub.add_parser("record", help="read the prompts aloud and save WAV + reference")
     r.add_argument("--prompts", default=str(PROMPTS))
     r.add_argument("--out", help="output folder (default brain/runs/voice_eval/<timestamp>)")
+    rs = sub.add_parser("rescore", help="re-score a saved score_*.json with the current parser (no Whisper)")
+    rs.add_argument("json")
+    rs.add_argument("--places", nargs="*", default=DEFAULT_PLACES)
     s = sub.add_parser("score", help="score a recorded folder offline")
     s.add_argument("folder")
     s.add_argument("--bias", nargs="+", default=["prompt"], choices=["none", "prompt", "full"])
@@ -304,6 +326,12 @@ def main() -> None:
     s.add_argument("--stt-model", default="/models/whisper-turbo-ct2")
     s.add_argument("--places", nargs="*", default=DEFAULT_PLACES, help="place names used to parse commands")
     a = ap.parse_args()
+    if a.cmd == "rescore":
+        res = rescore_json(a.json, a.places)
+        print(format_report(res))
+        out = Path(a.json).with_name(Path(a.json).stem + "_rescored.json")
+        out.write_text(json.dumps(res, indent=1)); print(f"\nsaved {out}")
+        return
     cmd_record(a) if a.cmd == "record" else cmd_score(a)
 
 

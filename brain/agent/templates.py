@@ -86,6 +86,18 @@ def readback(tool: str, args: dict) -> str:
     return ack(tool, args, {}).rstrip(".")
 
 
+def preview(tool: str, args: dict) -> str:
+    """A pending step named in the plan, WITHOUT parameters the planner filled in (directions, distances, angles are not in any tool result
+    yet, so the grounding rule forbids stating them): 'go to room B', 'look for the red box', 'walk', 'turn'."""
+    if tool == "go_to":
+        return f"go to {_target_name(args)}"
+    if tool == "find":
+        return f"look for the {obj_name(args['object'])}"
+    if tool == "inspect":
+        return f"inspect {_target_name(args)}"
+    return {"return_home": "go home", "explore": "explore", "patrol": "patrol", "walk": "walk", "turn": "turn"}.get(tool, tool.replace("_", " "))
+
+
 def question_for(tool: str) -> str:
     return "Shall I go?" if tool in ("go_to", "return_home", "inspect", "find", "explore", "patrol") else "Shall I do that?"
 

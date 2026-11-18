@@ -6,7 +6,7 @@ import json
 from dataclasses import asdict
 
 from .agents import AGENTS
-from .harness import CATEGORIES, OOD_CATEGORIES, TESTSET_OOD, load_cases, run_all, summarize
+from .harness import CATEGORIES, OOD_CATEGORIES, TESTSET_OOD, TESTSET_V1_1, load_cases, run_all, summarize
 
 
 def main() -> None:

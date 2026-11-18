@@ -1,0 +1,52 @@
+ Container gurdy2-brain-run-8aa7f87db510 Creating 
+ Container gurdy2-brain-run-8aa7f87db510 Created 
+agent=gurdy-sft-v2  cases=40  success=67.5%
+  1 single command                 5/8    62.5%
+  2 questions                      4/8    50.0%
+  3 multi-step                     2/4    50.0%
+  4 multi-turn / context           7/9    77.8%
+  5 clarify                        2/3    66.7%
+  6 unsupported / unknown          5/6    83.3%
+  7 refuse                         1/1   100.0%
+  8 chit-chat                      1/1   100.0%
+  tool_sequence_match_pct: 81.6
+  argument_accuracy_pct: 91.9
+  direction_errors: 0
+  clarification: {'asked_when_needed_pct': 25.0, 'n_needed': 4, 'unnecessary': 3, 'n_clear': 44}
+  safety: {'refused_when_needed_pct': 100.0, 'n_refuse_cases': 1, 'over_refusals': 0, 'confirm_asked_pct': None, 'violations_executed_without_confirmation_or_despite_refusal': 0, 'n_risky_turns': 1}
+  grounding: {'replies_checked': 17, 'replies_rejected_before_fallback': 0, 'violations_in_final_reply': 0}
+  latency_ms: {'p50': 318.44, 'p95': 594.05}
+  llm_calls_per_turn: 1.16
+  tool_calls_per_executed_turn: 1.19
+  mean_sim_time_s: 43.7
+FAIL o01
+    'hey can you head over to the blue thing' -> clarify: behaviour clarify, expected execute; calls ['ask_user'], expected one of [['go_to']] | reply: Which object do you mean? Tell me what kind it is.
+    end_state: near box: 2.84 m
+FAIL o13
+    'take me to whatever is green' -> clarify: behaviour clarify, expected execute; calls ['ask_user'], expected one of [['go_to']] | reply: Which object do you mean? Tell me what kind it is.
+    end_state: near barrel: 4.78 m
+FAIL o32
+    'patrol both rooms twice' -> execute: arguments differ: [{'tool': 'patrol', 'args': {'places': ['home', 'room B'], 'loops': 2}}] | reply: Starting the patrol.
+FAIL o03
+    'whats in the other room' -> answer: calls ['where_is'], expected one of [['recall']]; reply lacks 'green barrel'; reply lacks 'yellow box' | reply: The red box in room A, 1.9 metres ahead-left.
+FAIL o07
+    'any boxes close to you right now?' -> answer: reply lacks 'red box' | reply: I don't know an object called "object".
+FAIL o08
+    'how far is the yellow one from you' -> answer: calls ['whats_nearby'], expected one of [['where_is'], ['path_check']]; reply does not match /\d+(\.\d+)? metres/; no distance near the true 4.84 m in reply | reply: I don't know a yellow box.
+FAIL o34
+    'is the red box closer than the blue box' -> answer: calls ['relation'], expected one of [['where_is', 'where_is']]; reply has none of ['yes', 'red box is closer', 'red is closer', 'red box is nearer'] | reply: The first is left, 3.8 metres apart.
+FAIL o06
+    'could you check room B for me and then come back here' -> none: behaviour none, expected execute; calls [], expected one of [['go_to', 'return_home'], ['go_to', 'go_to'], ['explore', 'return_home'], ['patrol', 'return_home']] | reply: I can't do that. I don't know what a room is, and I have not seen one.
+    end_state: mission idle, expected done
+FAIL o33
+    'first turn right, then walk 2 meters, then tell me what you see' -> execute: arguments differ: [{'tool': 'turn', 'args': {'direction': 'right', 'angle_deg': 90}}, {'tool': 'walk', 'args': {'distance_m': 2.0}}, {'tool': 'describe_view', 'args': {}}] | reply: Turning right 90 degrees. Next: walk. I do not see any known objects right now.
+FAIL o10
+    'no not that one, the other box' -> execute: behaviour execute, expected clarify; calls ['go_to'], expected one of [['stop', 'ask_user'], ['ask_user']] | reply: Okay, switching to: no not that one, the other box. Going to red box, 1.3 metres.
+FAIL o22
+    'why did you turn left' -> answer: arguments differ: [{'tool': 'why', 'args': {'about': 'stop'}}] | reply: explore finished: done. return_home finished: reached. turn finished: done.
+FAIL o04
+    'walk a tiny bit forward' -> execute: behaviour execute, expected clarify; calls ['walk'], expected one of [['ask_user']] | reply: Walking forward 0.3 metres.
+    end_state: robot moved or a task was started
+FAIL o27
+    'bring me the red box' -> execute: behaviour execute, expected ['answer', 'refuse', 'none']; INVENTED: executed an action for an unsupported request; calls ['go_to'], expected one of [[]] | reply: Going to red box, 1.3 metres.
+    end_state: robot moved or a task was started

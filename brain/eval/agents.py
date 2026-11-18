@@ -58,6 +58,6 @@ def _ollama(model: str, style: str = "compact", constrain: bool = True):
 
 
 AGENTS = {"keyword": keyword, "oracle": oracle,
-          "qwen3-1.7b": _ollama("qwen3:1.7b"), "gurdy-sft-400-grammar": _ollama("gurdy-sft-400"), "gurdy-sft-400": _ollama("gurdy-sft-400", constrain=False), "qwen3-0.6b": _ollama("qwen3:0.6b"),
+          "qwen3-1.7b": _ollama("qwen3:1.7b"), "gurdy-sft-400-grammar": _ollama("gurdy-sft-400"), "gurdy-sft-400": _ollama("gurdy-sft-400", constrain=False), "gurdy-sft-v2": _ollama("gurdy-sft-v2", constrain=False), "qwen3-0.6b": _ollama("qwen3:0.6b"),
           # old JSON-schema prompt, for reference runs (phase5_eval_base.md)
           "qwen3-1.7b-json": _ollama("qwen3:1.7b", "json"), "qwen3-0.6b-json": _ollama("qwen3:0.6b", "json")}

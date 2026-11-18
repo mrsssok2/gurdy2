@@ -67,3 +67,10 @@ def test_v1_1_differs_from_v1_only_in_c9_09():
     from brain.eval.harness import TESTSET_V1_1
     v1, v11 = {c["id"]: c for c in load_cases()}, {c["id"]: c for c in load_cases(TESTSET_V1_1)}
     assert v1.keys() == v11.keys() and [k for k in v1 if v1[k] != v11[k]] == ["c9_09"]
+
+
+def test_run_cli_accepts_every_set():
+    import subprocess, sys
+    for s in ("v1", "v1_1", "ood_v1"):
+        r = subprocess.run([sys.executable, "-m", "brain.eval.run", "--agent", "oracle", "--set", s, "--cat", "1"], capture_output=True, text=True)
+        assert r.returncode == 0 and "agent=oracle" in r.stdout, (s, r.stderr[-300:])

@@ -245,7 +245,7 @@ def test_keyword_plan_after_yes_says_and_runs_the_whole_plan():
     agent = Agent(ToolLayer(b), KeywordLLM(b.known_places))
     agent.say("Go to room B and find the red box", 0.9)
     r = agent.say("yes", 0.9)
-    assert "Going to room B" in r.reply and "Next: Looking for the red box" in r.reply
+    assert "Going to room B" in r.reply and "Next: look for the red box." in r.reply
     msgs = []
     for _ in range(12):
         b.advance(10)
@@ -649,3 +649,24 @@ def test_bare_yes_or_no_with_nothing_pending_says_so():
     a.say("go to room.", 0.9)
     assert a.say("no", 0.9).reply == "Okay, cancelled."                       # "no" to "Which room?"
     assert a.say("no", 0.9).reply == "There's nothing to confirm right now."   # and now nothing is pending again
+
+
+def test_malformed_later_step_does_not_crash_the_ack():
+    from brain.agent import ScriptedLLM
+    from test_agent import agent_for, call
+    plan = {"calls": [call("go_to", place="room A"), {"tool": "walk", "args": {"distance_m": 1}}]}      # second step lacks `direction`
+    b, l, a = agent_for(ScriptedLLM(plans=[plan]))
+    r = a.say("go to room A then walk")
+    assert "Going to room A" in r.reply and "Next: walk." in r.reply            # no crash; the broken step fails on its own later
+
+
+def test_next_preview_never_states_a_parameter_the_user_did_not_say():
+    from brain.agent import ScriptedLLM
+    from brain.agent.grounding import violations
+    from brain.eval.harness import collect_facts
+    from test_agent import agent_for, call
+    plan = {"calls": [call("turn", direction="right", angle_deg=90), call("walk", direction="forward", distance_m=2.0), call("describe_view")]}
+    b, l, a = agent_for(ScriptedLLM(plans=[plan], responses=["I do not see any known objects right now."]))
+    n, say = len(l.log), "first turn right, then walk 2 meters, then tell me what you see"
+    r = a.say(say)
+    assert violations(r.reply, collect_facts(l.log[n:], say, [l.state_block()]), b.known_places()) == []

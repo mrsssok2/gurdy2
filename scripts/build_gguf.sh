@@ -25,6 +25,16 @@ step() { echo; echo "== $*"; }
 run() { if [ $DRY = 1 ]; then echo "[dry-run] $*"; else "$@"; fi; }
 
 step "checks"
+# Free disk: the WSL virtual disk lives on the Windows C: drive and grows into it; a full C: crashes WSL ("Bus error", 2026-11-18).
+MIN_FREE_GB=${MIN_FREE_GB:-20}
+free_gb() { df -BG --output=avail "$1" 2>/dev/null | tail -1 | tr -dc '0-9'; }
+for d in "$HOME" /mnt/c; do
+  [ -d "$d" ] || { echo "note: $d not mounted, free-space check skipped for it"; continue; }
+  f=$(free_gb "$d")
+  if [ -n "$f" ] && [ "$f" -lt "$MIN_FREE_GB" ]; then
+    echo "refusing to start: only ${f} GB free on $d (need >= ${MIN_FREE_GB} GB; the build writes ~10 GB and WSL's disk lives on C:). Free space, or MIN_FREE_GB=<n> to override."; exit 1
+  fi
+done
 [ -d "$RUN" ] || { echo "no such run dir: $RUN"; exit 1; }
 [ -f "$MODELFILE" ] || { echo "missing $MODELFILE"; exit 1; }
 [ -d "$HF_MODELS/$BASE_MODEL" ] || { echo "base model not found: $HF_MODELS/$BASE_MODEL"; exit 1; }
