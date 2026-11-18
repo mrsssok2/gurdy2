@@ -23,10 +23,12 @@ start_nav_stack() {
   for attempt in $(seq "$attempts"); do
     ros2 launch gurdy_bringup sim.launch.py "$@" > "$out/launch.log" 2>&1 &
     LAUNCH=$!
+    sleep 3; kill -0 "$LAUNCH" 2>/dev/null || { echo "ros2 launch exited at once:"; tail -5 "$out/launch.log"; return 1; }   # bad launch argument etc.: fail fast
     for _ in $(seq 180); do
-      [ "$(ros2 control list_controllers 2>/dev/null | grep -c " active")" = 2 ] && break; sleep 1
+      kill -0 "$LAUNCH" 2>/dev/null || break   # launch died (e.g. controller spawner timeout): go to the restart path
+      [ "$(timeout 10 ros2 control list_controllers 2>/dev/null | grep -c " active")" = 2 ] && break; sleep 1
     done
-    if python3 scripts/wait_nav_ready.py --timeout "$timeout" >> "$out/nav_ready.txt" 2>&1; then
+    if kill -0 "$LAUNCH" 2>/dev/null && python3 scripts/wait_nav_ready.py --timeout "$timeout" >> "$out/nav_ready.txt" 2>&1; then
       echo "attempt $attempt/$attempts: ready" >> "$out/nav_ready.txt"
       cat "$out/nav_ready.txt"
       return 0

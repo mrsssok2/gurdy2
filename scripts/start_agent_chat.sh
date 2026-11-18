@@ -22,7 +22,7 @@ docker compose run --rm $([ -t 0 ] || echo -T) --name gurdy_agent -e OLLAMA_URL 
   source scripts/lib_nav_start.sh; mkdir -p /tmp/chat; cp maps/flat_lab.places.yaml /tmp/chat/places.yaml   # zones the chat adds stay out of git
   trap "stop_nav_stack" EXIT
   echo "starting the simulation (about 2 minutes) ..."
-  start_nav_stack /tmp/chat gui:=$GUI world:=flat_lab perception:=true detector_log:=${DETECTOR_LOG:-} estop_gate:=true target_frame:=map nav:=localization map:=flat_lab_tripod_gt navigation:=true controller:=policy odom_source:=ground_truth > /tmp/chat/start.log 2>&1 < /dev/null \
+  start_nav_stack /tmp/chat gui:=$GUI world:=flat_lab perception:=true ${DETECTOR_LOG:+detector_log:=$DETECTOR_LOG} estop_gate:=true target_frame:=map nav:=localization map:=flat_lab_tripod_gt navigation:=true controller:=policy odom_source:=ground_truth > /tmp/chat/start.log 2>&1 < /dev/null \
     || { echo "Nav2 never became ready (see /tmp/chat/launch.log)"; exit 1; }
   ros2 launch gurdy_safety monitors.launch.py odom_topic:=/odom > /tmp/chat/monitors.log 2>&1 < /dev/null &   # first: it starts the /clock_slow relay
   ros2 run gurdy_navigation frontier_explorer_node --ros-args -p serve_action:=true -p clock_topic:=/clock_slow -p log_path:=/tmp/chat/explore_log.json -p done_path:=/tmp/chat/explore.done > /tmp/chat/explorer.log 2>&1 < /dev/null &
