@@ -1,0 +1,45 @@
+# Read-aloud prompts for the voice eval (brain/voice/eval_read.py). Format: category | sentence. One per line, '#' = comment.
+# Written for speech recognition tests; none is copied from testset_v1 / ood_v1. Reference text = the sentence as printed.
+room | Go to room A.
+room | Go over to room B.
+room | Go to room D.
+room | Head to room B please.
+room | Take me to room A.
+room | Go to room B and then come back.
+room | Walk over to room D.
+phonetic | Go to room Alpha.
+phonetic | Go to room Bravo.
+phonetic | Go to room Delta.
+phonetic | Room Charlie, please.
+phonetic | Go to room D as in dog.
+object | Find the red box.
+object | Look for the blue box.
+object | Find the barrel.
+object | Where is the fire extinguisher?
+object | Look for the traffic cone.
+object | Find the yellow box in room B.
+object | Search for the toolbox.
+object | Go to the green box.
+home | Go home.
+home | Come back home.
+home | Return to the start.
+status | Where are you?
+status | What do you see?
+status | What is near you?
+status | How is your battery?
+status | What are you doing?
+stop | Stop.
+stop | Stop right now.
+stop | Halt.
+yes_no | Yes.
+yes_no | No.
+yes_no | Yes, go ahead.
+yes_no | No, cancel that.
+long | Go to room B, find the red box, and then come back home.
+long | Please go to room A and tell me what you see when you get there.
+long | Walk forward two metres and then turn left.
+casual | Hey Gurdy, can you go to room B for me?
+casual | Could you check what is in room A?
+casual | I want you to look for the barrel in the other room.
+casual | Okay, let's go home now.
+casual | Turn around and take a look behind you.
