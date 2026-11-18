@@ -257,6 +257,89 @@ class DashboardAssets(Base):
         self.assertEqual(sorted(imported - exported), [])
 
 
+class PwaAssets(Base):
+    """Manifest, icons, service worker, meta tags. The worker itself cannot run here (no browser): its rules are checked structurally."""
+
+    APP = None
+
+    def setUp(self):
+        super().setUp()
+        from pathlib import Path
+        self.app = Path(__file__).resolve().parents[1] / "app"
+
+    @staticmethod
+    def png_size(data):
+        import struct
+        assert data[:8] == b"\x89PNG\r\n\x1a\n", "not a PNG"
+        return struct.unpack(">II", data[16:24])
+
+    def test_manifest(self):
+        st, m = request(self.srv, "GET", "/manifest.json", token=None)
+        self.assertEqual(st, 200)
+        self.assertEqual((m["name"], m["short_name"], m["display"], m["orientation"]), ("Gurdy", "Gurdy", "standalone", "portrait"))
+        self.assertEqual((m["theme_color"], m["background_color"]), ("#0E1116", "#0E1116"))
+        self.assertEqual((m["start_url"], m["scope"]), ("./", "./"))
+        purposes = {(i["sizes"], i["purpose"]) for i in m["icons"]}
+        self.assertEqual(purposes, {("192x192", "any"), ("512x512", "any"), ("512x512", "maskable")})
+        for icon in m["icons"]:
+            st, data = request(self.srv, "GET", "/" + icon["src"], token=None)
+            self.assertEqual(st, 200)
+            w, h = self.png_size(data)
+            self.assertEqual(f"{w}x{h}", icon["sizes"], icon["src"])
+
+    def test_apple_icon_and_meta(self):
+        html = (self.app / "index.html").read_text()
+        for needle in ('rel="manifest"', 'rel="apple-touch-icon"', 'name="apple-mobile-web-app-capable"', 'name="mobile-web-app-capable"',
+                       'name="apple-mobile-web-app-title"', 'name="theme-color" content="#0E1116"', "viewport-fit=cover"):
+            self.assertIn(needle, html)
+        self.assertEqual(self.png_size((self.app / "icons" / "apple-touch-icon.png").read_bytes()), (180, 180))
+
+    def test_icons_are_dark_with_teal_art(self):
+        import zlib
+        data = (self.app / "icons" / "icon-maskable-512.png").read_bytes()
+        idat = b""
+        i = 8
+        while i < len(data):
+            n = int.from_bytes(data[i:i + 4], "big")
+            if data[i + 4:i + 8] == b"IDAT":
+                idat += data[i + 8:i + 8 + n]
+            i += 12 + n
+        raw = zlib.decompress(idat)
+        stride = 512 * 4 + 1
+        px = lambda x, y: tuple(raw[y * stride + 1 + x * 4: y * stride + 1 + x * 4 + 4])
+        self.assertEqual(px(0, 0), (0x0E, 0x11, 0x16, 255))                 # maskable: full-bleed dark, opaque corner
+        self.assertEqual(px(256, 256), (0x2D, 0xD4, 0xBF, 255))             # body centre is teal
+
+    def test_service_worker_scope_and_rules(self):
+        import re
+        st, sw = request(self.srv, "GET", "/sw.js", token=None)
+        self.assertEqual(st, 200)
+        sw = sw.decode()
+        shell = re.findall(r'"([^"]+)"', re.search(r"const SHELL = \[(.*?)\];", sw, re.S).group(1))
+        for f in shell:                                                      # every precached file exists (a missing one would fail install)
+            if f != "./":
+                self.assertTrue((self.app / f).is_file(), f)
+        # everything the page loads is in the shell
+        html, css = (self.app / "index.html").read_text(), (self.app / "style.css").read_text()
+        needed = set(re.findall(r'(?:href|src)="([^"#]+)"', html)) | set(re.findall(r"url\((fonts/[^)]+)\)", css)) | {"lib.js"}
+        needed = {n for n in needed if not n.startswith("http")}
+        self.assertEqual(sorted(needed - set(shell)), [])
+        # robot data is never handled or stored
+        self.assertIn('url.pathname.startsWith("/api/")', sw)
+        self.assertIn('url.pathname === "/ws"', sw)
+        self.assertIn('req.method !== "GET"', sw)
+        self.assertIn("url.origin !== self.location.origin", sw)
+        self.assertNotRegex(sw, r"cache\.put\([^)]*api")
+        self.assertIn("serviceWorker", (self.app / "app.js").read_text())
+
+    def test_sw_is_not_http_cached(self):
+        c = http.client.HTTPConnection("127.0.0.1", self.srv.port)
+        c.request("GET", "/sw.js")
+        r = c.getresponse()
+        r.read()
+        self.assertEqual(r.getheader("Cache-Control"), "no-cache")      # a new worker is picked up on the next visit
+
+
 class WebSocketFrames(unittest.TestCase):
     def test_accept_key_rfc_example(self):
         self.assertEqual(ws.accept_key("dGhlIHNhbXBsZSBub25jZQ=="), "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")

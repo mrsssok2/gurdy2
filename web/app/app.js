@@ -215,3 +215,7 @@ const fromUrl = new URLSearchParams(location.hash.slice(1)).get("token");      /
 if (fromUrl) { store("gurdy_token", fromUrl); history.replaceState(null, "", location.pathname); }
 S.token = load("gurdy_token");
 connect();
+
+// Offline start: the service worker caches the app shell only (never /api or the WebSocket). It needs a secure context
+// (https or localhost); over plain http on the LAN the browser simply refuses and the page works online as before.
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
