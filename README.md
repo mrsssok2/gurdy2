@@ -1,12 +1,18 @@
 # Gurdy 2.0
 
-**What it does:** a six-legged robot in simulation that you can talk to in plain English. It walks with a learned (reinforcement-learning) gait, maps and explores a building on its own, recognises objects by name, and plans missions with a fine-tuned LLM running locally.
+**What it does:** a six-legged robot in simulation that you can talk to in plain English, typed or spoken (Whisper on the GPU, ~0.3 s per command, 3.7 % word error rate). It walks with a learned (reinforcement-learning) gait, maps and explores a building on its own, recognises objects by name, and plans missions with a fine-tuned LLM running locally.
 **What it proves:** the whole stack runs offline on one 6 GB laptop GPU. Measured: the learned gait tracks commands more accurately and uses less energy than a classic gait, the robot mapped 99 % of a lab, found 11/11 objects, and the fine-tuned LLM scored 94 % vs 59 % for the base model on 100 commands, with no hallucinated replies reaching the user.
-**What did not work:** it is simulation only, 65 % on unseen casual phrasing, and leg-failure adaptation missed its target (see Known limitations).
+**What did not work:** it is simulation only, 72.5 % on unseen casual phrasing, and leg-failure adaptation missed its target (see Known limitations).
 
-An 18-DOF hexapod robot in simulation that takes plain-English commands, plans missions with an offline fine-tuned LLM (Qwen3-1.7B + LoRA, runs locally on a 6 GB laptop GPU),
-walks with a PPO-trained RL gait over slopes and steps, builds maps and navigates (slam_toolbox + Nav2), and finds objects by name with a YOLO detector trained on self-generated synthetic data.
-Everything runs offline: ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL2). License: MIT.
+## Voice control in Gazebo
+
+Spoken English goes through push-to-talk, Whisper on the GPU and the same agent as typed input; the robot answers aloud.
+
+| ![Go to room B and find the red box](docs/images/gurdy_voice_room_b.png) | ![Go home](docs/images/gurdy_voice_go_home.png) | ![Stop, then find the red box](docs/images/gurdy_voice_stop_find.png) |
+|---|---|---|
+| Go to room B and find the red box: it reports the box is really in room A | Go home: arrives 0.1 m from the goal | Stop heard in 0.3 s, then find the red box |
+
+Stack: fine-tuned Qwen3-1.7B (LoRA, Ollama) as the planner · PPO-trained RL gait · slam_toolbox + Nav2 · YOLO11 trained on self-generated synthetic images. Everything runs offline: ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL2) · MIT.
 
 **Demo (68 s):** [docs/videos/gurdy2_demo.mp4](docs/videos/gurdy2_demo.mp4) — tripod gait vs the RL policy on a 12° slope and 4 cm steps
 (MuJoCo), then autonomous exploration of a lab from an empty map (Gazebo + Nav2 + slam_toolbox).
@@ -14,19 +20,6 @@ Everything runs offline: ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL
 ![map from autonomous exploration](docs/results/phase3_explore_gt_map.png)
 
 ![Gurdy driven by the fine-tuned LLM: chat and Gazebo side by side](docs/images/gurdy_live_run.png)
-
-## Voice control in Gazebo
-
-Spoken English commands go through push-to-talk, Whisper on the GPU and the same agent as typed input; the robot answers aloud.
-
-![Go to room B and find the red box](docs/images/gurdy_voice_room_b.png)
-*Go to room B and find the red box: it reports the box is really in room A.*
-
-![Go home](docs/images/gurdy_voice_go_home.png)
-*Go home: arrives 0.1 m from the goal.*
-
-![Stop, then find the red box](docs/images/gurdy_voice_stop_find.png)
-*Stop heard in 0.3 s, then find the red box.*
 
 ## Architecture
 
@@ -58,7 +51,7 @@ flowchart TB
 
 The LLM decides what to do, Nav2 decides where to go,
 and the RL policy decides how to move the 18 joints.
-(The live Gazebo test used typed commands; the voice path exists in `brain/voice` but was not part of it.)
+(Typed and spoken commands both drive the same agent; voice code: `brain/voice`.)
 
 Training:
 
@@ -75,10 +68,10 @@ flowchart LR
 |---|---|---|
 | RL walking vs tripod gait (MuJoCo) | tracking error 10.6 % vs 15.9 %; cost of transport 5.77 vs 7.35; 0 % falls in all randomisation scenarios; slope 12° 93 % (tripod 100 %); steps 4 cm 83 % (tripod 57 %) | [Experiment A](docs/results/exp_A_terrain.md) |
 | Sim-to-sim (MuJoCo → Gazebo) | 0 falls, but tracking differs by up to 14 points on single axes (target ≤ 10 **not met**) | [deploy](docs/results/phase2_deploy_gazebo.md) |
-| Mapping (Gazebo) | mean map error 3.1 cm (policy) / 2.4 cm (tripod); autonomous exploration 99.1 % of the lab mapped, Nav2 5/5 goals | [Phase 3](docs/results/phase3_explore.md) |
+| Mapping (Gazebo) | mean map error 3.1 cm (policy) / 2.4 cm (tripod); autonomous exploration 99.1 % of the lab mapped, Nav2 5/5 goals | [Phase 3](docs/results/phase3_gazebo_results.md), [exploration](docs/results/phase3_explore.md) |
 | Object detection (YOLO11s, synthetic data) | test mAP50 0.922 (v1 test) / 0.871 (harder v2 test); 11/11 objects found in a Gazebo lab, median position error 0.031 m (xy) | [Phase 4](docs/results/phase4c_v2.md) |
 | LLM brain, 100 in-distribution commands | base Qwen3-1.7B 59 % → fine-tuned **94 %** (keyword baseline 55 %); 0 risky actions executed | [SFT eval](docs/results/phase5_eval_sft.md) |
-| LLM brain, 40 unseen casual phrasings | base 35 % → fine-tuned **65 %** (test set written by an AI assistant, not by humans) | [OOD eval](docs/results/phase5_eval_ood.md) |
+| LLM brain, 40 unseen casual phrasings | base 42.5 % → fine-tuned **72.5 %** (current agent code; test set written by an AI assistant, not by humans) | [OOD eval](docs/results/phase5_eval_sft_v2.md) |
 | Hallucinated replies | 0 hallucinated replies reached the user (28 checked; the grounding check blocks any fact not in that turn's tool results: 0 needed blocking for the fine-tuned model, 4 for the base model) | [SFT eval](docs/results/phase5_eval_sft.md) |
 | Live LLM-driven Gazebo missions | 9/9 typed missions completed (go-to, find, patrol, stop, refusal, clarification) | [live test](docs/results/phase5_live_test.md) |
 | Voice (read-aloud, 43 real clips) | word error rate 3.7 %, exact-command accuracy 86 %, speech-to-text ~0.3 s per clip on the GPU | [voice eval](docs/results/phase5_eval_sft_v2.md) |
@@ -114,7 +107,7 @@ scripts/start_agent_chat.sh                   # Gazebo + Nav2 + policy + detecto
 Without the LLM: `docker compose up sim` starts the walking robot in Gazebo (teleop commands in [docs/RESULTS.md](docs/RESULTS.md)). Retraining the walking policy: [docs/RESULTS.md](docs/RESULTS.md#rl-training-commands-phase-2).
 
 ## Known limitations
-- **LLM:** 65 % on unseen casual phrasing; it still invents tool names and unsupported actions on some inputs (nothing invented was executed). The OOD set is assistant-written; noisy-speech cases in the main set are hand-written, not real Whisper output. No voice loop in the live test (typed commands).
+- **LLM:** 72.5 % on unseen casual phrasing; it still invents tool names and unsupported actions on some inputs (nothing invented was executed). The OOD set is assistant-written; noisy-speech cases in the main set are hand-written, not real Whisper output. The 9-mission live test was typed; voice was checked live on a few commands and on 43 read-aloud clips, not on a full mission suite.
 - **Hexapod walking:** policies stand still for tiny commands from rest (handled at deployment by lifting Nav2 commands to ≥ 0.09 m/s); steps ≥ 4 cm still fail 17–37 % of episodes for every controller.
 - **Sim only:** no real robot. Sim-to-sim gap up to 14 points (31 on one combined segment). Leg-failure adaptation did not work.
 - **Single runs:** Nav2, exploration and detector-in-Gazebo were run once per setting, in one world (`flat_lab` / `semantic_lab`); no variance estimates.
@@ -123,4 +116,4 @@ Without the LLM: `docker compose up sim` starts the walking robot in Gazebo (tel
 
 ## Status (2026-11-18)
 
-Phases 0–4 done. Phase 5 core (LLM brain, live Gazebo test) done; SFT v2 training is running. Phases 6–9 not started. See [ROADMAP.md](ROADMAP.md) and [CLAUDE.md](CLAUDE.md).
+Phases 0–4 done. Phase 5 core (LLM brain, live Gazebo test) done; SFT v2 was trained and evaluated (not better, default stays `gurdy-sft-400`); the final Gazebo eval (5.11) is running. Phases 6–9 not started. See [ROADMAP.md](ROADMAP.md) and [CLAUDE.md](CLAUDE.md).
