@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import json
 import math
+import functools
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -21,21 +23,37 @@ CREATE TABLE IF NOT EXISTS places (map_id TEXT NOT NULL, name TEXT NOT NULL, x R
 SAME_OBJECT_M = 0.6          # same class + colour within this distance = the same object (re-sighting)
 
 
+def _locked(fn):
+    """Every public method runs under the store's re-entrant lock: the agent calls the store from the TCP bridge threads, the host's pump
+    thread and the e-stop path, not only from the thread that opened the database."""
+    @functools.wraps(fn)
+    def wrapper(self, *a, **kw):
+        with self._lock:
+            return fn(self, *a, **kw)
+    return wrapper
+
+
 class MemoryStore:
+    """Thread-safe: one connection (`check_same_thread=False`) guarded by an RLock around every method (sqlite3 connections must not run two
+    statements at once). Results are plain lists / dicts, never cursors, so nothing escapes the lock."""
+
     def __init__(self, path: str | Path, map_id: str, wall: Callable[[], float] = time.time):
         self.path, self.map_id, self.wall = str(path), map_id, wall
         if self.path != ":memory:":
             Path(self.path).parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(self.path)
+        self._lock = threading.RLock()
+        self.db = sqlite3.connect(self.path, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
         self.session = f"s{int(self.wall() * 1000)}"
 
+    @_locked
     def close(self) -> None:
         self.db.commit()
         self.db.close()
 
     # ------------------------------------------------------------------ objects
+    @_locked
     def upsert_object(self, cls: str, color: str | None, x: float, y: float, place: str | None,
                       last_seen: float, state: str = "present") -> int:
         rows = self.db.execute("SELECT * FROM objects WHERE map_id=? AND class=? AND COALESCE(color,'')=?",
@@ -54,6 +72,7 @@ class MemoryStore:
         self.db.commit()
         return cur.lastrowid
 
+    @_locked
     def objects(self, cls: str | None = None, color: str | None = None, since_s: float | None = None) -> list[dict]:
         now = self.wall()
         out = []
@@ -70,17 +89,20 @@ class MemoryStore:
         return out
 
     # ------------------------------------------------------------------ missions
+    @_locked
     def mission_started(self, tool: str, target: str | None) -> int:
         cur = self.db.execute("INSERT INTO missions (map_id, session, tool, target, start, state) VALUES (?,?,?,?,?,'running')",
                               (self.map_id, self.session, tool, target, self.wall()))
         self.db.commit()
         return cur.lastrowid
 
+    @_locked
     def mission_ended(self, row_id: int, state: str, distance_m: float | None, data: dict[str, Any]) -> None:
         self.db.execute("UPDATE missions SET end=?, state=?, distance_m=?, data=? WHERE id=?",
                         (self.wall(), state, distance_m, json.dumps(data, default=str), row_id))
         self.db.commit()
 
+    @_locked
     def close_open_missions(self) -> int:
         """Missions still 'running' from an earlier session ended with that process: mark them interrupted."""
         cur = self.db.execute("UPDATE missions SET state='interrupted', end=start WHERE map_id=? AND state='running' AND session<>?",
@@ -88,6 +110,7 @@ class MemoryStore:
         self.db.commit()
         return cur.rowcount
 
+    @_locked
     def missions(self, since_s: float | None = None) -> list[dict]:
         now = self.wall()
         out = []
@@ -100,11 +123,13 @@ class MemoryStore:
         return out
 
     # ------------------------------------------------------------------ places
+    @_locked
     def save_place(self, name: str, x: float, y: float) -> None:
         self.db.execute("INSERT INTO places (map_id, name, x, y, saved) VALUES (?,?,?,?,?) ON CONFLICT(map_id, name) "
                         "DO UPDATE SET x=excluded.x, y=excluded.y, saved=excluded.saved", (self.map_id, name, x, y, self.wall()))
         self.db.commit()
 
+    @_locked
     def places(self) -> list[dict]:
         return [{"name": r["name"], "x": r["x"], "y": r["y"]}
                 for r in self.db.execute("SELECT * FROM places WHERE map_id=? ORDER BY saved", (self.map_id,))]

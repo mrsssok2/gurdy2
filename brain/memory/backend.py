@@ -8,6 +8,7 @@ persistent. Everything else is delegated untouched, so the agent, safety layer a
 Records from memory carry `from_memory` and `age_s`; older than `stale_after_s` they are flagged `stale`."""
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 from brain.tools.types import Result, ok
@@ -22,6 +23,7 @@ class MemoryBackend:
         self._inner, self.store, self.stale_after_s = inner, store, stale_after_s
         self._pending: dict[str, dict] = {}          # tool -> args of the motion call that was just issued
         self._rows: dict[Any, int] = {}              # inner task id -> mission row
+        self._lock = threading.RLock()               # say thread, host pump thread and the e-stop path all reach this object
         store.close_open_missions()
         if hasattr(inner, "places"):
             as_dict = any(isinstance(v, dict) for v in inner.places.values())     # RosBackend keeps {x, y, kind}, the mock keeps (x, y)
@@ -32,13 +34,18 @@ class MemoryBackend:
         attr = getattr(self._inner, name)
         if name in MOTION and callable(attr):
             def call(*a, **kw):
-                self._pending[name] = dict(kw)
+                with self._lock:
+                    self._pending[name] = dict(kw)
                 return attr(*a, **kw)
             return call
         return attr
 
     # ------------------------------------------------------------------ events -> mission history
     def poll_events(self) -> list[dict]:
+        with self._lock:
+            return self._poll_events()
+
+    def _poll_events(self) -> list[dict]:
         evs = self._inner.poll_events()
         for e in evs:
             d, t = e.get("data", {}), e["type"]

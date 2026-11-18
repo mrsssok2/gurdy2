@@ -76,6 +76,7 @@ class Agent:
         self.replan_used = False        # at most one re-plan per user request (a re-plan's own failure is only reported)
         self.replans: list[dict] = []   # log of re-plan attempts (evaluation / debugging)
         self.alerts = alerts or AlertManager()
+        self.errors: list[str] = []              # internal exceptions caught by say() (tests / debugging)
         self.followup: dict | None = None        # {utterance, log_start, done}: plan the rest of the request once the mission is done
         self.pending_room: dict | None = None   # "Which room: A, B or D?" waiting for a letter: {template, expires_at}
         self.recent_room: dict | None = None    # last command that named a room: {utterance, t}; "no, Delta" corrects it
@@ -145,6 +146,23 @@ class Agent:
         return None
 
     def say(self, utterance: str, stt_confidence: float | None = None, started_at: float | None = None) -> TurnResult:
+        """Never raises: an internal exception (a node crashed, a backend / database error) becomes a spoken "Something went wrong: ..." reply,
+        the traceback goes to stderr (the agent log) and pending questions are dropped so the next turn starts clean."""
+        try:
+            return self._say(utterance, stt_confidence, started_at)
+        except Exception as e:                                   # noqa: BLE001
+            import sys
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            self.errors.append(f"{type(e).__name__}: {e}")
+            try:
+                self.gate.clear()
+            except Exception:                                    # noqa: BLE001
+                pass
+            self.pending_fix = self.pending_room = self.followup = None
+            return TurnResult(f"Something went wrong: {type(e).__name__}: {e}", [], [{"outcome": "error", "rule": "internal_error"}], 0, {})
+
+    def _say(self, utterance: str, stt_confidence: float | None = None, started_at: float | None = None) -> TurnResult:
         """`started_at`: wall-clock (self.clock.wall) time the user STARTED speaking; pending questions are judged by that, not by
         when the transcript arrived."""
         self.clock.begin_turn(started_at)

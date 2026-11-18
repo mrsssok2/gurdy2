@@ -30,8 +30,14 @@ class AgentHost:
     def say(self, text: str, conf: float | None = None, started_ago: float | None = None) -> str:
         """`started_ago`: seconds (wall) since the user started speaking this utterance (None: typed, now)."""
         with self.lock:
-            clk = self.agent.clock
-            return self.agent.say(text, conf, None if started_ago is None else clk.wall() - started_ago).reply
+            try:
+                clk = self.agent.clock
+                return self.agent.say(text, conf, None if started_ago is None else clk.wall() - started_ago).reply
+            except Exception as e:                                # noqa: BLE001  (Agent.say already catches; this covers the clock / lock path)
+                import sys
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+                return f"Something went wrong: {type(e).__name__}: {e}"
 
     def spoken_done(self) -> None:
         """The robot finished speaking (a question's answer window starts now)."""
@@ -63,11 +69,17 @@ class AgentHost:
             while not self._stop.is_set():
                 time.sleep(self.pump_s)
                 now = time.monotonic()
-                with self.lock:
-                    be = self.agent.layer.backend
-                    if self.sim_speed and hasattr(be, "advance"):      # without this a mock trip never ends
-                        be.advance((now - last) * self.sim_speed)
-                    msgs = self.agent.pump()
+                try:
+                    with self.lock:
+                        be = self.agent.layer.backend
+                        if self.sim_speed and hasattr(be, "advance"):      # without this a mock trip never ends
+                            be.advance((now - last) * self.sim_speed)
+                        msgs = self.agent.pump()
+                except Exception as e:                                # noqa: BLE001  one bad pump must not kill the loop (alerts / mission results)
+                    import sys
+                    import traceback
+                    traceback.print_exc(file=sys.stderr)
+                    msgs = [f"Something went wrong: {type(e).__name__}: {e}"]
                 last = now
                 for m in msgs:
                     for fn in list(self.listeners):
@@ -106,6 +118,13 @@ def serve(host: AgentHost, port: int, bind: str = "0.0.0.0") -> threading.Thread
                     f.write(json.dumps(o) + "\n"); f.flush()
                 except OSError:
                     pass
+        def _answer(r):
+            """Always answers: a crash must not leave the client waiting for its 60 s timeout."""
+            try:
+                text = host.say(r.get("text", ""), r.get("conf"), r.get("started_ago"))
+            except BaseException as e:                                # noqa: BLE001
+                text = f"Something went wrong: {type(e).__name__}: {e}"
+            send({"op": "reply", "id": r.get("id"), "text": text})
         try:
             for line in f:
                 try:
@@ -121,8 +140,7 @@ def serve(host: AgentHost, port: int, bind: str = "0.0.0.0") -> threading.Thread
                     send({"op": "state", "moving": host.is_moving(), "places": host.places(), "hint": host.answer_hint()})
                 elif op == "say":
                     # off the reading thread: a slow LLM turn must not delay an {"op":"estop"} that arrives meanwhile
-                    threading.Thread(target=lambda r=r: send({"op": "reply", "id": r.get("id"), "text": host.say(r.get("text", ""), r.get("conf"), r.get("started_ago"))}),
-                                     daemon=True).start()
+                    threading.Thread(target=_answer, args=(r,), daemon=True).start()
         finally:
             if f in clients:
                 clients.remove(f)

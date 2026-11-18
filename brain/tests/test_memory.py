@@ -198,3 +198,89 @@ def test_ros_memory_survives_restart(tmp_path):
     assert len(rec) == 1 and rec[0]["from_memory"] and rec[0]["color"] == "red"
     missions = b2.recall("mission").data["records"]
     assert [m["tool"] for m in missions] == ["go_to"] and missions[0]["state"] == "reached"
+
+
+# ---- thread safety: the agent is called from the TCP bridge / host threads, not from the thread that opened the SQLite file
+def _memory_agent(tmp_path, plans):
+    from brain.agent import Agent, ScriptedLLM
+    from brain.memory import MemoryBackend, MemoryStore
+    from brain.mock import MockBackend
+    from brain.tools import ToolLayer
+    store = MemoryStore(tmp_path / "m.db", "flat_lab")                    # opened in THIS thread
+    backend = MemoryBackend(MockBackend(), store)
+    return backend, store, Agent(ToolLayer(backend), ScriptedLLM(plans=plans))
+
+
+def test_store_and_agent_work_from_another_thread_with_memory_on(tmp_path):
+    import threading
+    backend, store, agent = _memory_agent(tmp_path, [{"calls": [{"tool": "go_to", "args": {"place": "room B"}}]}])
+    store.upsert_object("box", "red", 1.0, 1.0, "room A", backend.store.wall())
+    out = {}
+
+    def other():
+        try:
+            out["objects"] = store.objects()                               # direct store use
+            out["places"] = store.places()
+            out["reply"] = agent.say("go to room B").reply                 # safety._person_near -> backend.recall -> store.objects()
+        except Exception as e:                                             # noqa: BLE001
+            out["error"] = repr(e)
+    t = threading.Thread(target=other); t.start(); t.join(10)
+    assert "error" not in out, out.get("error")
+    assert len(out["objects"]) == 1 and out["reply"] and "went wrong" not in out["reply"]
+    assert agent.errors == []                                              # no internal exception was swallowed either
+
+
+def test_store_survives_concurrent_threads(tmp_path):
+    import threading
+    from brain.memory import MemoryStore
+    store = MemoryStore(tmp_path / "c.db", "m")
+    errors = []
+
+    def worker(i):
+        try:
+            for k in range(60):
+                store.upsert_object("box", f"c{i}", float(k), 0.0, "room A", 1.0 + k)
+                store.objects()
+                rid = store.mission_started("go_to", "room B")
+                store.mission_ended(rid, "done", 1.0, {})
+                store.save_place(f"p{i}", 1.0, 2.0)
+                store.places(); store.missions()
+        except Exception as e:                                             # noqa: BLE001
+            errors.append(repr(e))
+    ts = [threading.Thread(target=worker, args=(i,)) for i in range(6)]
+    [t.start() for t in ts]; [t.join(60) for t in ts]
+    assert errors == [] and len(store.missions()) == 6 * 60 and len(store.places()) == 6
+
+
+def test_agent_replies_instead_of_raising_when_a_node_crashes(tmp_path):
+    from brain.agent import Agent, ScriptedLLM
+    from brain.mock import MockBackend
+    from brain.tools import ToolLayer
+
+    class Broken(MockBackend):
+        def recall(self, *a, **kw):
+            raise RuntimeError("database is locked")
+    agent = Agent(ToolLayer(Broken()), ScriptedLLM(plans=[{"calls": [{"tool": "go_to", "args": {"place": "room B"}}]}, {"reply": "x"}]))
+    r = agent.say("go to room B")
+    assert r.reply.startswith("Something went wrong: RuntimeError: database is locked") and agent.errors
+    assert agent.say("hello").reply                                         # the next turn works (state was reset)
+
+
+def test_host_and_tcp_bridge_always_answer(tmp_path):
+    import socket, time
+    from brain.agent import Agent, ScriptedLLM
+    from brain.mock import MockBackend
+    from brain.tools import ToolLayer
+    from brain.voice.host import AgentHost, RemoteHost, serve
+
+    class Boom:
+        clock = None
+        def say(self, *a, **kw): raise RuntimeError("boom")
+    host = AgentHost(Agent(ToolLayer(MockBackend()), ScriptedLLM(plans=[])))
+    host.agent.say = Boom().say                                              # even if Agent.say itself blew up
+    s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+    serve(host, port, "127.0.0.1"); time.sleep(0.2)
+    rh = RemoteHost(f"127.0.0.1:{port}", timeout_s=5)
+    t0 = time.time()
+    assert rh.say("go to room B", 0.9).startswith("Something went wrong: RuntimeError: boom") and time.time() - t0 < 3
+    rh.close()
