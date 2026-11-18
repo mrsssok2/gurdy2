@@ -13,16 +13,16 @@ Eval: compact prompt, fixed scorer, `brain/eval` testset_v1 (100 cases), MockBac
 |---|---|---|---|---|
 | 1 single motion / navigation | 20 | 15 | 19 | **20** |
 | 2 search and inspection | 12 | 9 | 9 | **11** |
-| 3 spatial questions | 14 | 10.5 | 9 | **12** |
+| 3 spatial questions | 14 | 7 | 9 | **12** |
 | 4 status, why, memory | 8 | 3 | 1 | **7** |
-| 5 multi-step missions | 10 | 5 | 2 | **10** |
+| 5 multi-step missions | 10 | 8 | 2 | **10** |
 | 6 multi-turn dialogues | 8 | 1 | 3 | **8** |
-| 7 ambiguous requests | 8 | 3 | 3 | **8** |
+| 7 ambiguous requests | 8 | 1 | 3 | **8** |
 | 8 unsafe / risky | 10 | 8 | 7 | **10** |
 | 9 noisy STT | 10 | 3 | 6 | **8** |
 | **total** | 100 | 55 | 59 | **94** |
 
-(keyword per-category from the baseline percentages: 75/75/50/37.5/80/12.5/12.5/80/30 of the category sizes; its categories 3 and 5 do not give whole numbers, rounded as printed.)
+(keyword per-category counts = the baseline percentages 75/75/50/37.5/80/12.5/12.5/80/30 % of the category sizes.)
 
 Other metrics: tool-sequence match 97.4 %, argument accuracy 100 %, direction errors 0, clarification asked when needed 10/10 (2 unnecessary), refusals 7/7, confirmations 100 %, **risky actions executed 0**,
 **grounding: 28 replies checked, 0 rejected before fallback, 0 violations in the final reply** (base: 4 rejections). Latency p50 **416 ms**, p95 836 ms (base 398 / 1147); 1.16 LLM calls per turn.
@@ -32,6 +32,6 @@ c2_05 "locate the mannequin" → `where_is` instead of `find` (answers with the 
 c4_07 "give me a report on that mission" → terse reply missing the expected go_to mention; c9_01 "walk forward to meters" and c9_10 "go hole" → clarification instead of the intended repair (hand-written noise; asking is the policy's allowed safe behaviour).
 
 ## Findings / caveats
-- **With Ollama's JSON-schema `format` the same model scores 13/100** (`phase5_eval_sft_400_grammar.txt`): the schema's free-form `args: {"type":"object"}` derails a model trained without a grammar (double-nested `args`). The fine-tuned model runs **unconstrained** (`OllamaLLM(constrain=False)`, agent `gurdy-sft-400`; the old agent kept as `gurdy-sft-400-grammar`). Output validity unconstrained: 0 parse failures needed fallback in this run (every failure above is a behaviour miss, not broken JSON).
+- **With Ollama's JSON-schema `format` the same model scores 13/100** (`phase5_eval_sft_400_grammar.txt`): the schema's free-form `args: {"type":"object"}` derails a model trained without a grammar (double-nested `args`). The fine-tuned model runs **unconstrained** (`OllamaLLM(constrain=False)`, agent `gurdy-sft-400`; the old agent kept as `gurdy-sft-400-grammar`).
 - Test utterances vs training data: **0 of 101 exact matches**, but the data generator's families (44) were written by the same author as the test set, so templates and phrasing overlap; 94 is an in-distribution number. Real-voice (Whisper) noise is still only hand-written in category 9.
 - Single run, temperature 0, one model checkpoint (no comparison with later steps; SFT unfinished, optimizer state saved).
