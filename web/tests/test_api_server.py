@@ -218,6 +218,38 @@ class StaticTests(Base):
         self.assertEqual(c.getresponse().status, 404)
 
 
+class DashboardAssets(Base):
+    """No browser / node here, so check structure: served, linked files exist, tabs + style tokens from the spec, DOM ids used by app.js exist."""
+
+    def test_assets_served_and_consistent(self):
+        import re
+        from pathlib import Path
+        app = Path(__file__).resolve().parents[1] / "app"
+        html = (app / "index.html").read_text()
+        css = (app / "style.css").read_text()
+        js = (app / "app.js").read_text()
+        for f in ("style.css", "app.js", "lib.js"):
+            st, body = request(self.srv, "GET", "/" + f, token=None)
+            self.assertEqual(st, 200, f)
+        self.assertEqual([t.lower() for t in re.findall(r'class="tab[^"]*" data-view="(\w+)"', html)], ["map", "chat", "status", "alerts"])
+        for color in ("#0E1116", "#161B22", "#2DD4BF", "#D93036"):
+            self.assertIn(color.lower(), css.lower())
+        for font in ("Inter", "Space Grotesk", "JetBrains Mono"):
+            self.assertIn(font, css)
+        self.assertIn("estop", html)
+        self.assertNotIn("http://", html + css + js.replace("http://host", ""))      # offline: no CDN / external URL
+        self.assertNotIn("https://", html + css + js)
+        self.assertNotIn("innerHTML", js)                                          # robot text must never be parsed as HTML
+        ids = set(re.findall(r'id="(\w+)"', html))
+        used = set(re.findall(r'\$\("(\w+)"\)', js))
+        self.assertEqual(sorted(used - ids), [])
+        for name in re.findall(r'import \{[^}]*\} from "\./(\w+)\.js"', js):
+            self.assertTrue((app / (name + ".js")).exists())
+        exported = set(re.findall(r"export function (\w+)", (app / "lib.js").read_text()))
+        imported = set(re.findall(r"\w+", re.search(r"import \{([^}]*)\}", js).group(1)))
+        self.assertEqual(sorted(imported - exported), [])
+
+
 class WebSocketFrames(unittest.TestCase):
     def test_accept_key_rfc_example(self):
         self.assertEqual(ws.accept_key("dGhlIHNhbXBsZSBub25jZQ=="), "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")

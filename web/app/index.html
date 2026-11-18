@@ -1,7 +1,85 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gurdy mission control</title>
-<style>:root{color-scheme:light dark}body{font-family:system-ui,sans-serif;margin:16px}</style></head>
-<body><h1>Gurdy mission control</h1>
-<p>The API server is running. The dashboard page arrives in Phase 7 step 2 (see docs/phase7_design.md).</p>
-<p>Try <code>/api/health</code>.</p></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1116">
+<title>Gurdy Mission Control</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true"></span><h1>Gurdy</h1></div>
+  <div class="conn" id="conn" role="status"><span class="dot"></span><span id="connText">connecting</span></div>
+  <button class="estop" id="estop" type="button" aria-label="Emergency stop">E-STOP</button>
+</header>
+<div class="banner" id="estopBanner" hidden>Emergency stop is active. The robot is holding still.</div>
+<div class="banner warn" id="staleBanner" hidden>Robot is busy thinking; showing the last known state.</div>
+
+<main>
+  <section class="view" id="view-map" aria-label="Map">
+    <div class="card map-card"><canvas id="map"></canvas></div>
+    <div class="card readout" id="poseCard">
+      <div><span class="k">x</span><span class="v mono" id="px">–</span></div>
+      <div><span class="k">y</span><span class="v mono" id="py">–</span></div>
+      <div><span class="k">heading</span><span class="v mono" id="ph">–</span></div>
+      <div><span class="k">place</span><span class="v" id="pplace">–</span></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-chat" aria-label="Chat" hidden>
+    <div class="card chat-list" id="chatList" aria-live="polite"></div>
+    <form class="chat-form" id="chatForm" autocomplete="off">
+      <input id="chatInput" type="text" maxlength="500" placeholder="Tell the robot what to do" enterkeyhint="send" aria-label="Message">
+      <button type="submit" class="send">Send</button>
+    </form>
+  </section>
+
+  <section class="view" id="view-status" aria-label="Status" hidden>
+    <div class="grid">
+      <div class="card stat"><span class="k">Mode</span><span class="big" id="sMode">–</span></div>
+      <div class="card stat"><span class="k">Task</span><span class="big" id="sTask">–</span></div>
+      <div class="card stat"><span class="k">Speed</span><span class="big mono" id="sSpeed">–</span></div>
+      <div class="card stat"><span class="k">Uptime</span><span class="big mono" id="sTime">–</span></div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="k">Battery</span><span class="tag" id="sSim" hidden>simulated</span><span class="v mono" id="sBat">–</span></div>
+      <div class="bar"><div id="sBatBar"></div></div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="k">Legs</span><span class="v" id="sLegSummary">–</span></div>
+      <div class="legs" id="legs"></div>
+    </div>
+    <div class="card"><div class="row"><span class="k">Known objects</span><span class="v mono" id="sObjCount">–</span></div><ul class="objs" id="objList"></ul></div>
+  </section>
+
+  <section class="view" id="view-alerts" aria-label="Alerts" hidden>
+    <div class="card"><div class="row"><span class="k">Active now</span><span class="v mono" id="aCount">0</span></div><ul class="alerts" id="alertNow"></ul></div>
+    <div class="card"><div class="row"><span class="k">Earlier</span></div><ul class="alerts" id="alertHist"></ul></div>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="Sections">
+  <button class="tab active" data-view="map" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Zm0 0v14m6-12v14"/></svg><span>Map</span></button>
+  <button class="tab" data-view="chat" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z"/></svg><span>Chat</span></button>
+  <button class="tab" data-view="status" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Status</span></button>
+  <button class="tab" data-view="alerts" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20L12 3Zm0 6v5m0 3v.5"/></svg><span>Alerts</span><b class="badge" id="alertBadge" hidden>0</b></button>
+</nav>
+
+<dialog id="login">
+  <form method="dialog" id="loginForm">
+    <h2>Access token</h2>
+    <p>Paste the token printed when the server started.</p>
+    <input id="tokenInput" type="password" autocomplete="off" aria-label="Access token">
+    <p class="err" id="loginErr" hidden></p>
+    <button type="submit" class="send">Connect</button>
+  </form>
+</dialog>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
