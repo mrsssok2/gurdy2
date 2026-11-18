@@ -26,7 +26,8 @@ def obj_where(o: dict) -> str:
 
 def _target_name(a: dict) -> str:
     if a.get("place"):
-        return a["place"]
+        from .rooms import canon_place
+        return canon_place(a["place"])
     if a.get("object"):
         return obj_name(a["object"])
     if a.get("object_id"):
@@ -188,13 +189,72 @@ def describe_event(ev: dict) -> str | None:
     return None
 
 
-def _finished(d: dict, failed: bool = False) -> str:
+_DOING = {"go_to": "get there", "return_home": "get home", "walk": "walk", "turn": "turn", "find": "find it", "explore": "finish exploring",
+          "patrol": "finish the patrol", "inspect": "inspect it"}
+
+
+def failure_text(tool: str, reason: str, args: dict | None = None, d: dict | None = None) -> str | None:
+    """A plain sentence for a mission step that did not succeed (never "go_to stopped: blocked"). None = nothing to say (the user stopped it
+    and has heard "Stopped.", or an emergency stop has its own message)."""
+    from .rooms import canon_place
+    args = args or {}
+    where = ""
+    if tool in ("go_to", "inspect", "return_home"):
+        t = (d or {}).get("target") or {}
+        name = args.get("place") or t.get("place")
+        where = f" {canon_place(name)}" if name else (" home" if tool == "return_home" else "")
+    if reason in ("cancelled", "estop"):
+        return None
+    if reason == "blocked":
+        if tool in ("go_to", "inspect", "return_home"):
+            return f"I couldn't reach{where or ' the goal'}: my path is blocked."
+        if tool in ("walk", "turn"):
+            return f"I couldn't {tool} as far as you asked: something is in the way."
+        return f"I had to stop {_DOING_ING.get(tool, 'that')}: my path is blocked."
+    if reason == "no_path":
+        return f"I couldn't find a way to{where or ' the goal'}."
+    if reason == "timeout":
+        return f"I ran out of time trying to {_DOING.get(tool, 'finish that')}."
+    if reason in ("stuck", "no_progress"):
+        return f"I got stuck and couldn't {_DOING.get(tool, 'finish that')}."
+    if reason == "fall":
+        return "I fell over, so I stopped."
+    if reason in ("leg_failure", "leg_failed"):
+        return "I stopped because a leg has failed."
+    return f"I couldn't {_DOING.get(tool, 'finish that')}."
+
+
+_DOING_ING = {"find": "the search", "explore": "exploring", "patrol": "the patrol", "go_to": "going there", "walk": "walking", "turn": "turning"}
+_DONE = {"find": "looked for", "go_to": "gone to", "walk": "walked", "turn": "turned", "patrol": "patrolled", "explore": "explored",
+         "return_home": "gone home", "inspect": "inspected"}
+
+
+def not_done_phrase(tool: str, args: dict) -> str:
+    """"looked for the red box" / "gone to room B" for the sentence "I haven't ... yet"."""
+    if tool == "find":
+        return f"looked for the {obj_name(args['object'])}"
+    if tool in ("go_to", "inspect"):
+        return f"{_DONE[tool]} {_target_name(args)}"
+    return _DONE.get(tool, "done that")
+
+
+def offer_question(tool: str) -> str:
+    return "Shall I search from here?" if tool == "find" else "Shall I try that from here?"
+
+
+def _finished(d: dict, failed: bool = False) -> str | None:
     tool, reason = d.get("tool", "task"), d.get("stopped_reason", "done")
     if tool in ("go_to", "return_home") and not failed:
+        if d.get("close_enough"):
+            from .rooms import canon_place
+            place = (d.get("target") or {}).get("place")
+            if d.get("inside") and place:
+                return f"I'm in {canon_place(place)}, close to the goal."
+            return f"I'm close to the goal, {d['final_distance_m']:.1f} metres away."
         return f"I have arrived, {d['final_distance_m']:.1f} metres from the goal."
     if tool == "find":
         o = d.get("object")
         return f"Found the {obj_where(o)}." if d.get("found") and o else f"I did not find it after {d.get('searched_s', 0):.0f} seconds."
     if failed:
-        return f"{tool.replace('_', ' ')} stopped: {reason}."
-    return f"{tool.replace('_', ' ')} done."
+        return failure_text(tool, reason, d=d)
+    return "Done."

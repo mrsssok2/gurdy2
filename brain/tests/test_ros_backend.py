@@ -56,15 +56,15 @@ def test_go_to_place_reaches_and_reports(tmp_path):
     run(b, p, 80)
     d = final(b)
     assert d["stopped_reason"] == "reached" and d["reached"] and d["final_distance_m"] < 0.1
-    assert d["travelled_m"] == pytest.approx(4.5, abs=0.3) and d["target"]["place"] == "room b"
-    assert b.where_am_i().data["place"] == "room b"
+    assert d["travelled_m"] == pytest.approx(4.5, abs=0.3) and d["target"]["place"] == "room B"
+    assert b.where_am_i().data["place"] == "room B"
 
 
 def test_go_to_errors(tmp_path):
     b, p = make(tmp_path, [BOX])
     assert b.go_to(place="kitchen").code == "UNKNOWN_PLACE"
     assert b.go_to(place="stairs").code == "REFUSED"
-    p.unreachable.append((4.5, 0.5, 0.5))
+    p.unreachable.append((4.5, 0.5, 4.0))                 # the whole room is unreachable (a single bad goal point now falls back to another point)
     assert b.go_to(place="room b").code == "NO_PATH"
     assert b.go_to(object={"class": "barrel"}).code == "NOT_SEEN"
     p.nav_up = False
@@ -174,7 +174,7 @@ def test_where_is_nearby_relation_recall(tmp_path):
     p.t = 10.0
     r = b.where_is({"class": "box", "color": "red"})
     o = r.data["matches"][0]
-    assert o["place"] == "room b" and o["bearing_word"] == "ahead" and o["last_seen_age_s"] == 8.0
+    assert o["place"] == "room B" and o["bearing_word"] == "ahead" and o["last_seen_age_s"] == 8.0
     assert b.where_is({"class": "barrel"}).code == "NOT_SEEN"
     p.sectors = [{"bearing_deg": 90.0, "distance_m": 0.7}]
     n = b.whats_nearby(2.0).data
@@ -185,7 +185,7 @@ def test_where_is_nearby_relation_recall(tmp_path):
     assert rec["map_id"] == "fake_lab" and rec["stale"] is False
     p.t = 5000.0
     assert b.recall("object").data["records"][0]["stale"] is True
-    assert {r["name"] for r in b.recall("place").data["records"]} == {"home", "room a", "room b", "stairs"}
+    assert {r["name"] for r in b.recall("place").data["records"]} == {"home", "room A", "room B", "stairs"}
 
 
 def test_path_check(tmp_path):
@@ -385,7 +385,7 @@ def test_agent_end_to_end_over_ros_backend(tmp_path):
     for _ in range(400):
         p.advance(0.5)
         agent.pump()
-    assert b.task is None and b.where_am_i().data["place"] == "room b"
+    assert b.task is None and b.where_am_i().data["place"] == "room B"
     assert agent.say("what is your status").reply        # battery unknown must not crash the state block
 
 

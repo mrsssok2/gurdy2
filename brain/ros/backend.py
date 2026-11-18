@@ -10,6 +10,7 @@ import math
 from pathlib import Path
 from typing import Any, Callable
 
+from ..agent import templates
 from ..mock.backend import STALE_AFTER_S, _norm, _wrap
 from ..tools.schema import validate
 from ..tools.specs import TOOLS
@@ -102,7 +103,8 @@ class RosBackend:
             return
         import yaml
         d = yaml.safe_load(self.places_file.read_text()) or {}
-        for name, v in (d.get("places") or {}).items():
+        from ..agent.rooms import canon_place
+        for name, v in ((canon_place(n), v) for n, v in (d.get("places") or {}).items()):      # "room b" -> "room B" (display / speech)
             if "rect" in v:
                 x0, y0, x1, y1 = v["rect"]
                 self.places[name] = {"x": (x0 + x1) / 2, "y": (y0 + y1) / 2, "kind": v.get("kind", "room"), "rect": [x0, y0, x1, y1]}
@@ -221,7 +223,9 @@ class RosBackend:
             v = self.places[real]
             if v["kind"] == "hazard":
                 return fail("REFUSED", f"{real} is marked as a hazard.")
-            cands = [((v["x"], v["y"]), None)]
+            if self._in_zone(v["x"], v["y"]):            # the place itself is a no-go zone: never "pick another point in it"
+                return fail("IN_NO_GO_ZONE", "The target or the way to it is inside a no-go zone.", target={"kind": "place", "place": real})
+            cands = [(g, None) for g in self._place_goals(v)]
             info = {"kind": "place", "place": real, "x": round(v["x"], 2), "y": round(v["y"], 2)}
         elif point is not None:
             cands = [((point["x"], point["y"]), None)]
@@ -251,6 +255,36 @@ class RosBackend:
         if zone_hit:
             return fail("IN_NO_GO_ZONE", "The target or the way to it is inside a no-go zone.", target=info)
         return fail("NO_PATH", "There is no path to the target.", target=info)
+
+    CLEAR_M = 0.9      # a goal needs this much free space around it: costmap inflation is 0.55 m and a goal squeezed between two objects makes MPPI give up
+
+    def _clear(self, x: float, y: float) -> bool:
+        if self.p.map_cell(x, y) == "occupied":
+            return False
+        if any(self.p.map_cell(x + 0.5 * math.cos(a), y + 0.5 * math.sin(a)) == "occupied" for a in (k * math.pi / 4 for k in range(8))):
+            return False
+        return all(math.hypot(t["x"] - x, t["y"] - y) >= self.CLEAR_M for t in self._tracks())
+
+    def _place_goals(self, v: dict) -> list[tuple[float, float]]:
+        """Goal candidates for a place. A point place: itself. A room: its centre if it has clear space around it, otherwise the nearest points
+        of a 0.5 m grid inside the room that do (the centre of room B sat between a cylinder and a box: Nav2 reached the room and then gave up).
+        At most 8 (each costs one plan request); never empty."""
+        centre = (v["x"], v["y"])
+        if "rect" not in v:
+            return [centre]
+        x0, y0, x1, y1 = v["rect"]
+        pts = [(x0 + 0.5 + i * 0.5, y0 + 0.5 + j * 0.5) for i in range(int(max(0.0, x1 - x0 - 1.0) / 0.5) + 1)
+               for j in range(int(max(0.0, y1 - y0 - 1.0) / 0.5) + 1)]
+        ok_pts = sorted([centre] + pts, key=lambda g: math.hypot(g[0] - centre[0], g[1] - centre[1]))
+        clear = [g for g in ok_pts if self._clear(*g)][:8]
+        return clear or [centre]
+
+    def _close_enough(self, name: str | None, goal, pose) -> tuple[bool, bool]:
+        """(close, inside): inside the target room, or within 1.0 m of the goal, when Nav2 gives up = arrived for our purposes."""
+        v = self.places.get(name) if name else None
+        inside = bool(v and "rect" in v and v["rect"][0] <= pose[0] <= v["rect"][2] and v["rect"][1] <= pose[1] <= v["rect"][3])
+        near = math.hypot(goal[0] - pose[0], goal[1] - pose[1]) <= 1.0
+        return inside or near, inside
 
     # ================================================================ task engine
     def _nav_ok(self) -> Result | None:
@@ -325,7 +359,7 @@ class RosBackend:
         if not s or not s.get("started"):
             return
         if s["kind"] == "nav" and s.get("h") is not None:
-            self.p.nav_cancel(s["h"])
+            self.p.nav_cancel(s["h"])        # whatever state Nav2 reports: also ends the recovery behaviours of the goal
         elif s["kind"] == "explore" and s.get("h") is not None:
             self.p.explore_cancel(s["h"])
         elif s["kind"] in ("rel", "rotate"):
@@ -342,6 +376,11 @@ class RosBackend:
         s["recoveries"] = st.get("recoveries", 0)
         if st["state"] == NAV_OK:
             self._next(t, {"place": s.get("name"), "reached": True})
+        elif st["state"] == NAV_ABORTED and t.tool in ("go_to", "return_home", "inspect") and not s.get("optional") and \
+                (ce := self._close_enough(s.get("name"), (s["x"], s["y"]), pose))[0]:
+            t.close_enough, t.inside = True, ce[1]               # Nav2 gave up inside the room / within 1 m of the goal: that is arrival
+            self.p.nav_cancel(s["h"])
+            self._next(t, {"place": s.get("name"), "reached": True, "close": True})
         elif st["state"] == NAV_ABORTED:
             self._emit_once("path_blocked", "warning", "The path is blocked.", "nav_monitor", task_id=t.id)
             if s.get("optional"):
@@ -400,6 +439,7 @@ class RosBackend:
     def _finish(self, t: _Task, reason: str) -> None:
         self._cancel_step(t)
         self.p.send_cmd(0.0, 0.0, 0.0)
+        self.p.hold_zero(2.0)          # a mission reported as stopped / failed must really stop (smoother / recovery commands may still arrive)
         self.task = None
         data = t.final(reason, t)
         data["stopped_reason"] = reason
@@ -408,7 +448,8 @@ class RosBackend:
         m = next(m for m in self.missions if m["id"] == t.id)
         m.update(end=self.now(), state=reason, distance_m=round(t.travelled, 2), result=data)
         self._emit("task_failed" if failed else "task_finished", "warning" if failed else "info",
-                   f"{t.tool} finished: {reason}.", tool=t.tool, **data)
+                   (templates.failure_text(t.tool, reason, t.args, data) or "Stopped.") if failed else
+                   (templates.describe_event({"type": "task_finished", "data": {**data, "tool": t.tool}}) or "Done."), tool=t.tool, **data)
 
     def _fire_schedules(self) -> None:
         for s in [s for s in self.schedules if s["fires_at"] <= self.now()]:
@@ -422,9 +463,12 @@ class RosBackend:
     def _goto_final(self, info: dict, goal):
         def final(reason: str, t: _Task) -> dict:
             pose = self._pose() or (goal[0], goal[1], 0)
-            return {"reached": reason in ("reached", "done"), "target": info,
-                    "final_distance_m": round(math.hypot(goal[0] - pose[0], goal[1] - pose[1]), 2),
-                    "travelled_m": round(t.travelled, 2), "duration_s": round(self.now() - t.t0, 1)}
+            d = {"reached": reason in ("reached", "done"), "target": info,
+                 "final_distance_m": round(math.hypot(goal[0] - pose[0], goal[1] - pose[1]), 2),
+                 "travelled_m": round(t.travelled, 2), "duration_s": round(self.now() - t.t0, 1)}
+            if getattr(t, "close_enough", False):
+                d.update(close_enough=True, inside=bool(getattr(t, "inside", False)))
+            return d
         return final
 
     def _nav_steps(self, goal, face, path=None, name=None) -> list[dict]:
@@ -576,6 +620,7 @@ class RosBackend:
         """Cancel the active task and zero the velocity at once (the always-available path; /estop is separate)."""
         t = self.task
         self.p.send_cmd(0.0, 0.0, 0.0)
+        self.p.hold_zero(2.0)
         if t is None:
             self._user_stop(None)
             return ok(stopped=True, cancelled_task=None)

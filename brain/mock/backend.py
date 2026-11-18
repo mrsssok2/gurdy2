@@ -13,6 +13,7 @@ import math
 import random
 from typing import Any, Callable
 
+from ..agent import templates
 from ..tools.schema import validate
 from ..tools.specs import TOOLS
 from ..tools.types import Result, bearing_word, fail, ok
@@ -222,13 +223,21 @@ class MockBackend:
         self.task = None
         self.speed = 0.0
         data = task.final(reason, task)
+        if reason == "blocked" and task.tool in ("go_to", "return_home") and "final_distance_m" in data:
+            place = (data.get("target") or {}).get("place")
+            inside = bool(place and self.world.place_at(self.x, self.y) == place)
+            if inside or data["final_distance_m"] <= 1.0:      # blocked inside the target room / within 1 m of the goal = arrived
+                reason = "reached"
+                data = task.final(reason, task)
+                data.update(close_enough=True, inside=inside)
         data["stopped_reason"] = reason
         data["task_id"] = task.id
         failed = reason not in ("reached", "done")
         m = next(m for m in self.missions if m["id"] == task.id)
         m.update(end=self.t, state=reason, distance_m=round(task.travelled, 2), result=data)
         self._emit("task_failed" if failed else "task_finished", "warning" if failed else "info",
-                   f"{task.tool} finished: {reason}.", tool=task.tool, **data)
+                   (templates.failure_text(task.tool, reason, task.args, data) or "Stopped.") if failed else
+                   (templates.describe_event({"type": "task_finished", "data": {**data, "tool": task.tool}}) or "Done."), tool=task.tool, **data)
         if reason == "blocked":
             self._emit("path_blocked", "warning", "The path is blocked.", task_id=task.id)
 

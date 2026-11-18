@@ -106,3 +106,8 @@ def answer_hint(letters: list[str]) -> str:
     """Whisper initial_prompt while "Which room?" is pending: the expected answers."""
     return " ".join([f"{NATO[l]}." for l in letters if l in NATO] + [f"Room {l}." for l in letters] + [f"{l}." for l in letters]
                     + ["Yes. No. Stop."])
+
+
+def canon_place(name: str) -> str:
+    """Display form of a place name: a room letter keeps its capital ("room b" -> "room B"). Matching stays case-insensitive elsewhere."""
+    return re.sub(r"\b(room) ([a-z])\b", lambda m: f"{m.group(1)} {m.group(2).upper()}", name)

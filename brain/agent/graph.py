@@ -76,6 +76,7 @@ class Agent:
         self.replan_used = False        # at most one re-plan per user request (a re-plan's own failure is only reported)
         self.replans: list[dict] = []   # log of re-plan attempts (evaluation / debugging)
         self.alerts = alerts or AlertManager()
+        self._failure_at: float | None = None    # wall time the last failure was spoken (dedupe of late path_blocked alerts)
         self.errors: list[str] = []              # internal exceptions caught by say() (tests / debugging)
         self.followup: dict | None = None        # {utterance, log_start, done}: plan the rest of the request once the mission is done
         self.pending_room: dict | None = None   # "Which room: A, B or D?" waiting for a letter: {template, expires_at}
@@ -237,24 +238,39 @@ class Agent:
             return []
         return [out["reply"]] if out.get("reply_parts") and out.get("reply") else []
 
+    FAILURE_QUIET_S = 20.0           # after a failure was spoken, a late "path blocked" alert for it stays silent
+
     def _announce(self, evs: list[dict]) -> list[str]:
+        """One failure, one message: the same blocked goal arrives as a task_failed event, a mission_failed event and a path_blocked alert.
+        The mission-level sentence is the only one spoken; the other two are dropped (also a late alert within FAILURE_QUIET_S)."""
         out: list[str] = []
+        mission_failed = any(e["type"] == "mission_failed" for e in evs)
+        now = self.clock.wall()
         for e in evs:
-            if e["type"] == "mission_failed":
+            t = e["type"]
+            if t == "mission_failed":
                 out += self._on_mission_failed(e)
-            elif e["type"] in ALERT_TYPES:       # alerts: rate-limited, info only when idle
+                self._failure_at = now
+            elif t == "task_failed" and (mission_failed or self.executor.active):
+                continue
+            elif t == "path_blocked" and (mission_failed or self.executor.active
+                                          or (self._failure_at is not None and now - self._failure_at < self.FAILURE_QUIET_S)):
+                continue
+            elif t in ALERT_TYPES:       # alerts: rate-limited, info only when idle
                 if (m := self.alerts.handle(e, idle=self.executor.state == "idle")):
                     out.append(m)
             elif (m := templates.describe_event(e)):
                 out.append(m)
+                if t == "task_failed":
+                    self._failure_at = now
         return out
 
     # ---- re-plan after a failed mission step (one LLM call, safety-checked like any plan)
     def _on_mission_failed(self, ev: dict) -> list[str]:
-        failure_text = templates.describe_event(ev) or "The mission failed."
+        failure_text = templates.describe_event(ev) or "I couldn't finish that."
         replan = getattr(self.llm, "replan", None)
         if replan is None or self.replan_used:
-            return [failure_text]
+            return [self._with_offer(failure_text)]
         self.replan_used = True
         ctx = self.executor.failure_context()
         entries = self.layer.log[self.executor.log_start:]
@@ -279,12 +295,26 @@ class Agent:
             if safe:
                 return [failure_text] + self._start_replan(safe, record)
             record["outcome"] = "none"
-            return [failure_text]
+            return [self._with_offer(failure_text)]
         if out.get("reply"):
             record["reply"], record["outcome"] = out["reply"], "reply"
-            return [out["reply"]]
+            return [self._with_offer(out["reply"])]
         record["outcome"] = "none"
-        return [failure_text]
+        return [self._with_offer(failure_text)]
+
+    def _with_offer(self, text: str) -> str:
+        """A failed step never silently drops the rest of the plan: say what was not done and offer it ("Shall I search from here?"); a yes runs
+        exactly those steps from where the robot stands."""
+        rest = [c for c in self.executor.unfinished_calls() if c["tool"] in TOOLS]
+        if not rest:
+            return text
+        try:
+            done = " or ".join(templates.not_done_phrase(c["tool"], c.get("args", {})) for c in rest)
+        except (KeyError, TypeError):                           # malformed args from the planner: no offer
+            return text
+        q = f"{text} I haven't {done} yet. {templates.offer_question(rest[0]['tool'])}"
+        self.gate.hold("resume_plan", {"calls": rest, "cont": False, "utterance": self.executor.steps[0].tool if self.executor.steps else ""}, q)
+        return q
 
     def _start_replan(self, calls: list[dict], record: dict) -> list[str]:
         record["calls"] = calls

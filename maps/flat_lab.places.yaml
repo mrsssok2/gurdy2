@@ -3,6 +3,6 @@
 map_id: flat_lab
 places:
   home: {x: 0.0, y: 0.0, kind: waypoint}
-  room a: {rect: [-2.0, -3.0, 2.5, 3.0], kind: room}
-  room b: {rect: [2.5, -3.0, 6.5, 3.0], kind: room}
+  room A: {rect: [-2.0, -3.0, 2.5, 3.0], kind: room}
+  room B: {rect: [2.5, -3.0, 6.5, 3.0], kind: room}
   doorway: {x: 2.5, y: 0.5, kind: waypoint}

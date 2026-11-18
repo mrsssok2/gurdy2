@@ -40,6 +40,8 @@ class FakePort:
         self.policy = "policy"
         self.tilt = 0.5
         self.plan_requests = 0
+        self.zero_holds: list[tuple[float, float]] = []         # (time, seconds) of every hold_zero call
+        self.cancelled_goals: list[int] = []
 
     # ---- scenario
     def set_objects(self, objs: list[dict]) -> None:
@@ -151,6 +153,7 @@ class FakePort:
                 "recoveries": 2 if self.goals[h]["state"] == NAV_ABORTED else 0}
 
     def nav_cancel(self, h):
+        self.cancelled_goals.append(h)
         if self.goals[h]["state"] == NAV_RUNNING:
             self.goals[h]["state"] = NAV_CANCELED
 
@@ -180,6 +183,10 @@ class FakePort:
     def send_cmd(self, vx, vy, wz):
         self.cmd = (vx, vy, wz)
         self.cmds.append((vx, vy, wz))
+
+    def hold_zero(self, seconds):
+        self.zero_holds.append((self.t, seconds))
+        self.cmd = (0.0, 0.0, 0.0)
 
     def set_estop(self, active):
         self.estop = active

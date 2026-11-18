@@ -193,7 +193,7 @@ def test_ros_memory_survives_restart(tmp_path):
     assert inner2.places["desk"] == {"x": 1.0, "y": 0.5, "kind": "waypoint"}       # restored in RosBackend's own format
     assert "desk" in inner2.known_places()
     names = {p["name"] for p in b2.recall("place").data["records"]}
-    assert {"desk", "room a", "room b", "home"} <= names                           # saved place does not hide the rooms
+    assert {"desk", "room A", "room B", "home"} <= names                           # saved place does not hide the rooms
     rec = b2.recall("object", {"class": "box"}).data["records"]
     assert len(rec) == 1 and rec[0]["from_memory"] and rec[0]["color"] == "red"
     missions = b2.recall("mission").data["records"]

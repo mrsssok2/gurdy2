@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import math
 import threading
+import time
 from collections import deque
 
 import rclpy
@@ -70,6 +71,9 @@ class RclpyPort:
         n.create_subscription(BatteryState, "/battery", lambda m: setattr(self, "_battery", 100.0 * m.percentage), 10)
         n.create_subscription(String, "/gurdy/leg_health", self._on_legs, _LATCHED)
         self._pub_cmd = n.create_publisher(Twist, cmd_topic, 10)
+        self._zero_until = 0.0
+        from rclpy.clock import Clock, ClockType
+        n.create_timer(0.05, self._zero_tick, clock=Clock(clock_type=ClockType.STEADY_TIME))   # wall-clock timer: publishes only while a zero hold is active
         self._pub_estop = n.create_publisher(Bool, "/estop", _LATCHED)
         self._nav = ActionClient(n, NavigateToPose, "navigate_to_pose")
         self._plan = ActionClient(n, ComputePathToPose, "compute_path_to_pose")
@@ -208,6 +212,7 @@ class RclpyPort:
         return m
 
     def nav_send(self, x, y, yaw):
+        self._zero_until = 0.0
         goal = NavigateToPose.Goal()
         goal.pose = self._pose_msg(x, y, yaw)
         self._h += 1
@@ -234,9 +239,9 @@ class RclpyPort:
 
     def nav_cancel(self, h):
         g = self._goals[h]
-        if g["gh"] is not None and g["state"] == NAV_RUNNING:
-            g["gh"].cancel_goal_async()
-        elif g["gh"] is None:
+        if g["gh"] is not None:
+            g["gh"].cancel_goal_async()                  # also ends the BT's recovery behaviours (spin / backup / wait) of this goal
+        if g["gh"] is None or g["state"] == NAV_RUNNING:
             g["state"] = NAV_CANCELED
 
     def compute_path(self, x, y):
@@ -293,7 +298,19 @@ class RclpyPort:
             st["gh"].cancel_goal_async()
 
     # ---- actuation
+    def hold_zero(self, seconds):
+        """A stopped / failed mission must really stop: Nav2's smoother and recovery behaviours may still publish for a moment, so zero is
+        published at 20 Hz for `seconds` (a new non-zero command or a new goal ends the hold)."""
+        self._zero_until = time.monotonic() + float(seconds)
+        self._pub_cmd.publish(Twist())
+
+    def _zero_tick(self):
+        if time.monotonic() < self._zero_until:
+            self._pub_cmd.publish(Twist())
+
     def send_cmd(self, vx, vy, wz):
+        if vx or vy or wz:
+            self._zero_until = 0.0
         m = Twist()
         m.linear.x, m.linear.y, m.angular.z = float(vx), float(vy), float(wz)
         self._pub_cmd.publish(m)

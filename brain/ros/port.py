@@ -39,5 +39,6 @@ class RosPort(Protocol):
     def explore_cancel(self, handle: int) -> None: ...
     # ---- actuation / safety
     def send_cmd(self, vx: float, vy: float, wz: float) -> None: ...   # cmd_vel_smoothed (min-speed lift + collision monitor stay in the path)
+    def hold_zero(self, seconds: float) -> None: ...             # keep publishing zero velocity for `seconds` (a stopped mission must really stop)
     def set_estop(self, active: bool) -> None: ...                # /estop (latched) - gate node is NEW
     def estop_active(self) -> bool: ...

@@ -47,6 +47,10 @@ class MissionExecutor:
     def active(self) -> bool:
         return self.state in ("running", "paused", "awaiting_confirmation")
 
+    def unfinished_calls(self) -> list[dict]:
+        """Steps of the last mission that never ran (cancelled or pending after a failure): what to offer to do from here."""
+        return [s.as_call() for s in self.steps if s.status in ("pending", "cancelled")]
+
     def remaining_calls(self) -> list[dict]:
         return [s.as_call() for s in self.steps if s.status in ("pending", "running")]
 
@@ -130,7 +134,8 @@ class MissionExecutor:
                     out += self._advance()
                 else:
                     cur.status = "failed"
-                    out += self._fail(f"{cur.tool} stopped: {cur.reason}", cur)
+                    from . import templates
+                    out += self._fail(templates.failure_text(cur.tool, cur.reason, cur.args, ev["data"]) or "I stopped.", cur)
         return out
 
     def _advance(self) -> list[dict]:
@@ -156,7 +161,8 @@ class MissionExecutor:
             res = self.layer.call(nxt.tool, nxt.args)
             if not res.ok:
                 nxt.status, nxt.reason, nxt.result = "failed", res.code or "error", res.to_dict()
-                out += self._fail(res.error["message"], nxt)
+                from . import templates
+                out += self._fail(templates.error_text(res.to_dict()), nxt)
                 return out
             nxt.result = res.data
             if res.data.get("state") == "started" and "task_id" in res.data:
