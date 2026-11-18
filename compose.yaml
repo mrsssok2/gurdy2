@@ -82,6 +82,32 @@ services:
       - ${HOME}/p5_models:/models:ro
       - ${HOME}/p5_piper312:/pk:ro      # piper-tts for Python 3.12 (pip --target; see scripts/voice_chat.sh)
 
+  # Same voice client with Whisper on the GPU (RTX 4050, int8_float16 ~1 GiB VRAM). faster-whisper/ctranslate2 and Piper come from ~/p5_pkgs and ~/p5_tts (cp311).
+  # scripts/lib_voice.sh picks this service when the image exists and a GPU is visible, else `voice` (CPU).
+  voice_gpu:
+    profiles: [voice]
+    image: gurdy2/voice:cuda
+    build:
+      context: docker/voice
+      dockerfile: Dockerfile.cuda
+    environment:
+      PULSE_SERVER: unix:/mnt/wslg/PulseServer
+      OLLAMA_URL: ${OLLAMA_URL:-}
+      PYTHONPATH: /home/ubuntu/gurdy2:/home/ubuntu/gurdy2/gurdy_core:/pk:/t
+    volumes:
+      - .:/home/ubuntu/gurdy2
+      - /mnt/wslg:/mnt/wslg
+      - ${HOME}/p5_models:/models:ro
+      - ${HOME}/p5_pkgs:/pk:ro
+      - ${HOME}/p5_tts:/t:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
   # RL training (Phase 2): headless MuJoCo + SB3. Never run together with `sim` (RAM rule).
   #   docker compose run --rm rl python3 rl/bench.py
   #   docker compose run --rm --service-ports rl tensorboard --logdir runs --bind_all   # :6006

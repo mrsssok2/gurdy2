@@ -3,7 +3,7 @@
 #   scripts/start_agent_chat.sh            # flat_lab, model gurdy-sft-400
 #   GUI=true scripts/start_agent_chat.sh   # with the Gazebo window (WSLg)
 #   MODEL=qwen3:1.7b scripts/start_agent_chat.sh
-#   VOICE=true scripts/start_agent_chat.sh # voice instead of typing: mic + Whisper (CPU) + Piper in the `voice` container (push-to-talk: Enter; VAD=true = always listening)
+#   VOICE=true scripts/start_agent_chat.sh # voice instead of typing: mic + Whisper (GPU if available, else CPU) + Piper in the `voice_gpu` / `voice` container (push-to-talk: Enter; VAD=true = always listening)
 #   MEMORY=false scripts/start_agent_chat.sh   # no persistent memory (default: on, file ~/.gurdy/memory.db, rows per map_id)
 # Needs: nothing else running (docker ps empty). Starts this project's Ollama on :11435 if it is not up. Takes ~2.5 min until the prompt appears.
 # Type e.g.: go to room B | find the red box | what is near you | stop | why did you stop | patrol room A and room B | quit
@@ -19,6 +19,10 @@ if ! curl -sf "localhost:$PORT/api/tags" >/dev/null; then
 fi
 curl -s "localhost:$PORT/api/tags" | grep -q "\"$MODEL" || { echo "model $MODEL not in Ollama (see brain/tools/Modelfile.sft)"; exit 1; }
 curl -s "localhost:$PORT/api/generate" -d "{\"model\":\"$MODEL\",\"keep_alive\":\"30m\"}" >/dev/null   # load the model before the sim competes for RAM
+# other models still resident in Ollama (it keeps them 5 min) would eat the VRAM that Whisper needs: unload everything except $MODEL
+for m in $(curl -s "localhost:$PORT/api/ps" | python3 -c "import sys,json;print(' '.join(x['name'] for x in json.load(sys.stdin).get('models',[])))" 2>/dev/null); do
+  case "$m" in "$MODEL"|"$MODEL":*) ;; *) curl -s "localhost:$PORT/api/generate" -d "{\"model\":\"$m\",\"keep_alive\":0}" >/dev/null ;; esac
+done
 export OLLAMA_URL=http://$(hostname -I | cut -d' ' -f1):$PORT
 if [ "$VOICE" = true ]; then   # the agent runs headless in the sim container and serves text on gurdy_agent:8765 (compose network); the voice container talks to it
   docker compose run --rm -T --name gurdy_agent -e OLLAMA_URL -e MODEL -e GUI -e MEMORY -e DETECTOR_LOG -v "$HOME/.gurdy:/home/ubuntu/.gurdy" sim bash -c '
@@ -37,7 +41,9 @@ if [ "$VOICE" = true ]; then   # the agent runs headless in the sim container an
   echo "starting the simulation (about 2.5 minutes; log /tmp/gurdy_agent.log) ..."
   for _ in $(seq 400); do grep -q "voice server on" /tmp/gurdy_agent.log 2>/dev/null && break; grep -q "never became ready" /tmp/gurdy_agent.log 2>/dev/null && { tail -5 /tmp/gurdy_agent.log; exit 1; }; sleep 1; done
   grep -q "voice server on" /tmp/gurdy_agent.log || { echo "agent did not start"; tail -5 /tmp/gurdy_agent.log; exit 1; }
-  docker compose run --rm voice python3 -m brain.voice.cli --mic --remote gurdy_agent:8765 $([ "$VAD" = true ] && echo --vad)
+  source scripts/lib_voice.sh
+  echo "voice service: $(voice_service)"
+  docker compose run --rm "$(voice_service)" python3 -m brain.voice.cli --mic --remote gurdy_agent:8765 $([ "$VAD" = true ] && echo --vad)
   exit 0
 fi
 docker compose run --rm $([ -t 0 ] || echo -T) --name gurdy_agent -e OLLAMA_URL -e MODEL -e GUI -e MEMORY -e DETECTOR_LOG -v "$HOME/.gurdy:/home/ubuntu/.gurdy" sim bash -c '

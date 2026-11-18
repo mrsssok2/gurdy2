@@ -58,6 +58,34 @@ class STT(Protocol):
     def transcribe(self, audio: np.ndarray, sr: int = SAMPLE_RATE, prompt: str | None = None) -> Transcript: ...
 
 
+def cuda_available() -> bool:
+    """True when CTranslate2 (faster-whisper's engine) was built with CUDA and sees a GPU."""
+    try:
+        import ctranslate2
+        return ctranslate2.get_cuda_device_count() > 0
+    except Exception:                                  # noqa: BLE001  (no ctranslate2 / no driver)
+        return False
+
+
+def load_whisper(model_path: str, device: str = "auto", **kw) -> "FasterWhisperSTT":
+    """Whisper on the GPU when there is one (int8_float16, about 1 GiB VRAM, ~0.3 s per utterance), CPU int8 otherwise (6-10 s).
+    device: auto | cuda | cpu. "auto" and "cuda" fall back to the CPU when the GPU model cannot be loaded (no CUDA build, VRAM full)."""
+    if device not in ("auto", "cuda", "cpu"):
+        raise ValueError("device: auto | cuda | cpu")
+    if device != "cpu" and cuda_available():
+        try:
+            stt = FasterWhisperSTT(model_path, "cuda", **kw)
+            stt.device = "cuda"
+            return stt
+        except Exception as e:                         # noqa: BLE001  (CUDA out of memory, cuDNN missing ...)
+            print(f"[stt] GPU load failed ({type(e).__name__}: {str(e)[:120]}); using the CPU", flush=True)
+    elif device == "cuda":
+        print("[stt] no CUDA device visible to ctranslate2; using the CPU", flush=True)
+    stt = FasterWhisperSTT(model_path, "cpu", **kw)
+    stt.device = "cpu"
+    return stt
+
+
 class FasterWhisperSTT:
     def __init__(self, model_path: str, device: str = "cpu", compute_type: str | None = None, beam_size: int = 1, language: str = "en",
                  places=None, bias: "bool | str" = "prompt",

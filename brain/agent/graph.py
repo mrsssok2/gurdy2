@@ -25,25 +25,13 @@ from .guard import _is_state_change, guard_plan, normalize_call, unknown_noun
 from .llm import LLM
 from . import rooms
 from .answer_clock import AnswerClock
-from .safety import ConfirmationGate, is_clear_no, is_clear_yes, SafetyChecker, Verdict, is_unsafe_request
+from .safety import ConfirmationGate, is_clear_no, is_clear_yes, SafetyChecker, Verdict
+from .stopwords import is_estop_phrase, is_unsafe_request     # noqa: F401  (re-exported: the e-stop text rules live in stopwords.py)
 
 MAX_LLM_CALLS = 4
 SYSTEM_PROMPT = ("You are Gurdy, a hexapod robot. Turn the user's request into tool calls, or ask / refuse. "
                  "You know no facts about the world: use tools. Never state a name, number or direction "
                  "that a tool did not return.")
-_STRONG_STOP = re.compile(r"\b(stop|halt|freeze|emergency)\b", re.I)
-_WEAK_STOP = re.compile(r"^\W*(stap|stob|stup|top|stopp?|holt|hault|hallt)\W*$", re.I)     # STT confusions, only as a whole utterance
-# a question about stopping ("why did you stop") or a request to switch the e-stop off is not a stop command
-_NOT_A_COMMAND = re.compile(r"^\W*(why|what|when|where|how|which|who)\b|\b(did|have|had|was|were)\s+(you|it)\b", re.I)
-
-
-def is_estop_phrase(text: str) -> bool:
-    """E-stop fast path (design 4.3 level 2): runs before the LLM, on every transcript."""
-    t = text.strip()
-    if _WEAK_STOP.match(t):
-        return True
-    return (bool(_STRONG_STOP.search(t)) and len(t.split()) <= 6 and not _NOT_A_COMMAND.search(t)
-            and not is_unsafe_request(t) and not re.search(r"\b(don'?t|do not|never|until)\b", t, re.I))
 
 
 class TurnState(TypedDict, total=False):

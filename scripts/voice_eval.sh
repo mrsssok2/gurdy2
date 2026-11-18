@@ -2,8 +2,9 @@
 # Read-aloud voice evaluation (docs/voice_eval.md).
 #   scripts/voice_eval.sh record                          # shows ~40 sentences one by one; Enter, say it, Enter. Saves to brain/runs/voice_eval/<time>/
 #   scripts/voice_eval.sh score DIR [--bias none prompt full] [--device auto|cpu|cuda]    # offline: WER, command accuracy, per category, per bias mode
-# record needs the mic through WSLg (same as voice_chat.sh); score needs no mic. Do not run it while another heavy job holds the RAM.
+# record needs the mic through WSLg (same as voice_chat.sh); score needs no mic. Whisper runs on the GPU when available (lib_voice.sh), else the CPU. Do not run it while another heavy job holds the RAM.
 set -eo pipefail
 cd "$(dirname "$0")/.."
 cmd="${1:?usage: voice_eval.sh record | score DIR [--bias ...]}"; shift
-docker compose run --rm voice python3 -m brain.voice.eval_read "$cmd" "$@"
+source scripts/lib_voice.sh
+docker compose run --rm "$(voice_service)" python3 -m brain.voice.eval_read "$cmd" "$@"

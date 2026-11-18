@@ -81,10 +81,13 @@ def parse_command(text: str, places: list[str] | None = None) -> str:
     answer, "NONE" when it parses to nothing. Room names go through the same normalisation as the agent (Alpha -> room A)."""
     from ..agent import rooms
     from ..agent.safety import is_clear_no, is_clear_yes
+    from ..agent.stopwords import is_estop_phrase
     from ..eval.keyword_parser import parse
     t = rooms.normalize(text)
     t = re.sub(r"[,;]?\s*\b(please|for me|now)\b", "", t, flags=re.I)                 # politeness is not a clause ("Head to room B, please.")
     t = re.sub(r"\b(" + "|".join(_NUM_WORDS_TO_DIGITS) + r")\b", lambda m: _NUM_WORDS_TO_DIGITS[m.group(1).lower()], t, flags=re.I)   # "two metres" == "2 meters"
+    if is_estop_phrase(t):                                  # the e-stop fast path (exact and fuzzy: "Stalk." / "Hide.") acts on it
+        return "STOP"
     if is_clear_yes(t):
         return "YES"
     if is_clear_no(t):
@@ -187,8 +190,8 @@ def _pick_device(device: str) -> str:
     if device != "auto":
         return device
     try:
-        import ctranslate2
-        if ctranslate2.get_cuda_device_count() < 1:
+        from .stt import cuda_available
+        if not cuda_available():
             return "cpu"
         out = subprocess.run(["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=10).stdout
         return "cuda" if out.strip() and float(out.split()[0]) >= 2048 else "cpu"
@@ -291,7 +294,7 @@ def cmd_record(a) -> None:
 
 # ====================================================================== score command
 def cmd_score(a) -> None:
-    from .stt import FasterWhisperSTT
+    from .stt import load_whisper
     folder = Path(a.folder)
     device = _pick_device(a.device)
     print(f"scoring {folder} on {device}, modes {a.bias} ...", flush=True)
@@ -299,7 +302,7 @@ def cmd_score(a) -> None:
 
     def stt_for_mode(mode):
         if "stt" not in cache:
-            cache["stt"] = FasterWhisperSTT(a.stt_model, device, places=a.places, bias=mode, vad_filter=False)   # push-to-talk settings
+            cache["stt"] = load_whisper(a.stt_model, device, places=a.places, bias=mode, vad_filter=False)   # push-to-talk settings
         cache["stt"].set_vocabulary(a.places, mode)
         return cache["stt"]
     res = score_folder(folder, stt_for_mode, a.bias, a.places)

@@ -121,3 +121,14 @@ and one more right). "Walk over to room D." -> "Back over to room B."; "No, canc
 ## 7. Which model to use
 `gurdy-sft-400` stays the default (`start_agent_chat.sh` `MODEL`). v2 has a lower val loss but on the held-out sets it ties on v1 (-1 case) and loses on ood_v1 (-2 cases, argument accuracy 91.9 vs 97.2 %, one invented
 capability, two lost multi-step plans). None of the differences is statistically solid (40 cases, one run) but nothing favours v2. v2 is a candidate for a later DPO / more-data round, not a replacement.
+
+## 8. Follow-up: robust one-word stop and Whisper on the GPU (same day)
+* **Stop.** `brain/agent/stopwords.py` (no heavy imports): a 1-3 word utterance with a known confusion (stalk, hide, stock, hold, hall, weight, ...) or a word that looks like stop / halt / freeze / wait (same first letter, similarity >= 0.75;
+  step / start / star ... protected) triggers the e-stop fast path; negations and questions ("don't stop", "why did you stop") still do not. The Whisper prompt now contains "Stop. Halt. Freeze. Wait.".
+  Re-scored on the real recording (GPU Whisper, new prompt): the three stop clips are 3 / 3 stops in all modes ("Stop." -> "Stop." with the prompt, "Stalk." without it, "Halt." -> "Hide." in every mode, caught by the fuzzy rule); before: 1 / 3.
+  Rescoring the old transcripts with the new parser gives the same 3 / 3 (`voice_score_rescored.json`).
+* **GPU.** The new `voice_gpu` compose service (image `gurdy2/voice:cuda` = vision image + pulseaudio-utils; faster-whisper 1.2.1 / ctranslate2 4.9 and Piper mounted from `~/p5_pkgs`, `~/p5_tts`) runs Whisper turbo int8_float16 on the GPU:
+  **mean 0.27 s, max 0.29 s per clip (43 clips)** vs 6-10 s on the CPU. `load_whisper(device=auto)` falls back to the CPU when no GPU / CUDA build / VRAM.
+* GPU vs CPU transcripts differ (int8_float16 vs int8): on the GPU, prompt mode: WER 3.7 %, commands 86.0 % (CPU: 3.7 % / 90.7 % after the stop fix); `none` 13.4 % / 62.8 %; `full` 10.2 % / 86.0 % (CPU 4.2 / 88.4).
+  "prompt" is still the best mode and `full` still no better; the clip-level differences are 1-2 clips ("Go to the green box" -> "Boo to the green balls", "room A" -> "room here" on the GPU).
+  Raw: `voice_score_gpu_stopfix.json`.

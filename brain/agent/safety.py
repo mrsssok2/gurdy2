@@ -20,10 +20,7 @@ from ..tools.types import Result
 
 DEFAULT_CONFIG = Path(__file__).with_name("safety.yaml")
 
-# phrases that try to switch safety off or hurt things: refused before any tool is considered
-_UNSAFE_REQUEST = re.compile(
-    r"\b(disable|turn off|switch off|ignore|bypass|override|deactivate)\b.{0,30}\b(safety|e-?stop|emergency|no[- ]go|limits?|collision)\b"
-    r"|\b(hit|ram|crash into|push|knock over|kick|smash|run over)\b", re.I)
+from .stopwords import is_unsafe_request   # noqa: E402,F401  (the pattern lives in stopwords.py: no heavy imports there)
 
 
 def _batt(st: dict) -> float:
@@ -48,11 +45,6 @@ class Verdict:
 
 def _allow() -> Verdict:
     return Verdict("allow")
-
-
-def is_unsafe_request(text: str) -> bool:
-    """Level-3 text rule: requests to disable safety, hit or push things."""
-    return bool(_UNSAFE_REQUEST.search(text))
 
 
 class SafetyChecker:

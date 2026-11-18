@@ -42,7 +42,7 @@ class VoicePipeline:
         self.stt, self.speaker, self.on_text, self.on_estop, self.is_moving = stt, speaker, on_text, on_estop, is_moving
         self.seg = segmenter or Segmenter(mode=self.cfg.mode, partial_every_s=self.cfg.partial_every_s, ptt_postroll_s=self.cfg.ptt_postroll_s)
         if is_stop_phrase is None:
-            from ..agent.graph import is_estop_phrase as is_stop_phrase
+            from ..agent.stopwords import is_estop_phrase as is_stop_phrase
         self.is_stop = is_stop_phrase
         if hasattr(stt, "vad_filter"):
             # Whisper's own VAD filter ate soft starts ("Wh" of "Where are you?") in push-to-talk, where the key already marks the speech:

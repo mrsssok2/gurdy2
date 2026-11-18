@@ -49,12 +49,21 @@ def main() -> None:
     ap.add_argument("--ollama", default=os.environ.get("MODEL") or None, help="LLM model name (needs OLLAMA_URL); default: keyword planner")
     ap.add_argument("--stt-model", default="/models/whisper-turbo-ct2")
     ap.add_argument("--tts-model", default="/models/tts/piper-lessac.onnx")
-    ap.add_argument("--device", default="cpu", help="Whisper device: cpu | cuda")
+    ap.add_argument("--device", default=os.environ.get("VOICE_DEVICE", "auto"), help="Whisper device: auto (GPU if available, else CPU) | cuda | cpu. Env VOICE_DEVICE")
     ap.add_argument("--no-debug-wav", action="store_true", help="do not save each utterance to brain/runs/voice_debug/")
     ap.add_argument("--bias", choices=["none", "prompt", "full"], default=os.environ.get("VOICE_BIAS", "prompt"),
                     help="Whisper vocabulary bias: none | prompt (default) | full (prompt + hotwords). Env VOICE_BIAS")
     ap.add_argument("--no-bias", action="store_true", help="same as --bias none")
+    ap.add_argument("--serve-mock", type=int, metavar="PORT", help="no audio: serve the mock-world agent on PORT for a --remote voice client (brain image, has langgraph)")
     a = ap.parse_args()
+    if a.serve_mock:
+        from .host import serve
+        host, _ = build_local_host(a.ollama)
+        host.start()
+        serve(host, a.serve_mock)
+        print(f"voice server on :{a.serve_mock} (mock world, {'LLM ' + a.ollama if a.ollama else 'keyword planner'})", flush=True)
+        threading.Event().wait()
+        return
     if not (a.mic or a.wav):
         ap.error("give --mic or --wav")
 
@@ -63,10 +72,11 @@ def main() -> None:
         host, mock = RemoteHost(a.remote), None
     else:
         host, mock = build_local_host(a.ollama if a.mic or a.ollama else None)
-    from .stt import FasterWhisperSTT
+    from .stt import load_whisper
     from .tts import PiperTTS, Speaker
     print("loading Whisper + Piper ...", flush=True)
-    stt = FasterWhisperSTT(a.stt_model, a.device, places=host.places() or None, bias="none" if a.no_bias else a.bias)
+    stt = load_whisper(a.stt_model, a.device, places=host.places() or None, bias="none" if a.no_bias else a.bias)
+    print(f"Whisper on the {stt.device.upper()}", flush=True)
     tts = PiperTTS(a.tts_model)
 
     if a.wav:                                       # one utterance, synchronous, mock world

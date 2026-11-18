@@ -7,7 +7,7 @@ from ..data_gen.lexicon import COLORS_BY_CLASS, OBJECT_WORDS, PLACES
 
 
 COMMANDS = ["go to", "go home", "go back", "come back", "return home", "find", "look for", "search for", "where is", "what is near you",
-            "what do you see", "stop", "patrol", "explore", "turn left", "turn right", "walk forward", "walk back", "save this place",
+            "what do you see", "stop", "halt", "freeze", "wait", "patrol", "explore", "turn left", "turn right", "walk forward", "walk back", "save this place",
             "what is the battery", "continue", "cancel"]
 
 
@@ -33,7 +33,7 @@ def initial_prompt(places=None) -> str:
     ph = ", ".join(f"room {l} {NATO[l]}" for l in known_letters(p) if l in NATO)
     return (f"Commands for the robot Gurdy: go to {', '.join(rooms)}, the doorway or home. Go to room A and then go home. "
             + (f"Rooms can be said phonetically: {ph}. " if ph else "")
-            + f"Where is the red box? What is near you? Look for the barrel. Patrol. Stop. "
+            + f"Where is the red box? What is near you? Look for the barrel. Patrol. Stop. Halt. Freeze. Wait. "
             f"Find the red box, blue box, yellow box, green box, barrel, fire extinguisher, traffic cone, toolbox, mannequin or chair.")
 
 

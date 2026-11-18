@@ -1,0 +1,10 @@
+# Gurdy 2.0 — voice image WITH CUDA (live test: Whisper on the GPU, ~0.3 s per utterance instead of 6-10 s on the CPU).
+# Base = the vision image (PyTorch 2.5.1 + CUDA 12.1 + cuDNN 9 pip libs, LD_LIBRARY_PATH already set, Python 3.11). Only PulseAudio client tools
+# are added (apt, small). faster-whisper / ctranslate2 4.9 (cp311) and Piper (cp311) are NOT pip-installed here: they are mounted from
+# ~/p5_pkgs and ~/p5_tts (already downloaded; the network is slow), see compose service `voice_gpu`. No langgraph: the voice client
+# talks to the agent over TCP (--remote), and brain.agent / brain.voice import without it.
+FROM gurdy2/vision:cuda
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends pulseaudio-utils && rm -rf /var/lib/apt/lists/*
+USER ubuntu
+ENV PULSE_SERVER=unix:/mnt/wslg/PulseServer

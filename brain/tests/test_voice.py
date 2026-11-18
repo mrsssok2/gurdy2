@@ -242,3 +242,92 @@ def test_bias_modes():
     import pytest
     with pytest.raises(ValueError):
         s.set_vocabulary(None, "loud")
+
+
+# ---- robust one-word stop (real misrecognitions: "Stop." -> "Stalk.", "Halt." -> "Hide.")
+@pytest.mark.parametrize("text", ["Stalk.", "Hide.", "Stock", "stomp", "Hold on", "Halt", "Freeze!", "Wait.", "weight", "Stoop it", "stap", "Top.", "Stop. Halt."])
+def test_fuzzy_stop_phrases_trigger_the_estop(text):
+    from brain.agent.stopwords import is_estop_phrase
+    assert is_estop_phrase(text), text
+
+
+@pytest.mark.parametrize("text", ["That up.", "Are you?", "Go home", "go to room A", "step left", "start", "stay", "the star", "turn left", "yes", "no", "Where are you?",
+                                  "what do you see", "find the red box", "walk forward 2 metres", "don't stop", "why did you stop", "disable the emergency stop",
+                                  "Go to room Alpha", "Bad, odd.", "hello"])
+def test_ordinary_short_utterances_are_not_stops(text):
+    from brain.agent.stopwords import is_estop_phrase
+    assert not is_estop_phrase(text), text
+
+
+def test_stop_module_needs_no_langgraph():
+    import subprocess, sys
+    code = ("import sys; sys.modules['langgraph'] = None; sys.modules['langgraph.graph'] = None\n"
+            "from brain.agent.stopwords import is_estop_phrase; from brain.agent import rooms; from brain.voice.pipeline import VoicePipeline\n"
+            "from brain.voice.vocab import initial_prompt; assert is_estop_phrase('Stalk.') and 'Halt.' in initial_prompt()")
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-400:]
+
+
+def test_whisper_prompt_names_the_stop_words():
+    from brain.voice.vocab import hotwords, initial_prompt
+    assert "Stop. Halt. Freeze. Wait." in initial_prompt()
+    assert {"halt", "freeze", "wait"} <= set(hotwords().split())
+
+
+def test_pipeline_fires_estop_on_a_misheard_one_word_stop():
+    from brain.voice import ScriptedSTT, Speaker, VoiceConfig, VoicePipeline
+    from brain.voice.audio import NullSink, frames
+    import numpy as np
+    rng = np.random.default_rng(5)
+    fired = []
+
+    class T:
+        sample_rate = 22050
+        def synthesize(self, t): return np.zeros(100, np.float32)
+    pipe = VoicePipeline(ScriptedSTT(["Stalk."]), Speaker(T(), NullSink()), lambda t, c: "ok", lambda: fired.append(1), cfg=VoiceConfig(mode="vad"))
+    clip = np.concatenate([rng.normal(0, 1e-3, 9600), rng.normal(0, 0.1, 6400), rng.normal(0, 1e-3, 19200)]).astype(np.float32)
+    for f in frames(clip):
+        pipe.feed(f)
+    assert fired == [1] and pipe.events("estop")
+
+
+# ---- Whisper on the GPU with CPU fallback
+def _fake_faster_whisper(monkeypatch, fail_cuda=False):
+    import sys, types
+    made = []
+
+    class WM:
+        def __init__(self, path, device="cpu", compute_type=None):
+            if fail_cuda and device == "cuda":
+                raise RuntimeError("CUDA failed with error out of memory")
+            made.append((device, compute_type))
+    mod = types.ModuleType("faster_whisper"); mod.WhisperModel = WM
+    monkeypatch.setitem(sys.modules, "faster_whisper", mod)
+    return made
+
+
+def _fake_ct2(monkeypatch, n):
+    import sys, types
+    ct = types.ModuleType("ctranslate2"); ct.get_cuda_device_count = lambda: n
+    monkeypatch.setitem(sys.modules, "ctranslate2", ct)
+
+
+def test_load_whisper_uses_the_gpu_when_there_is_one(monkeypatch):
+    from brain.voice.stt import load_whisper
+    made = _fake_faster_whisper(monkeypatch); _fake_ct2(monkeypatch, 1)
+    assert load_whisper("m", "auto").device == "cuda" and made == [("cuda", "int8_float16")]
+    made.clear()
+    assert load_whisper("m", "cpu").device == "cpu" and made == [("cpu", "int8")]
+
+
+def test_load_whisper_falls_back_to_the_cpu(monkeypatch, capsys):
+    from brain.voice.stt import load_whisper
+    made = _fake_faster_whisper(monkeypatch); _fake_ct2(monkeypatch, 0)
+    assert load_whisper("m", "auto").device == "cpu" and made == [("cpu", "int8")]       # no GPU visible
+    assert load_whisper("m", "cuda").device == "cpu" and "no CUDA device" in capsys.readouterr().out
+    made.clear(); _fake_ct2(monkeypatch, 1)
+    made2 = _fake_faster_whisper(monkeypatch, fail_cuda=True)
+    assert load_whisper("m", "auto").device == "cpu" and made2 == [("cpu", "int8")]      # GPU model failed to load (VRAM full)
+    assert "GPU load failed" in capsys.readouterr().out
+    with pytest.raises(ValueError):
+        load_whisper("m", "tpu")
