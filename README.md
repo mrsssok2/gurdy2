@@ -9,9 +9,7 @@ Everything runs offline: ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL
 
 ![map from autonomous exploration](docs/results/phase3_explore_gt_map.png)
 
-<!-- PLACEHOLDER: screenshot of the live LLM-driven Gazebo run. Save it as docs/images/live_llm_run.png, then replace this comment with:
-![live LLM-driven run in Gazebo](docs/images/live_llm_run.png) -->
-> **[Screenshot placeholder: live LLM-driven Gazebo run (`docs/images/live_llm_run.png` not added yet).]**
+![Gurdy driven by the fine-tuned LLM: chat and Gazebo side by side](docs/images/gurdy_live_run.png)
 
 ## Architecture
 
@@ -41,6 +39,14 @@ Everything above the gait speaks only `/cmd_vel`, so planner, teleop and LLM are
 | Leg-failure adaptation (negative result) | missed the < 40 % criterion, worse than the open-loop tripod; not deployed | [Experiment B](docs/results/exp_B_leg_failure.md) |
 
 Full per-phase tables are below; all write-ups are in [docs/results/](docs/results/).
+
+## Live run
+
+The fine-tuned brain driving the robot in Gazebo through typed tools (9/9 missions, [details](docs/results/phase5_live_test.md)).
+
+| Gazebo lab | Chat transcript |
+|---|---|
+| ![Gazebo lab](docs/images/gurdy_gazebo_lab.png) | ![chat transcript](docs/images/gurdy_chat_transcript.png) |
 
 ## Quick start
 
