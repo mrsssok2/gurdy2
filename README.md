@@ -1,5 +1,9 @@
 # Gurdy 2.0
 
+**What it does:** a six-legged robot in simulation that you can talk to in plain English. It walks with a learned (reinforcement-learning) gait, maps and explores a building on its own, recognises objects by name, and plans missions with a fine-tuned LLM running locally.
+**What it proves:** the whole stack runs offline on one 6 GB laptop GPU. Measured: the learned gait tracks commands more accurately and uses less energy than a classic gait, the robot mapped 99 % of a lab, found 11/11 objects, and the fine-tuned LLM scored 94 % vs 59 % for the base model on 100 commands, with no hallucinated replies reaching the user.
+**What did not work:** it is simulation only, 65 % on unseen casual phrasing, and leg-failure adaptation missed its target (see Known limitations).
+
 An 18-DOF hexapod robot in simulation that takes plain-English commands, plans missions with an offline fine-tuned LLM (Qwen3-1.7B + LoRA, runs locally on a 6 GB laptop GPU),
 walks with a PPO-trained RL gait over slopes and steps, builds maps and navigates (slam_toolbox + Nav2), and finds objects by name with a YOLO detector trained on self-generated synthetic data.
 Everything runs offline: ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL2). License: MIT.
@@ -62,7 +66,7 @@ flowchart LR
 | Object detection (YOLO11s, synthetic data) | test mAP50 0.922 (v1 test) / 0.871 (harder v2 test); 11/11 objects found in a Gazebo lab, median position error 0.031 m (xy) | [Phase 4](docs/results/phase4c_v2.md) |
 | LLM brain, 100 in-distribution commands | base Qwen3-1.7B 59 % → fine-tuned **94 %** (keyword baseline 55 %); 0 risky actions executed | [SFT eval](docs/results/phase5_eval_sft.md) |
 | LLM brain, 40 unseen casual phrasings | base 35 % → fine-tuned **65 %** (test set written by an AI assistant, not by humans) | [OOD eval](docs/results/phase5_eval_ood.md) |
-| Hallucinated replies | 0 in the final replies (28 checked; a grounding check rejects any fact not in that turn's tool results) | [SFT eval](docs/results/phase5_eval_sft.md) |
+| Hallucinated replies | 0 hallucinated replies reached the user (28 checked; the grounding check blocks any fact not in that turn's tool results: 0 needed blocking for the fine-tuned model, 4 for the base model) | [SFT eval](docs/results/phase5_eval_sft.md) |
 | Live LLM-driven Gazebo missions | 9/9 typed missions completed (go-to, find, patrol, stop, refusal, clarification) | [live test](docs/results/phase5_live_test.md) |
 | Leg-failure adaptation (negative result) | missed the < 40 % criterion, worse than the open-loop tripod; not deployed | [Experiment B](docs/results/exp_B_leg_failure.md) |
 
