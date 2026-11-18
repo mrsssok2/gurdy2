@@ -90,3 +90,37 @@ def test_vocabulary_contains_places_objects_colours():
 @pytest.mark.parametrize("text", ["go to room B and then come back", "come back", "walk home and halt", "go to the doorway then come home"])
 def test_ordinary_words_are_not_places(text):
     assert suggest_place(text, PLACES) is None
+
+
+from brain.agent.fuzzy import suggest_verb
+from brain.voice.vocab import COMMANDS
+
+
+@pytest.mark.parametrize("text", ["Open room B and then find the red box.", "go do room B", "goto room B", "open the doorway"])
+def test_verb_confusion_suggests_go_to(text):
+    s = suggest_verb(text, PLACES)
+    assert s and s.options[0].startswith("go to ") and s.question.startswith("Did you mean: go to ")
+
+
+def test_verb_correction_text():
+    s = suggest_verb("Open room B and then find the red box.", PLACES)
+    assert list(s.corrected.values()) == ["go to room B and then find the red box."]
+
+
+@pytest.mark.parametrize("text", ["go to room B", "open the log", "please open room B", "what is near you", "open"])
+def test_verb_no_suggestion(text):
+    assert suggest_verb(text, PLACES) is None
+
+
+def test_agent_open_room_asks_then_yes_goes():
+    b, a = _agent()
+    r = a.say("Open room B and then find the red box.")
+    assert "Did you mean: go to room B" in r.reply and r.calls == [] and a.executor.state == "idle"
+    r = a.say("yes")
+    assert any(c["tool"] == "go_to" for c in r.calls)
+
+
+def test_prompt_has_command_phrases():
+    p, h = initial_prompt(PLACES), hotwords(PLACES)
+    for w in ("go to", "find", "look for", "where is", "stop", "patrol", "go home", "what is near you"):
+        assert w in COMMANDS and w in h.lower() and w in p.lower()

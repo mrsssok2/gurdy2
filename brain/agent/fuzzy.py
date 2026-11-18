@@ -36,6 +36,8 @@ class Suggestion:
     @property
     def question(self) -> str:
         opts = self.options
+        if self.kind == "verb":
+            return f"Did you mean: {opts[0]}? I heard \"{self.heard}\"."
         if len(opts) == 1:
             return f"Did you mean {opts[0]}? I heard \"{self.heard}\"."
         return f"Did you mean {', '.join(opts[:-1])} or {opts[-1]}? I heard \"{self.heard}\"."
@@ -97,6 +99,23 @@ def suggest_place(text: str, known_places: list[str]) -> Suggestion | None:
     for p in opts:
         sug.corrected[p] = pat.sub(p, text, count=1)
     return sug
+
+
+# STT confusions of the verb "go to" at the start of a request ("Open room B", "go do room B", "goto room B")
+_GO_TO_CONFUSIONS = r"(?:open|opened|opens|go do|go two|go too|goto|go-to|got to|go tu|goat to|goes to|grow to|oh to|no to)"
+
+
+def suggest_verb(text: str, known_places: list[str]) -> Suggestion | None:
+    """"open room B" -> probably "go to room B": only when the confusable verb is followed directly by a KNOWN place (open <place>)."""
+    for p in known_places:
+        pat = re.compile(rf"^(\W*)({_GO_TO_CONFUSIONS})\s+(?:the\s+)?({re.escape(p)})\b", re.I)
+        m = pat.match(text)
+        if m:
+            heard = f"{m.group(2)} {m.group(3)}"
+            sug = Suggestion(heard, [f"go to {p}"], kind="verb")
+            sug.corrected[f"go to {p}"] = m.group(1) + "go to " + text[m.start(3):]
+            return sug
+    return None
 
 
 def _known_object_tokens() -> set[str]:

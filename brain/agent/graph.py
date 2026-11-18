@@ -20,7 +20,7 @@ from . import templates
 from .alerts import ALERT_TYPES, AlertManager
 from .executor import MissionExecutor
 from .grounding import GroundedReply, collect_facts, grounded_reply, violations
-from .fuzzy import suggest_object, suggest_place
+from .fuzzy import suggest_object, suggest_place, suggest_verb
 from .guard import _is_state_change, guard_plan, normalize_call, unknown_noun
 from .llm import LLM
 from .safety import ConfirmationGate, is_clear_yes, SafetyChecker, Verdict, is_unsafe_request
@@ -111,7 +111,7 @@ class Agent:
         if self.gate.pending is not None or is_estop_phrase(text) or is_unsafe_request(text):
             return text
         places = self.layer.backend.known_places()
-        sug = suggest_place(text, places) or suggest_object(text, places)
+        sug = suggest_verb(text, places) or suggest_place(text, places) or suggest_object(text, places)
         if sug is None:
             return text
         self.pending_fix = {"options": dict(sug.corrected), "expires_at": now + self.safety.cfg["confirmation_timeout_s"]}
