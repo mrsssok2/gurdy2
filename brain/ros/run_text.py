@@ -31,7 +31,10 @@ def main() -> None:
     else:
         llm = KeywordLLM(be.known_places)
     agent = Agent(ToolLayer(be), llm)
-    print("Gurdy (ROS). Empty line = show progress; 'quit' to exit.")
+    from .chat_ui import Chat
+    chat = Chat(agent, be.known_places, prompt="> ")
+    print("Gurdy (ROS). Type a command; 'status' line = '?'; '!estop' / '!release' = emergency stop latch; 'quit' to exit.")
+    chat.start()                       # progress, alerts and new objects arrive on their own, without breaking what you type
     while True:
         try:
             text = input("> ").strip()
@@ -39,13 +42,15 @@ def main() -> None:
             break
         if text == "quit":
             break
-        if text:
-            print("Gurdy:", agent.say(text).reply)
-        for _ in range(20):                 # let the task engine run while we wait (0.25 s steps, 5 s)
-            time.sleep(0.25)
-            for m in agent.pump():
-                print("Gurdy:", m)
-        print(f"  t={port.now():.0f}s pose={port.pose()} mission={agent.executor.state}")
+        if text == "?":
+            print(f"  t={port.now():.0f}s pose={port.pose()} mission={agent.executor.state}")
+        elif text in ("!estop", "!release"):
+            with chat.lock:
+                be.estop(text == "!estop")
+            print("Gurdy: " + ("Emergency stop engaged (latched)." if text == "!estop" else "Emergency stop released."))
+        elif text:
+            print("Gurdy:", chat.ask(text))
+    chat.stop()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,1509 @@
+[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-11-18-05-38-45-352569-37e5a9399207-99
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [odom_tf_node-1]: process started with pid [137]
+[INFO] [scan_self_filter_node-2]: process started with pid [138]
+[INFO] [map_server-3]: process started with pid [139]
+[INFO] [amcl-4]: process started with pid [140]
+[INFO] [lifecycle_manager-5]: process started with pid [141]
+[INFO] [controller_server-6]: process started with pid [142]
+[INFO] [smoother_server-7]: process started with pid [143]
+[INFO] [planner_server-8]: process started with pid [144]
+[INFO] [route_server-9]: process started with pid [145]
+[INFO] [behavior_server-10]: process started with pid [146]
+[INFO] [bt_navigator-11]: process started with pid [147]
+[INFO] [waypoint_follower-12]: process started with pid [148]
+[INFO] [velocity_smoother-13]: process started with pid [149]
+[INFO] [collision_monitor-14]: process started with pid [150]
+[INFO] [opennav_docking-15]: process started with pid [155]
+[INFO] [lifecycle_manager-16]: process started with pid [160]
+[INFO] [cmd_vel_min_speed_node-17]: process started with pid [163]
+[INFO] [gazebo-18]: process started with pid [169]
+[INFO] [robot_state_publisher-19]: process started with pid [179]
+[INFO] [parameter_bridge-20]: process started with pid [201]
+[INFO] [create-21]: process started with pid [207]
+[INFO] [policy_node-22]: process started with pid [211]
+[INFO] [estop_gate_node-23]: process started with pid [218]
+[INFO] [detector_node-24]: process started with pid [219]
+[controller_server-6] [INFO] [1794980326.255567700] [controller_server]: 
+[controller_server-6] 	controller_server lifecycle node launched. 
+[controller_server-6] 	Waiting on external lifecycle transitions to activate
+[controller_server-6] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[controller_server-6] [INFO] [1794980326.286357232] [controller_server]: Creating controller server
+[velocity_smoother-13] [INFO] [1794980326.335978150] [velocity_smoother]: 
+[velocity_smoother-13] 	velocity_smoother lifecycle node launched. 
+[velocity_smoother-13] 	Waiting on external lifecycle transitions to activate
+[velocity_smoother-13] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[amcl-4] [INFO] [1794980326.361576221] [amcl]: 
+[amcl-4] 	amcl lifecycle node launched. 
+[amcl-4] 	Waiting on external lifecycle transitions to activate
+[amcl-4] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[amcl-4] [INFO] [1794980326.366715903] [amcl]: Creating
+[bt_navigator-11] [INFO] [1794980326.367759246] [bt_navigator]: 
+[bt_navigator-11] 	bt_navigator lifecycle node launched. 
+[bt_navigator-11] 	Waiting on external lifecycle transitions to activate
+[bt_navigator-11] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[route_server-9] [INFO] [1794980326.371504051] [route_server]: 
+[route_server-9] 	route_server lifecycle node launched. 
+[route_server-9] 	Waiting on external lifecycle transitions to activate
+[route_server-9] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[bt_navigator-11] [INFO] [1794980326.377607589] [bt_navigator]: Creating
+[smoother_server-7] [INFO] [1794980326.423497255] [smoother_server]: 
+[smoother_server-7] 	smoother_server lifecycle node launched. 
+[smoother_server-7] 	Waiting on external lifecycle transitions to activate
+[smoother_server-7] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[smoother_server-7] [INFO] [1794980326.432782464] [smoother_server]: Creating smoother server
+[map_server-3] [INFO] [1794980326.497651132] [map_server]: 
+[map_server-3] 	map_server lifecycle node launched. 
+[map_server-3] 	Waiting on external lifecycle transitions to activate
+[map_server-3] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[map_server-3] [INFO] [1794980326.497971774] [map_server]: Creating
+[lifecycle_manager-5] [INFO] [1794980326.505693711] [lifecycle_manager_localization]: Creating
+[lifecycle_manager-16] [INFO] [1794980326.541372385] [lifecycle_manager_navigation]: Creating
+[controller_server-6] [INFO] [1794980326.574639537] [local_costmap.local_costmap]: 
+[controller_server-6] 	local_costmap lifecycle node launched. 
+[controller_server-6] 	Waiting on external lifecycle transitions to activate
+[controller_server-6] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[controller_server-6] [INFO] [1794980326.594623634] [local_costmap.local_costmap]: Creating Costmap
+[lifecycle_manager-5] [INFO] [1794980326.602235271] [lifecycle_manager_localization]: [34m[1mCreating and initializing lifecycle service clients[0m[0m
+[robot_state_publisher-19] [INFO] [1794980326.611748204] [robot_state_publisher]: Robot initialized
+[waypoint_follower-12] [INFO] [1794980326.612808828] [waypoint_follower]: 
+[waypoint_follower-12] 	waypoint_follower lifecycle node launched. 
+[waypoint_follower-12] 	Waiting on external lifecycle transitions to activate
+[waypoint_follower-12] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[waypoint_follower-12] [INFO] [1794980326.622980041] [waypoint_follower]: Creating
+[lifecycle_manager-16] [INFO] [1794980326.627939031] [lifecycle_manager_navigation]: [34m[1mCreating and initializing lifecycle service clients[0m[0m
+[lifecycle_manager-5] [INFO] [1794980326.670028667] [lifecycle_manager_localization]: [34m[1mStarting managed nodes bringup...[0m[0m
+[lifecycle_manager-5] [INFO] [1794980326.670323053] [lifecycle_manager_localization]: [34m[1mConfiguring map_server[0m[0m
+[planner_server-8] [INFO] [1794980326.682552855] [planner_server]: 
+[planner_server-8] 	planner_server lifecycle node launched. 
+[planner_server-8] 	Waiting on external lifecycle transitions to activate
+[planner_server-8] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-8] [INFO] [1794980326.689276529] [planner_server]: Creating
+[behavior_server-10] [INFO] [1794980326.824564228] [behavior_server]: 
+[behavior_server-10] 	behavior_server lifecycle node launched. 
+[behavior_server-10] 	Waiting on external lifecycle transitions to activate
+[behavior_server-10] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[map_server-3] [INFO] [1794980326.881403728] [map_server]: Configuring
+[map_server-3] [INFO] [1794980326.881914991] [map_io]: Loading yaml file: /home/ubuntu/gurdy2/maps/flat_lab_tripod_gt.yaml
+[map_server-3] [INFO] [1794980326.885125583] [map_io]: resolution: 0.05
+[map_server-3] [INFO] [1794980326.885163750] [map_io]: origin[0]: -2.012
+[map_server-3] [INFO] [1794980326.885169040] [map_io]: origin[1]: -3.012
+[map_server-3] [INFO] [1794980326.885218774] [map_io]: origin[2]: 0
+[map_server-3] [INFO] [1794980326.885227140] [map_io]: free_thresh: 0.196
+[map_server-3] [INFO] [1794980326.885231826] [map_io]: occupied_thresh: 0.65
+[map_server-3] [INFO] [1794980326.885237545] [map_io]: mode: trinary
+[map_server-3] [INFO] [1794980326.885242445] [map_io]: negate: 0
+[map_server-3] [INFO] [1794980326.891299544] [map_io]: Loading image_file: /home/ubuntu/gurdy2/maps/flat_lab_tripod_gt.pgm
+[map_server-3] [INFO] [1794980326.905051488] [map_io]: Read map /home/ubuntu/gurdy2/maps/flat_lab_tripod_gt.pgm: 170 X 121 map @ 0.05 m/cell
+[collision_monitor-14] [INFO] [1794980326.892907986] [collision_monitor]: 
+[collision_monitor-14] 	collision_monitor lifecycle node launched. 
+[collision_monitor-14] 	Waiting on external lifecycle transitions to activate
+[collision_monitor-14] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[lifecycle_manager-5] [INFO] [1794980326.955060055] [lifecycle_manager_localization]: [34m[1mConfiguring amcl[0m[0m
+[amcl-4] [INFO] [1794980326.955859341] [amcl]: Configuring
+[amcl-4] [INFO] [1794980326.956252463] [amcl]: initTransforms
+[create-21] [INFO] [1794980326.962177686] [ros_gz_sim]: Requesting list of world names.
+[planner_server-8] [INFO] [1794980326.969254201] [global_costmap.global_costmap]: 
+[planner_server-8] 	global_costmap lifecycle node launched. 
+[planner_server-8] 	Waiting on external lifecycle transitions to activate
+[planner_server-8] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-8] [INFO] [1794980326.970566302] [global_costmap.global_costmap]: Creating Costmap
+[amcl-4] [INFO] [1794980326.998528544] [amcl]: initPubSub
+[amcl-4] [INFO] [1794980327.042175029] [amcl]: Subscribed to map topic.
+[lifecycle_manager-5] [INFO] [1794980327.069299647] [lifecycle_manager_localization]: [34m[1mActivating map_server[0m[0m
+[map_server-3] [INFO] [1794980327.069704868] [map_server]: Activating
+[map_server-3] [INFO] [1794980327.070116044] [map_server]: Creating bond (map_server) to lifecycle manager.
+[amcl-4] [INFO] [1794980327.071007021] [amcl]: Received a 170 X 121 map @ 0.050 m/pix
+[lifecycle_manager-5] [INFO] [1794980327.187641119] [lifecycle_manager_localization]: Server map_server connected with bond.
+[lifecycle_manager-5] [INFO] [1794980327.187849625] [lifecycle_manager_localization]: [34m[1mActivating amcl[0m[0m
+[amcl-4] [INFO] [1794980327.188808811] [amcl]: Activating
+[amcl-4] [INFO] [1794980327.188901570] [amcl]: initialPoseReceived
+[amcl-4] [INFO] [1794980327.189432919] [amcl]: Setting pose (0.000000): 0.000 0.000 0.000
+[amcl-4] [INFO] [1794980327.189775744] [amcl]: Creating bond (amcl) to lifecycle manager.
+[lifecycle_manager-5] [INFO] [1794980327.302865660] [lifecycle_manager_localization]: Server amcl connected with bond.
+[lifecycle_manager-5] [INFO] [1794980327.302954035] [lifecycle_manager_localization]: [34m[1mManaged nodes are active[0m[0m
+[lifecycle_manager-5] [INFO] [1794980327.302976955] [lifecycle_manager_localization]: [34m[1mCreating bond timer...[0m[0m
+[lifecycle_manager-16] [INFO] [1794980327.981537763] [lifecycle_manager_navigation]: [34m[1mStarting managed nodes bringup...[0m[0m
+[lifecycle_manager-16] [INFO] [1794980327.981710665] [lifecycle_manager_navigation]: [34m[1mConfiguring controller_server[0m[0m
+[create-21] [INFO] [1794980327.982077451] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[controller_server-6] [INFO] [1794980327.982718057] [controller_server]: Configuring controller interface
+[controller_server-6] [INFO] [1794980327.982778785] [controller_server]: getting progress checker plugins..
+[controller_server-6] [INFO] [1794980327.983462119] [controller_server]: getting goal checker plugins..
+[controller_server-6] [INFO] [1794980327.984944331] [controller_server]: Controller frequency set to 10.0000Hz
+[controller_server-6] [INFO] [1794980327.985114950] [local_costmap.local_costmap]: Configuring
+[opennav_docking-15] [INFO] [1794980327.996486748] [docking_server]: 
+[opennav_docking-15] 	docking_server lifecycle node launched. 
+[opennav_docking-15] 	Waiting on external lifecycle transitions to activate
+[opennav_docking-15] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[opennav_docking-15] [INFO] [1794980327.996746848] [docking_server]: Creating docking_server
+[create-21] [INFO] [1794980328.000481159] [ros_gz_sim]: Entity creation successful.
+[controller_server-6] [INFO] [1794980328.012900538] [local_costmap.local_costmap]: Using plugin "obstacle_layer"
+[controller_server-6] [INFO] [1794980328.024536571] [local_costmap.local_costmap]: Subscribed to Topics: scan
+[controller_server-6] [INFO] [1794980328.039133006] [local_costmap.local_costmap]: Initialized plugin "obstacle_layer"
+[controller_server-6] [INFO] [1794980328.039236707] [local_costmap.local_costmap]: Using plugin "inflation_layer"
+[controller_server-6] [INFO] [1794980328.040996782] [local_costmap.local_costmap]: Initialized plugin "inflation_layer"
+[controller_server-6] [INFO] [1794980328.104422459] [controller_server]: Created progress_checker : progress_checker of type nav2_controller::SimpleProgressChecker
+[controller_server-6] [INFO] [1794980328.105827883] [controller_server]: Controller Server has progress_checker  progress checkers available.
+[controller_server-6] [INFO] [1794980328.107909473] [controller_server]: Created goal checker : general_goal_checker of type nav2_controller::SimpleGoalChecker
+[controller_server-6] [INFO] [1794980328.108629614] [controller_server]: Controller Server has general_goal_checker  goal checkers available.
+[controller_server-6] [INFO] [1794980328.112401937] [controller_server]: Created controller : FollowPath of type nav2_mppi_controller::MPPIController
+[controller_server-6] [INFO] [1794980328.117800922] [controller_server]: Controller period is equal to model dt. Control sequence shifting is ON
+[controller_server-6] [INFO] [1794980328.121661690] [controller_server]: ConstraintCritic instantiated with 1 power and 4.000000 weight.
+[controller_server-6] [INFO] [1794980328.121726383] [controller_server]: Critic loaded : mppi::critics::ConstraintCritic
+[controller_server-6] [INFO] [1794980328.122984818] [controller_server]: InflationCostCritic instantiated with 1 power and 300.000000 / 0.015000 weights. Critic will collision check based on footprint cost.
+[controller_server-6] [INFO] [1794980328.123057379] [controller_server]: Critic loaded : mppi::critics::CostCritic
+[controller_server-6] [INFO] [1794980328.123354441] [controller_server]: GoalCritic instantiated with 1 power and 5.000000 weight.
+[controller_server-6] [INFO] [1794980328.123381481] [controller_server]: Critic loaded : mppi::critics::GoalCritic
+[controller_server-6] [INFO] [1794980328.123844792] [controller_server]: GoalAngleCritic instantiated with 1 power, 3.000000 weight, 0.500000 angular threshold and symmetric_yaw_tolerance disabled
+[controller_server-6] [INFO] [1794980328.124024537] [controller_server]: Critic loaded : mppi::critics::GoalAngleCritic
+[controller_server-6] [INFO] [1794980328.125385125] [controller_server]: ReferenceTrajectoryCritic instantiated with 1 power and 14.000000 weight
+[controller_server-6] [INFO] [1794980328.125560265] [controller_server]: Critic loaded : mppi::critics::PathAlignCritic
+[controller_server-6] [INFO] [1794980328.126780996] [controller_server]: Critic loaded : mppi::critics::PathFollowCritic
+[controller_server-6] [INFO] [1794980328.128757185] [controller_server]: PathAngleCritic instantiated with 1 power and 2.000000 weight. Mode set to: Forward Preference
+[controller_server-6] [INFO] [1794980328.128822764] [controller_server]: Critic loaded : mppi::critics::PathAngleCritic
+[controller_server-6] [INFO] [1794980328.137804966] [controller_server]: Optimizer reset
+[INFO] [create-21]: process has finished cleanly [pid 207]
+[controller_server-6] [INFO] [1794980328.151230020] [MPPIController]: Configured MPPI Controller: FollowPath
+[controller_server-6] [INFO] [1794980328.151321137] [controller_server]: Controller Server has FollowPath  controllers available.
+[INFO] [spawner-25]: process started with pid [508]
+[lifecycle_manager-16] [INFO] [1794980328.194096410] [lifecycle_manager_navigation]: [34m[1mConfiguring smoother_server[0m[0m
+[smoother_server-7] [INFO] [1794980328.194708873] [smoother_server]: Configuring smoother server
+[policy_node-22] [INFO] [1794980328.236818764] [policy_node]: policy node: mode=policy model=terrain_dr2_15M.onnx (checkpoint rl/runs/terrain_dr2/checkpoints/ppo_latest.zip) 50 Hz
+[smoother_server-7] [INFO] [1794980328.238879118] [smoother_server]: Created smoother : simple_smoother of type nav2_smoother::SimpleSmoother
+[smoother_server-7] [INFO] [1794980328.241271871] [smoother_server]: Smoother Server has simple_smoother  smoothers available.
+[lifecycle_manager-16] [INFO] [1794980328.261865910] [lifecycle_manager_navigation]: [34m[1mConfiguring planner_server[0m[0m
+[planner_server-8] [INFO] [1794980328.262795742] [planner_server]: Configuring
+[planner_server-8] [INFO] [1794980328.262848130] [global_costmap.global_costmap]: Configuring
+[planner_server-8] [INFO] [1794980328.296210464] [global_costmap.global_costmap]: Using plugin "static_layer"
+[planner_server-8] [INFO] [1794980328.307260458] [global_costmap.global_costmap]: Subscribing to the map topic (/map) with transient local durability
+[planner_server-8] [INFO] [1794980328.313404815] [global_costmap.global_costmap]: Initialized plugin "static_layer"
+[planner_server-8] [INFO] [1794980328.313454810] [global_costmap.global_costmap]: Using plugin "obstacle_layer"
+[planner_server-8] [INFO] [1794980328.317595980] [global_costmap.global_costmap]: Subscribed to Topics: scan
+[planner_server-8] [INFO] [1794980328.327356807] [global_costmap.global_costmap]: Initialized plugin "obstacle_layer"
+[planner_server-8] [INFO] [1794980328.327419017] [global_costmap.global_costmap]: Using plugin "inflation_layer"
+[planner_server-8] [INFO] [1794980328.329210716] [global_costmap.global_costmap]: Initialized plugin "inflation_layer"
+[planner_server-8] [INFO] [1794980328.387404805] [global_costmap.global_costmap]: StaticLayer: Resizing costmap to 170 X 121 at 0.050000 m/pix
+[planner_server-8] [INFO] [1794980328.388315101] [planner_server]: Created global planner plugin GridBased of type nav2_navfn_planner::NavfnPlanner
+[planner_server-8] [INFO] [1794980328.388400041] [planner_server]: Configuring plugin GridBased of type NavfnPlanner
+[planner_server-8] [INFO] [1794980328.389555909] [planner_server]: Planner Server has GridBased  planners available.
+[lifecycle_manager-16] [INFO] [1794980328.430978711] [lifecycle_manager_navigation]: [34m[1mConfiguring route_server[0m[0m
+[route_server-9] [INFO] [1794980328.431858403] [route_server]: Configuring
+[route_server-9] [INFO] [1794980328.500609947] [route_server]: Created GraphFileLoader GeoJsonGraphFileLoader of type nav2_route::GeoJsonGraphFileLoader
+[route_server-9] [INFO] [1794980328.500672526] [route_server]: Configuring geojson graph file loader
+[route_server-9] [INFO] [1794980328.500732907] [route_server]: No graph file provided to load yet.
+[route_server-9] [INFO] [1794980328.505475658] [route_server]: Created edge cost function plugin DistanceScorer of type nav2_route::DistanceScorer
+[route_server-9] [INFO] [1794980328.505552989] [route_server]: Configuring distance scorer.
+[route_server-9] [INFO] [1794980328.507451150] [route_server]: Created edge cost function plugin CostmapScorer of type nav2_route::CostmapScorer
+[route_server-9] [INFO] [1794980328.507590932] [route_server]: Configuring costmap scorer.
+[route_server-9] [INFO] [1794980328.514144515] [route_server]: Created route operation AdjustSpeedLimit of type nav2_route::AdjustSpeedLimit
+[route_server-9] [INFO] [1794980328.514228799] [route_server]: Configuring Adjust speed limit operation.
+[detector_node-24] [INFO] [1794980328.514173154] [detector_node]: detector det_v2_s.onnx on CPUExecutionProvider, input (256, 320)
+[route_server-9] [INFO] [1794980328.517065588] [route_server]: Created route operation ReroutingService of type nav2_route::ReroutingService
+[route_server-9] [INFO] [1794980328.517130552] [route_server]: Configuring Rerouting service operation.
+[route_server-9] [INFO] [1794980328.521087230] [route_server]: Created route operation CollisionMonitor of type nav2_route::CollisionMonitor
+[route_server-9] [INFO] [1794980328.521348310] [route_server]: Using costmap topic: local_costmap/costmap_raw instead of server costmap topic: global_costmap/costmap_raw for CollisionMonitor.
+[lifecycle_manager-16] [INFO] [1794980328.531040858] [lifecycle_manager_navigation]: [34m[1mConfiguring behavior_server[0m[0m
+[behavior_server-10] [INFO] [1794980328.531893407] [behavior_server]: Configuring
+[behavior_server-10] [INFO] [1794980328.545500675] [behavior_server]: Creating behavior plugin spin of type nav2_behaviors::Spin
+[behavior_server-10] [INFO] [1794980328.547468318] [behavior_server]: Creating behavior plugin backup of type nav2_behaviors::BackUp
+[behavior_server-10] [INFO] [1794980328.550778420] [behavior_server]: Creating behavior plugin drive_on_heading of type nav2_behaviors::DriveOnHeading
+[behavior_server-10] [INFO] [1794980328.553630707] [behavior_server]: Creating behavior plugin assisted_teleop of type nav2_behaviors::AssistedTeleop
+[behavior_server-10] [INFO] [1794980328.559086927] [behavior_server]: Creating behavior plugin wait of type nav2_behaviors::Wait
+[behavior_server-10] [INFO] [1794980328.572916993] [behavior_server]: Configuring spin
+[behavior_server-10] [INFO] [1794980328.589581936] [behavior_server]: Configuring backup
+[behavior_server-10] [INFO] [1794980328.603681261] [behavior_server]: Configuring drive_on_heading
+[behavior_server-10] [INFO] [1794980328.618907223] [behavior_server]: Configuring assisted_teleop
+[behavior_server-10] [INFO] [1794980328.641230885] [behavior_server]: Configuring wait
+[lifecycle_manager-16] [INFO] [1794980328.654782405] [lifecycle_manager_navigation]: [34m[1mConfiguring velocity_smoother[0m[0m
+[velocity_smoother-13] [INFO] [1794980328.655185317] [velocity_smoother]: Configuring velocity smoother
+[lifecycle_manager-16] [INFO] [1794980328.665760502] [lifecycle_manager_navigation]: [34m[1mConfiguring collision_monitor[0m[0m
+[collision_monitor-14] [INFO] [1794980328.666246245] [collision_monitor]: Configuring
+[collision_monitor-14] [INFO] [1794980328.677521836] [collision_monitor]: [scan]: Creating Scan
+[collision_monitor-14] [INFO] [1794980328.684183164] [collision_monitor]: [FootprintApproach]: Creating Polygon
+[collision_monitor-14] [INFO] [1794980328.684932729] [collision_monitor]: [FootprintApproach]: Polygon points are not defined. Using dynamic subscription instead.
+[parameter_bridge-20] [INFO] [1794980328.684139473] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-20] [INFO] [1794980328.689944801] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/imu (gz.msgs.IMU) -> /imu (sensor_msgs/msg/Imu)] (Lazy 0)
+[collision_monitor-14] [INFO] [1794980328.690624007] [collision_monitor]: [FootprintApproach]: Making footprint subscriber on /local_costmap/published_footprint topic
+[parameter_bridge-20] [INFO] [1794980328.700908752] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/gurdy/odometry (gz.msgs.Odometry) -> /odom/ground_truth (nav_msgs/msg/Odometry)] (Lazy 0)
+[parameter_bridge-20] [INFO] [1794980328.708512415] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/camera/image (gz.msgs.Image) -> /camera/image (sensor_msgs/msg/Image)] (Lazy 1)
+[parameter_bridge-20] [INFO] [1794980328.715416881] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/camera/depth_image (gz.msgs.Image) -> /camera/depth_image (sensor_msgs/msg/Image)] (Lazy 1)
+[parameter_bridge-20] [INFO] [1794980328.722936195] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/camera/camera_info (gz.msgs.CameraInfo) -> /camera/camera_info (sensor_msgs/msg/CameraInfo)] (Lazy 1)
+[lifecycle_manager-16] [INFO] [1794980328.724380631] [lifecycle_manager_navigation]: [34m[1mConfiguring bt_navigator[0m[0m
+[bt_navigator-11] [INFO] [1794980328.725140046] [bt_navigator]: Configuring
+[parameter_bridge-20] [INFO] [1794980328.727848317] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/camera/points (gz.msgs.PointCloudPacked) -> /camera/points (sensor_msgs/msg/PointCloud2)] (Lazy 1)
+[parameter_bridge-20] [INFO] [1794980328.733864472] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/scan (gz.msgs.LaserScan) -> /scan_raw (sensor_msgs/msg/LaserScan)] (Lazy 1)
+[bt_navigator-11] [INFO] [1794980328.749103774] [bt_navigator]: Creating navigator id navigate_to_pose of type nav2_bt_navigator::NavigateToPoseNavigator
+[bt_navigator-11] [INFO] [1794980328.919635157] [bt_navigator]: Creating navigator id navigate_through_poses of type nav2_bt_navigator::NavigateThroughPosesNavigator
+[spawner-25] [INFO] [1794980328.935179616] [spawner_joint_state_broadcaster]: waiting for service /controller_manager/list_controllers to become available...
+[lifecycle_manager-16] [INFO] [1794980328.977223442] [lifecycle_manager_navigation]: [34m[1mConfiguring waypoint_follower[0m[0m
+[waypoint_follower-12] [INFO] [1794980328.978029092] [waypoint_follower]: Configuring
+[waypoint_follower-12] [INFO] [1794980329.027542611] [waypoint_follower]: Created waypoint_task_executor : wait_at_waypoint of type nav2_waypoint_follower::WaitAtWaypoint
+[lifecycle_manager-16] [INFO] [1794980329.028858712] [lifecycle_manager_navigation]: [34m[1mConfiguring docking_server[0m[0m
+[opennav_docking-15] [INFO] [1794980329.029363311] [docking_server]: Configuring docking_server
+[opennav_docking-15] [INFO] [1794980329.029478953] [docking_server]: Controller frequency set to 50.0000Hz
+[opennav_docking-15] [INFO] [1794980329.096865117] [docking_server]: Created charging dock plugin simple_charging_dock of type opennav_docking::SimpleChargingDock
+[opennav_docking-15] [WARN] [1794980329.108399117] [docking_server]: Dock database filepath nor dock parameters set. Docking actions can only be executed specifying the dock pose via the action request. Or update the dock database via the reload_database service.
+[opennav_docking-15] [INFO] [1794980329.108501739] [docking_server]: Docking Server has 1 dock types and 0 dock instances available.
+[lifecycle_manager-16] [INFO] [1794980329.112059906] [lifecycle_manager_navigation]: [34m[1mActivating controller_server[0m[0m
+[controller_server-6] [INFO] [1794980329.112451705] [controller_server]: Activating
+[controller_server-6] [INFO] [1794980329.112555819] [local_costmap.local_costmap]: Activating
+[controller_server-6] [INFO] [1794980329.112567098] [local_costmap.local_costmap]: Checking transform
+[controller_server-6] [INFO] [1794980329.112604567] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[gazebo-18] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="gurdy"]/link[@name="base_link"]/sensor[@name="depth_camera"]/gz_frame_id:<urdf-string>:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[gazebo-18] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="gurdy"]/link[@name="base_link"]/sensor[@name="imu"]/gz_frame_id:<urdf-string>:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[gazebo-18] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="gurdy"]/link[@name="base_link"]/sensor[@name="lidar"]/gz_frame_id:<urdf-string>:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[controller_server-6] [INFO] [1794980329.613021823] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[gazebo-18] [INFO] [1794980329.880034494] [gz_ros_control]: Loading controller_manager
+[gazebo-18] [INFO] [1794980329.930447872] [controller_manager]: Using ROS clock for triggering controller manager cycles.
+[gazebo-18] [WARN] [1794980329.930514576] [controller_manager]: The resource manager is not yet initialized, will wait for the robot description to initialize it..
+[gazebo-18] [INFO] [1794980329.952566925] [controller_manager]: Subscribing to '/robot_description' topic for robot description.
+[gazebo-18] [WARN] [1794980329.952693887] [gz_ros_control]: Waiting RM to load and initialize hardware...
+[controller_server-6] [INFO] [1794980330.112684648] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[gazebo-18] [INFO] [1794980330.236285172] [controller_manager]: Received robot description from topic.
+[gazebo-18] [INFO] [1794980330.236396400] [controller_manager]: Enforcing command limits is disabled. Command limits from URDF will be ignored.
+[gazebo-18] [INFO] [1794980330.244133448] [gz_ros_control]: The position_proportional_gain has been set to: 0.1
+[gazebo-18] [INFO] [1794980330.244362412] [gz_ros_control]: Loading joint: lf_hip_yaw
+[gazebo-18] [INFO] [1794980330.244403012] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.244431868] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.244471758] [gz_ros_control]: 			 found initial value: 0.000000
+[gazebo-18] [INFO] [1794980330.244485203] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.244541637] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244549980] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.244553969] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244607911] [gz_ros_control]: Loading joint: lf_hip_pitch
+[gazebo-18] [INFO] [1794980330.244621200] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.244627624] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.244635061] [gz_ros_control]: 			 found initial value: 0.307439
+[gazebo-18] [INFO] [1794980330.244643121] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.244651560] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244657682] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.244662328] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244677464] [gz_ros_control]: Loading joint: lf_knee
+[gazebo-18] [INFO] [1794980330.244683119] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.244687574] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.244692263] [gz_ros_control]: 			 found initial value: 1.763391
+[gazebo-18] [INFO] [1794980330.244697894] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.244702705] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244721593] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.244726084] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244739707] [gz_ros_control]: Loading joint: lm_hip_yaw
+[gazebo-18] [INFO] [1794980330.244744719] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.244749223] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.244757652] [gz_ros_control]: 			 found initial value: 0.000000
+[gazebo-18] [INFO] [1794980330.244763341] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.244770023] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244774580] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.244778931] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244790817] [gz_ros_control]: Loading joint: lm_hip_pitch
+[gazebo-18] [INFO] [1794980330.244795885] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.244800303] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.244804803] [gz_ros_control]: 			 found initial value: 0.307439
+[gazebo-18] [INFO] [1794980330.244810049] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.244814534] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244819245] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.244823569] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244835596] [gz_ros_control]: Loading joint: lm_knee
+[gazebo-18] [INFO] [1794980330.244840498] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.244845210] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.244849444] [gz_ros_control]: 			 found initial value: 1.763391
+[gazebo-18] [INFO] [1794980330.244854710] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.244862042] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244866609] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.244871231] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244881511] [gz_ros_control]: Loading joint: lr_hip_yaw
+[gazebo-18] [INFO] [1794980330.244886678] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.244891361] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.244895726] [gz_ros_control]: 			 found initial value: 0.000000
+[gazebo-18] [INFO] [1794980330.244945872] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.244952430] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244957125] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.244961665] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.244972625] [gz_ros_control]: Loading joint: lr_hip_pitch
+[gazebo-18] [INFO] [1794980330.244977945] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.244982602] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.244987071] [gz_ros_control]: 			 found initial value: 0.307439
+[gazebo-18] [INFO] [1794980330.244992818] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.244997350] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245001797] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.245009191] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245022064] [gz_ros_control]: Loading joint: lr_knee
+[gazebo-18] [INFO] [1794980330.245027015] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.245031493] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.245036056] [gz_ros_control]: 			 found initial value: 1.763391
+[gazebo-18] [INFO] [1794980330.245041239] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.245046000] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245050463] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.245054819] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245068934] [gz_ros_control]: Loading joint: rf_hip_yaw
+[gazebo-18] [INFO] [1794980330.245073905] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.245078473] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.245082987] [gz_ros_control]: 			 found initial value: 0.000000
+[gazebo-18] [INFO] [1794980330.245088133] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.245092612] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245097100] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.245101372] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245112561] [gz_ros_control]: Loading joint: rf_hip_pitch
+[gazebo-18] [INFO] [1794980330.245117712] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.245122554] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.245126964] [gz_ros_control]: 			 found initial value: 0.307439
+[gazebo-18] [INFO] [1794980330.245132169] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.245136835] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245146071] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.245150638] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245161660] [gz_ros_control]: Loading joint: rf_knee
+[gazebo-18] [INFO] [1794980330.245166587] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.245171020] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.245175833] [gz_ros_control]: 			 found initial value: 1.763391
+[gazebo-18] [INFO] [1794980330.245181170] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.245185701] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245190314] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.245194662] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245206069] [gz_ros_control]: Loading joint: rm_hip_yaw
+[gazebo-18] [INFO] [1794980330.245211465] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.245217569] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.245225151] [gz_ros_control]: 			 found initial value: 0.000000
+[gazebo-18] [INFO] [1794980330.245230430] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.245235122] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245242450] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.245246839] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245258815] [gz_ros_control]: Loading joint: rm_hip_pitch
+[gazebo-18] [INFO] [1794980330.245263885] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.245268405] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.245272786] [gz_ros_control]: 			 found initial value: 0.307439
+[gazebo-18] [INFO] [1794980330.245277889] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.245282309] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245286775] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.245291109] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245302100] [gz_ros_control]: Loading joint: rm_knee
+[gazebo-18] [INFO] [1794980330.245307040] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.245311589] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.245315931] [gz_ros_control]: 			 found initial value: 1.763391
+[gazebo-18] [INFO] [1794980330.245329773] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.245334766] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245339149] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.245343551] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245357664] [gz_ros_control]: Loading joint: rr_hip_yaw
+[gazebo-18] [INFO] [1794980330.245362836] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.245367408] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.245371880] [gz_ros_control]: 			 found initial value: 0.000000
+[gazebo-18] [INFO] [1794980330.245377259] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.245381911] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245386556] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.245391248] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245401505] [gz_ros_control]: Loading joint: rr_hip_pitch
+[gazebo-18] [INFO] [1794980330.245406426] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.245411144] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.245415549] [gz_ros_control]: 			 found initial value: 0.307439
+[gazebo-18] [INFO] [1794980330.245420644] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.245425077] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245429490] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.245433977] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245447544] [gz_ros_control]: Loading joint: rr_knee
+[gazebo-18] [INFO] [1794980330.245452627] [gz_ros_control]: 	State:
+[gazebo-18] [INFO] [1794980330.245457199] [gz_ros_control]: 		 position
+[gazebo-18] [INFO] [1794980330.245461641] [gz_ros_control]: 			 found initial value: 1.763391
+[gazebo-18] [INFO] [1794980330.245466665] [gz_ros_control]: 		 velocity
+[gazebo-18] [INFO] [1794980330.245473979] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245478418] [gz_ros_control]: 	Command:
+[gazebo-18] [INFO] [1794980330.245485687] [gz_ros_control]: 		 effort
+[gazebo-18] [INFO] [1794980330.245659565] [gz_ros_control]: Loading sensor: imu
+[gazebo-18] [INFO] [1794980330.245682482] [gz_ros_control]: 	State:
+[gazebo-18] [WARN] [1794980330.245692595] [gz_ros_control]: IMU sensor 'imu' not found in hardware_info, skipping.
+[gazebo-18] [INFO] [1794980330.246290292] [controller_manager]: Initialize hardware 'GazeboSimSystem' 
+[gazebo-18] [WARN] [1794980330.246366479] [controller_manager.hardware_component.system.GazeboSimSystem]: Executor is not available during hardware component initialization for 'GazeboSimSystem'. Skipping node creation!
+[gazebo-18] [INFO] [1794980330.246637623] [controller_manager]: Successful initialization of hardware 'GazeboSimSystem'
+[gazebo-18] [INFO] [1794980330.247516008] [controller_manager]: Activating component 'GazeboSimSystem'.
+[gazebo-18] [INFO] [1794980330.247640689] [resource_manager]: 'configure' hardware 'GazeboSimSystem' 
+[gazebo-18] [INFO] [1794980330.247664398] [gz_ros_control]: System Successfully configured!
+[gazebo-18] [INFO] [1794980330.247699539] [resource_manager]: Successful 'configure' of hardware 'GazeboSimSystem'
+[gazebo-18] [INFO] [1794980330.247734336] [resource_manager]: 'activate' hardware 'GazeboSimSystem' 
+[gazebo-18] [INFO] [1794980330.247799685] [resource_manager]: Successful 'activate' of hardware 'GazeboSimSystem'
+[gazebo-18] [WARN] [1794980330.248198229] [controller_manager]: Component 'GazeboSimSystem' does not have read or write statistics initialized, skipping registration.
+[gazebo-18] [INFO] [1794980330.248238640] [controller_manager]: Resource Manager has been successfully initialized. Starting Controller Manager services...
+[controller_server-6] [INFO] [1794980330.614805904] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-6] [INFO] [1794980331.112908223] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-6] [INFO] [1794980331.612825140] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[gazebo-18] [WARN] [1794980332.010167250] [gz_ros_control]:  Desired controller update period (0.002 s) is slower than the gazebo simulation period (0.001 s).
+[gazebo-18] [WARN] [1794980332.011522432] [controller_manager]: No clock received, using time argument instead! Check your node's clock configuration (use_sim_time parameter) and if a valid clock source is available
+[gazebo-18] [INFO] [1794980332.044997826] [controller_manager]: Loading controller : 'joint_state_broadcaster' of type 'joint_state_broadcaster/JointStateBroadcaster'
+[gazebo-18] [INFO] [1794980332.045137875] [controller_manager]: Loading controller 'joint_state_broadcaster'
+[gazebo-18] [INFO] [1794980332.060123036] [controller_manager]: Controller 'joint_state_broadcaster' node arguments: --ros-args --params-file /tmp/gurdy_controllers_kh8fyj3x.yaml -p use_sim_time:=true --param use_sim_time:=true 
+[controller_server-6] [INFO] [1794980332.112676986] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-6] [INFO] [1794980332.612678513] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[controller_server-6] [INFO] [1794980333.112715535] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[gazebo-18] [WARN] [1794980333.547207831] [controller_manager]: No clock received, using time argument instead! Check your node's clock configuration (use_sim_time parameter) and if a valid clock source is available
+[spawner-25] [INFO] [1794980333.548871900] [spawner_joint_state_broadcaster]: Loaded joint_state_broadcaster
+[gazebo-18] [INFO] [1794980333.555317311] [controller_manager]: Configuring controller: 'joint_state_broadcaster'
+[gazebo-18] [INFO] [1794980333.556418407] [joint_state_broadcaster]: 'joints' or 'interfaces' parameter is empty. All available state interfaces will be published
+[detector_node-24] [INFO] [1794980333.556802198] [detector_node]: frames 0, map updates 0 (0 truncated), depth rejects 0, tf failures 0, confirmed objects 0
+[controller_server-6] [INFO] [1794980333.612695149] [local_costmap.local_costmap]: Timed out waiting for transform from base_link to odom to become available, tf error: Invalid frame ID "odom" passed to canTransform argument target_frame - frame does not exist
+[gazebo-18] [INFO] [1794980333.968527270] [controller_manager]: Activating controllers: [ joint_state_broadcaster ]
+[gazebo-18] [INFO] [1794980333.971139389] [controller_manager]: Successfully switched controllers!
+[spawner-25] [INFO] [1794980333.974145631] [spawner_joint_state_broadcaster]: Configured and activated joint_state_broadcaster
+[policy_node-22] [INFO] [1794980333.975051301] [policy_node]: status: stand:cmd_vel timeout
+[detector_node-24] [WARN] [1794980334.106500090] [detector_node]: TF map <- camera_optical_frame unavailable: "map" passed to lookupTransform argument target_frame does not exist. 
+[controller_server-6] [INFO] [1794980334.112855454] [local_costmap.local_costmap]: start
+[amcl-4] [INFO] [1794980334.198552995] [amcl]: createLaserObject
+[INFO] [spawner-25]: process has finished cleanly [pid 508]
+[INFO] [spawner-26]: process started with pid [632]
+[controller_server-6] [WARN] [1794980334.314946505] [controller_server]: Parameter controller_server.verbose not found
+[controller_server-6] [INFO] [1794980334.315857498] [controller_server]: Optimizer reset
+[controller_server-6] [INFO] [1794980334.317224441] [MPPIController]: Activated MPPI Controller: FollowPath
+[controller_server-6] [INFO] [1794980334.317756622] [controller_server]: Creating bond (controller_server) to lifecycle manager.
+[lifecycle_manager-16] [INFO] [1794980334.433392720] [lifecycle_manager_navigation]: Server controller_server connected with bond.
+[lifecycle_manager-16] [INFO] [1794980334.433450211] [lifecycle_manager_navigation]: [34m[1mActivating smoother_server[0m[0m
+[smoother_server-7] [INFO] [1794980334.434038000] [smoother_server]: Activating
+[smoother_server-7] [INFO] [1794980334.434156894] [smoother_server]: Creating bond (smoother_server) to lifecycle manager.
+[lifecycle_manager-16] [INFO] [1794980334.545568804] [lifecycle_manager_navigation]: Server smoother_server connected with bond.
+[lifecycle_manager-16] [INFO] [1794980334.545632639] [lifecycle_manager_navigation]: [34m[1mActivating planner_server[0m[0m
+[planner_server-8] [INFO] [1794980334.546493463] [planner_server]: Activating
+[planner_server-8] [INFO] [1794980334.546563125] [global_costmap.global_costmap]: Activating
+[planner_server-8] [INFO] [1794980334.546573188] [global_costmap.global_costmap]: Checking transform
+[planner_server-8] [INFO] [1794980334.546642368] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 0.340000 but the earliest data is at time 1.100000, when looking up transform from frame [base_link] to frame [map]
+[planner_server-8] [INFO] [1794980335.046853822] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 0.660000 but the earliest data is at time 1.100000, when looking up transform from frame [base_link] to frame [map]
+[planner_server-8] [INFO] [1794980335.546699814] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1.000000 but the earliest data is at time 1.100000, when looking up transform from frame [base_link] to frame [map]
+[spawner-26] [INFO] [1794980335.724299781] [spawner_joint_pd_controller]: waiting for service /controller_manager/list_controllers to become available...
+[planner_server-8] [INFO] [1794980336.046912984] [global_costmap.global_costmap]: start
+[planner_server-8] [INFO] [1794980337.102515676] [planner_server]: Activating plugin GridBased of type NavfnPlanner
+[planner_server-8] [INFO] [1794980337.107513234] [planner_server]: Creating bond (planner_server) to lifecycle manager.
+[lifecycle_manager-16] [INFO] [1794980337.217997291] [lifecycle_manager_navigation]: Server planner_server connected with bond.
+[lifecycle_manager-16] [INFO] [1794980337.218095214] [lifecycle_manager_navigation]: [34m[1mActivating route_server[0m[0m
+[route_server-9] [INFO] [1794980337.218865178] [route_server]: Activating
+[route_server-9] [INFO] [1794980337.219358852] [route_server]: Creating bond (route_server) to lifecycle manager.
+[lifecycle_manager-16] [INFO] [1794980337.341986505] [lifecycle_manager_navigation]: Server route_server connected with bond.
+[lifecycle_manager-16] [INFO] [1794980337.342061015] [lifecycle_manager_navigation]: [34m[1mActivating behavior_server[0m[0m
+[behavior_server-10] [INFO] [1794980337.342520499] [behavior_server]: Activating
+[behavior_server-10] [INFO] [1794980337.342550238] [behavior_server]: Activating spin
+[behavior_server-10] [INFO] [1794980337.342659135] [behavior_server]: Activating backup
+[behavior_server-10] [INFO] [1794980337.342703389] [behavior_server]: Activating drive_on_heading
+[behavior_server-10] [INFO] [1794980337.342730608] [behavior_server]: Activating assisted_teleop
+[behavior_server-10] [INFO] [1794980337.342770835] [behavior_server]: Activating wait
+[behavior_server-10] [INFO] [1794980337.342791783] [behavior_server]: Creating bond (behavior_server) to lifecycle manager.
+[lifecycle_manager-16] [INFO] [1794980337.454529850] [lifecycle_manager_navigation]: Server behavior_server connected with bond.
+[lifecycle_manager-16] [INFO] [1794980337.454591981] [lifecycle_manager_navigation]: [34m[1mActivating velocity_smoother[0m[0m
+[velocity_smoother-13] [INFO] [1794980337.455122749] [velocity_smoother]: Activating
+[velocity_smoother-13] [INFO] [1794980337.455327686] [velocity_smoother]: Creating bond (velocity_smoother) to lifecycle manager.
+[gazebo-18] [INFO] [1794980337.517483016] [controller_manager]: Loading controller : 'joint_pd_controller' of type 'gurdy_control/JointPDController'
+[gazebo-18] [INFO] [1794980337.517549502] [controller_manager]: Loading controller 'joint_pd_controller'
+[gazebo-18] [INFO] [1794980337.532650327] [controller_manager]: Controller 'joint_pd_controller' node arguments: --ros-args --params-file /tmp/gurdy_controllers_kh8fyj3x.yaml -p use_sim_time:=true --param use_sim_time:=true 
+[lifecycle_manager-16] [INFO] [1794980337.571882345] [lifecycle_manager_navigation]: Server velocity_smoother connected with bond.
+[lifecycle_manager-16] [INFO] [1794980337.571999533] [lifecycle_manager_navigation]: [34m[1mActivating collision_monitor[0m[0m
+[collision_monitor-14] [INFO] [1794980337.573275126] [collision_monitor]: Activating
+[collision_monitor-14] [INFO] [1794980337.573409314] [collision_monitor]: Creating bond (collision_monitor) to lifecycle manager.
+[spawner-26] [INFO] [1794980337.614330763] [spawner_joint_pd_controller]: Loaded joint_pd_controller
+[gazebo-18] [INFO] [1794980337.620557381] [controller_manager]: Configuring controller: 'joint_pd_controller'
+[gazebo-18] [INFO] [1794980337.630360519] [joint_pd_controller]: configured 18 joints, kp=20.000 kd=0.050 effort_limit=2.500
+[gazebo-18] [INFO] [1794980337.640588493] [controller_manager]: Activating controllers: [ joint_pd_controller ]
+[gazebo-18] [INFO] [1794980337.642608461] [controller_manager]: Successfully switched controllers!
+[spawner-26] [INFO] [1794980337.646939750] [spawner_joint_pd_controller]: Configured and activated joint_pd_controller
+[lifecycle_manager-16] [INFO] [1794980337.701248481] [lifecycle_manager_navigation]: Server collision_monitor connected with bond.
+[lifecycle_manager-16] [INFO] [1794980337.701307227] [lifecycle_manager_navigation]: [34m[1mActivating bt_navigator[0m[0m
+[bt_navigator-11] [INFO] [1794980337.702206909] [bt_navigator]: Activating
+[INFO] [spawner-26]: process has finished cleanly [pid 632]
+[bt_navigator-11] [INFO] [1794980337.931054893] [bt_navigator]: Creating bond (bt_navigator) to lifecycle manager.
+[lifecycle_manager-16] [INFO] [1794980338.048001704] [lifecycle_manager_navigation]: Server bt_navigator connected with bond.
+[lifecycle_manager-16] [INFO] [1794980338.048083182] [lifecycle_manager_navigation]: [34m[1mActivating waypoint_follower[0m[0m
+[waypoint_follower-12] [INFO] [1794980338.049042102] [waypoint_follower]: Activating
+[waypoint_follower-12] [INFO] [1794980338.049141713] [waypoint_follower]: Creating bond (waypoint_follower) to lifecycle manager.
+[lifecycle_manager-16] [INFO] [1794980338.171517741] [lifecycle_manager_navigation]: Server waypoint_follower connected with bond.
+[lifecycle_manager-16] [INFO] [1794980338.171619519] [lifecycle_manager_navigation]: [34m[1mActivating docking_server[0m[0m
+[opennav_docking-15] [INFO] [1794980338.172411048] [docking_server]: Activating docking_server
+[opennav_docking-15] [INFO] [1794980338.218131640] [docking_server]: Creating bond (docking_server) to lifecycle manager.
+[lifecycle_manager-16] [INFO] [1794980338.342220632] [lifecycle_manager_navigation]: Server docking_server connected with bond.
+[lifecycle_manager-16] [INFO] [1794980338.342335654] [lifecycle_manager_navigation]: [34m[1mManaged nodes are active[0m[0m
+[lifecycle_manager-16] [INFO] [1794980338.342356962] [lifecycle_manager_navigation]: [34m[1mCreating bond timer...[0m[0m
+[detector_node-24] [INFO] [1794980338.665777626] [detector_node]: frames 12, map updates 0 (0 truncated), depth rejects 3, tf failures 9, confirmed objects 0
+[detector_node-24] [INFO] [1794980343.569345277] [detector_node]: frames 26, map updates 0 (0 truncated), depth rejects 14, tf failures 12, confirmed objects 0
+[detector_node-24] [INFO] [1794980348.552963537] [detector_node]: frames 35, map updates 0 (0 truncated), depth rejects 20, tf failures 15, confirmed objects 0
+[detector_node-24] [INFO] [1794980353.570931255] [detector_node]: frames 47, map updates 0 (0 truncated), depth rejects 28, tf failures 19, confirmed objects 0
+[detector_node-24] [WARN] [1794980355.512566547] [detector_node]: TF map <- camera_optical_frame unavailable: Lookup would require extrapolation into the future.  Requested time 13.464000 but the latest data is at time 13.460000, when looking up transform from frame [camera_optical_frame] to frame [map]
+[detector_node-24] [INFO] [1794980358.553204533] [detector_node]: frames 59, map updates 0 (0 truncated), depth rejects 38, tf failures 21, confirmed objects 0
+[detector_node-24] [INFO] [1794980363.553165117] [detector_node]: frames 70, map updates 0 (0 truncated), depth rejects 47, tf failures 23, confirmed objects 0
+[detector_node-24] [INFO] [1794980368.553421937] [detector_node]: frames 80, map updates 0 (0 truncated), depth rejects 53, tf failures 27, confirmed objects 0
+[detector_node-24] [INFO] [1794980373.554481814] [detector_node]: frames 90, map updates 0 (0 truncated), depth rejects 58, tf failures 32, confirmed objects 0
+[detector_node-24] [INFO] [1794980378.553736824] [detector_node]: frames 99, map updates 0 (0 truncated), depth rejects 64, tf failures 35, confirmed objects 0
+[detector_node-24] [INFO] [1794980383.552589448] [detector_node]: frames 111, map updates 0 (0 truncated), depth rejects 73, tf failures 38, confirmed objects 0
+[detector_node-24] [INFO] [1794980388.552843498] [detector_node]: frames 121, map updates 0 (0 truncated), depth rejects 79, tf failures 42, confirmed objects 0
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[detector_node-24] [INFO] [1794980393.552936871] [detector_node]: frames 132, map updates 0 (0 truncated), depth rejects 86, tf failures 46, confirmed objects 0
+[policy_node-22] [INFO] [1794980393.634700022] [policy_node]: status: policy
+[detector_node-24] [INFO] [1794980398.552771845] [detector_node]: frames 145, map updates 6 (1 truncated), depth rejects 88, tf failures 52, confirmed objects 0
+[policy_node-22] [WARN] [1794980401.621163980] [policy_node]: E-STOP engaged: standing
+[estop_gate_node-23] [WARN] [1794980401.663558642] [estop_gate_node]: e-stop engaged: /cmd_vel_safe is zero
+[policy_node-22] [INFO] [1794980401.673782773] [policy_node]: status: stand:estop
+[detector_node-24] [INFO] [1794980403.554062659] [detector_node]: frames 154, map updates 13 (7 truncated), depth rejects 88, tf failures 56, confirmed objects 1
+[detector_node-24] [INFO] [1794980408.552588001] [detector_node]: frames 163, map updates 19 (13 truncated), depth rejects 88, tf failures 59, confirmed objects 1
+[estop_gate_node-23] [INFO] [1794980409.658629375] [estop_gate_node]: e-stop released (155 non-zero commands were blocked)
+[policy_node-22] [WARN] [1794980409.658764629] [policy_node]: e-stop released
+[policy_node-22] [INFO] [1794980409.665625320] [policy_node]: status: policy
+[detector_node-24] [INFO] [1794980413.552743203] [detector_node]: frames 174, map updates 25 (19 truncated), depth rejects 88, tf failures 63, confirmed objects 1
+[policy_node-22] [INFO] [1794980418.012157014] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.45 ms, max 2.24 ms over 500 ticks
+[detector_node-24] [INFO] [1794980418.813018118] [detector_node]: frames 186, map updates 28 (22 truncated), depth rejects 88, tf failures 67, confirmed objects 1
+[policy_node-22] [INFO] [1794980420.754546546] [policy_node]: status: stand:cmd_vel timeout
+[detector_node-24] [INFO] [1794980423.623615659] [detector_node]: frames 196, map updates 30 (24 truncated), depth rejects 88, tf failures 71, confirmed objects 2
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[planner_server-8] [WARN] [1794980428.651118404] [planner_server]: No planners specified in action call. Server will use only plugin GridBased  in server. This warning will appear once.
+[bt_navigator-11] [INFO] [1794980428.709720073] [bt_navigator]: Begin navigating from current location (1.26, -0.14) to (4.50, 0.00)
+[detector_node-24] [INFO] [1794980428.725145987] [detector_node]: frames 207, map updates 30 (24 truncated), depth rejects 88, tf failures 76, confirmed objects 2
+[controller_server-6] [INFO] [1794980428.734398596] [controller_server]: Received a goal, begin computing control effort.
+[controller_server-6] [WARN] [1794980428.734520718] [controller_server]: No goal checker was specified in parameter 'current_goal_checker'. Server will use only plugin loaded general_goal_checker . This warning will appear once.
+[controller_server-6] [WARN] [1794980428.734540209] [controller_server]: No progress checker was specified in parameter 'current_progress_checker'. Server will use only plugin loaded progress_checker . This warning will appear once.
+[policy_node-22] [INFO] [1794980428.802600501] [policy_node]: status: policy
+[controller_server-6] [INFO] [1794980429.834736235] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980430.834724014] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980431.834753922] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980432.936404782] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980433.597895506] [detector_node]: frames 218, map updates 34 (28 truncated), depth rejects 88, tf failures 81, confirmed objects 2
+[controller_server-6] [INFO] [1794980433.934790241] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980434.934764307] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980435.934746738] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980436.934713625] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980438.034737279] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980438.552896091] [detector_node]: frames 226, map updates 36 (29 truncated), depth rejects 88, tf failures 85, confirmed objects 2
+[controller_server-6] [INFO] [1794980439.034977158] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980440.034723307] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980441.034756229] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980442.035771051] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980443.134828500] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980443.552793257] [detector_node]: frames 235, map updates 41 (29 truncated), depth rejects 88, tf failures 89, confirmed objects 2
+[controller_server-6] [INFO] [1794980444.131969708] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980445.131968397] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980445.378037793] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.55 ms, max 6.11 ms over 500 ticks
+[controller_server-6] [INFO] [1794980446.132087205] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980447.232067232] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980448.231946937] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980448.552922714] [detector_node]: frames 244, map updates 43 (29 truncated), depth rejects 88, tf failures 94, confirmed objects 2
+[controller_server-6] [INFO] [1794980449.232038929] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980450.331962254] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980451.332115047] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980452.331958291] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980453.331941272] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980453.553980853] [detector_node]: frames 251, map updates 44 (30 truncated), depth rejects 88, tf failures 96, confirmed objects 2
+[controller_server-6] [INFO] [1794980454.333727965] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980455.431937103] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980456.432404685] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980457.432003602] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980458.431941391] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980458.552891651] [detector_node]: frames 260, map updates 49 (33 truncated), depth rejects 88, tf failures 100, confirmed objects 2
+[controller_server-6] [INFO] [1794980459.531938890] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980460.531936680] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980461.531931836] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980462.531943716] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980463.554518593] [detector_node]: frames 271, map updates 54 (35 truncated), depth rejects 88, tf failures 103, confirmed objects 3
+[controller_server-6] [INFO] [1794980463.631970866] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980464.631957082] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980465.631976728] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980465.916090514] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.49 ms, max 3.78 ms over 500 ticks
+[controller_server-6] [INFO] [1794980466.631979234] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980467.631989890] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980468.633720724] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980468.815914922] [detector_node]: frames 281, map updates 55 (36 truncated), depth rejects 88, tf failures 108, confirmed objects 3
+[controller_server-6] [INFO] [1794980469.732019823] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980470.732011755] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980471.731973425] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980472.733815482] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980473.555464048] [detector_node]: frames 288, map updates 60 (36 truncated), depth rejects 88, tf failures 110, confirmed objects 3
+[controller_server-6] [INFO] [1794980473.828066432] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980474.828185607] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980475.828135769] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980476.828309021] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980477.829737118] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980478.552768038] [detector_node]: frames 297, map updates 62 (38 truncated), depth rejects 88, tf failures 114, confirmed objects 3
+[controller_server-6] [INFO] [1794980478.928108489] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980479.928273134] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980480.928098863] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980481.928154914] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980483.028126914] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980483.552756665] [detector_node]: frames 309, map updates 71 (44 truncated), depth rejects 88, tf failures 118, confirmed objects 3
+[controller_server-6] [INFO] [1794980484.029831201] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980485.028137117] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980485.340201032] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.54 ms, max 8.05 ms over 500 ticks
+[controller_server-6] [INFO] [1794980486.028123864] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980487.028111524] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980488.128143316] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980488.553473440] [detector_node]: frames 321, map updates 77 (46 truncated), depth rejects 88, tf failures 122, confirmed objects 4
+[controller_server-6] [INFO] [1794980489.128578043] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980490.128249462] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980491.228132314] [controller_server]: Passing new path to controller.
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[controller_server-6] [INFO] [1794980492.228139627] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980493.228190869] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980493.552708020] [detector_node]: frames 333, map updates 77 (46 truncated), depth rejects 88, tf failures 124, confirmed objects 4
+[controller_server-6] [INFO] [1794980494.228282627] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980495.228098971] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980496.228144217] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980497.328081423] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980498.328101451] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980498.566617765] [detector_node]: frames 345, map updates 78 (47 truncated), depth rejects 88, tf failures 130, confirmed objects 4
+[controller_server-6] [INFO] [1794980499.328115159] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980500.328213894] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980501.216707899] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.43 ms, max 2.34 ms over 500 ticks
+[controller_server-6] [INFO] [1794980501.328686710] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980502.428136994] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980503.424042717] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980503.661815978] [detector_node]: frames 357, map updates 80 (49 truncated), depth rejects 88, tf failures 134, confirmed objects 4
+[controller_server-6] [INFO] [1794980504.424049003] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980505.424041931] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980506.424309086] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980507.524097217] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980508.524049546] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980508.618150981] [detector_node]: frames 369, map updates 83 (50 truncated), depth rejects 88, tf failures 139, confirmed objects 4
+[controller_server-6] [INFO] [1794980509.525002275] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980510.524028139] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980511.526864574] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980512.524392526] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980513.552756586] [detector_node]: frames 381, map updates 93 (53 truncated), depth rejects 88, tf failures 141, confirmed objects 4
+[controller_server-6] [INFO] [1794980513.624056723] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980514.624043882] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980515.624040028] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980516.624065909] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980517.355944728] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.42 ms, max 1.98 ms over 500 ticks
+[controller_server-6] [INFO] [1794980517.624062932] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980518.693287281] [detector_node]: frames 392, map updates 93 (53 truncated), depth rejects 88, tf failures 146, confirmed objects 4
+[controller_server-6] [INFO] [1794980518.724351230] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980519.724139977] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980520.724161507] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980521.724066333] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980522.824147107] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980523.552645033] [detector_node]: frames 403, map updates 97 (56 truncated), depth rejects 88, tf failures 148, confirmed objects 4
+[controller_server-6] [INFO] [1794980523.824068667] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980524.824891401] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980525.824051368] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980526.824828602] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980527.924640361] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980528.552925978] [detector_node]: frames 415, map updates 100 (59 truncated), depth rejects 88, tf failures 153, confirmed objects 4
+[controller_server-6] [INFO] [1794980528.924047293] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980529.924083111] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980530.924066209] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980531.924062021] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980533.024151738] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980533.372067037] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.41 ms, max 2.16 ms over 500 ticks
+[detector_node-24] [INFO] [1794980533.553161395] [detector_node]: frames 427, map updates 105 (64 truncated), depth rejects 88, tf failures 157, confirmed objects 4
+[controller_server-6] [INFO] [1794980534.021038388] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980535.020851794] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980536.020854803] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980537.120853634] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980538.120830912] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980538.577575215] [detector_node]: frames 439, map updates 107 (66 truncated), depth rejects 88, tf failures 163, confirmed objects 4
+[controller_server-6] [INFO] [1794980539.120851003] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980540.120897080] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980541.220877459] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980542.220926699] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980542.420985761] [controller_server]: Reached the goal!
+[controller_server-6] [INFO] [1794980542.421810262] [controller_server]: Optimizer reset
+[bt_navigator-11] [INFO] [1794980542.444160678] [bt_navigator]: Goal succeeded
+[detector_node-24] [INFO] [1794980543.553186322] [detector_node]: frames 451, map updates 107 (66 truncated), depth rejects 88, tf failures 167, confirmed objects 4
+[policy_node-22] [INFO] [1794980544.681824370] [policy_node]: status: stand:cmd_vel timeout
+[detector_node-24] [INFO] [1794980548.553460824] [detector_node]: frames 463, map updates 107 (66 truncated), depth rejects 88, tf failures 171, confirmed objects 4
+[detector_node-24] [INFO] [1794980553.552565445] [detector_node]: frames 474, map updates 107 (66 truncated), depth rejects 88, tf failures 177, confirmed objects 4
+[detector_node-24] [INFO] [1794980558.553039390] [detector_node]: frames 486, map updates 107 (66 truncated), depth rejects 88, tf failures 181, confirmed objects 4
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[detector_node-24] [INFO] [1794980563.552881033] [detector_node]: frames 497, map updates 107 (66 truncated), depth rejects 88, tf failures 188, confirmed objects 4
+[detector_node-24] [INFO] [1794980568.554137608] [detector_node]: frames 509, map updates 107 (66 truncated), depth rejects 88, tf failures 193, confirmed objects 4
+[bt_navigator-11] [INFO] [1794980568.667543168] [bt_navigator]: Begin navigating from current location (4.42, -0.03) to (0.00, 0.00)
+[controller_server-6] [INFO] [1794980568.689013749] [controller_server]: Received a goal, begin computing control effort.
+[policy_node-22] [INFO] [1794980568.874619287] [policy_node]: status: policy
+[controller_server-6] [INFO] [1794980569.789428494] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980570.793101040] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980571.789294134] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980572.889283665] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980573.408612278] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.44 ms, max 2.44 ms over 500 ticks
+[detector_node-24] [INFO] [1794980573.553165285] [detector_node]: frames 520, map updates 107 (66 truncated), depth rejects 88, tf failures 198, confirmed objects 4
+[controller_server-6] [INFO] [1794980573.889288302] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980574.889288499] [controller_server]: Passing new path to controller.
+[detector_node-24] [WARN] [1794980575.543787619] [detector_node]: TF map <- camera_optical_frame unavailable: Lookup would require extrapolation into the future.  Requested time 139.524000 but the latest data is at time 139.520000, when looking up transform from frame [camera_optical_frame] to frame [map]
+[controller_server-6] [INFO] [1794980575.889410468] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980576.989420867] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980577.989318487] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980578.552575543] [detector_node]: frames 532, map updates 108 (67 truncated), depth rejects 88, tf failures 202, confirmed objects 4
+[controller_server-6] [INFO] [1794980578.989302943] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980580.089305463] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980581.089327910] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980582.089267286] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980583.089312381] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980583.553010978] [detector_node]: frames 544, map updates 112 (70 truncated), depth rejects 88, tf failures 204, confirmed objects 4
+[controller_server-6] [INFO] [1794980584.189290767] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980585.189302429] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980586.189300997] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980587.289279264] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980588.289998727] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980588.553309966] [detector_node]: frames 556, map updates 119 (70 truncated), depth rejects 88, tf failures 209, confirmed objects 4
+[policy_node-22] [INFO] [1794980589.132921331] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.43 ms, max 6.78 ms over 500 ticks
+[controller_server-6] [INFO] [1794980589.289263882] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980590.289292868] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980591.289433829] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980592.389362484] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980593.386005262] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980593.575565472] [detector_node]: frames 569, map updates 122 (71 truncated), depth rejects 88, tf failures 212, confirmed objects 4
+[controller_server-6] [INFO] [1794980594.385949622] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980595.386070972] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980596.486335784] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980597.485957033] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980598.485979855] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980598.583548456] [detector_node]: frames 581, map updates 122 (71 truncated), depth rejects 88, tf failures 216, confirmed objects 4
+[controller_server-6] [INFO] [1794980599.485994451] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980600.585940325] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980601.585995217] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980602.585931427] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980603.552856466] [detector_node]: frames 593, map updates 123 (72 truncated), depth rejects 88, tf failures 220, confirmed objects 4
+[controller_server-6] [INFO] [1794980603.585974135] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980604.686082930] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980604.718928773] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.43 ms, max 4.55 ms over 500 ticks
+[controller_server-6] [INFO] [1794980605.686134185] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980606.685954810] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980607.686064818] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980608.612327208] [detector_node]: frames 605, map updates 130 (72 truncated), depth rejects 88, tf failures 224, confirmed objects 4
+[controller_server-6] [INFO] [1794980608.786049521] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980609.785987084] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980610.785971258] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980611.785962302] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980612.885999556] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980613.553403989] [detector_node]: frames 617, map updates 134 (72 truncated), depth rejects 88, tf failures 228, confirmed objects 4
+[controller_server-6] [INFO] [1794980613.886000402] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980614.886054468] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980615.885994605] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980616.885942137] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980617.986629270] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980618.572639387] [detector_node]: frames 629, map updates 140 (76 truncated), depth rejects 88, tf failures 231, confirmed objects 5
+[controller_server-6] [INFO] [1794980618.986202641] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980619.986010526] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980620.335790255] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.44 ms, max 3.03 ms over 500 ticks
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[controller_server-6] [INFO] [1794980620.985975628] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980621.985979634] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980623.086008048] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980623.552872090] [detector_node]: frames 641, map updates 145 (81 truncated), depth rejects 88, tf failures 234, confirmed objects 5
+[controller_server-6] [INFO] [1794980624.082734613] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980625.082738290] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980626.083402068] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980627.182749334] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980628.182750095] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980628.553255921] [detector_node]: frames 653, map updates 155 (84 truncated), depth rejects 88, tf failures 236, confirmed objects 5
+[controller_server-6] [INFO] [1794980629.182780495] [controller_server]: Passing new path to controller.
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[controller_server-6] [INFO] [1794980630.182903497] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980631.282758818] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980632.282765915] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980633.282795064] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980633.553278000] [detector_node]: frames 665, map updates 159 (88 truncated), depth rejects 88, tf failures 238, confirmed objects 5
+[controller_server-6] [INFO] [1794980634.282724965] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980635.382733340] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980635.932835713] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.42 ms, max 2.79 ms over 500 ticks
+[controller_server-6] [INFO] [1794980636.382748376] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980637.382784729] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980638.382959176] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980638.552583904] [detector_node]: frames 677, map updates 162 (90 truncated), depth rejects 88, tf failures 244, confirmed objects 5
+[controller_server-6] [INFO] [1794980639.382734036] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980640.482824922] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980641.482801719] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980642.482838853] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980643.482783377] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980643.555276263] [detector_node]: frames 686, map updates 167 (92 truncated), depth rejects 88, tf failures 246, confirmed objects 5
+[controller_server-6] [INFO] [1794980644.484563166] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980645.582793402] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980646.583102678] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980647.582765328] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980648.553978936] [detector_node]: frames 692, map updates 167 (92 truncated), depth rejects 88, tf failures 249, confirmed objects 5
+[controller_server-6] [INFO] [1794980648.682816347] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980649.682867493] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980650.683102835] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980651.682800839] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980652.782792250] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980653.553656136] [detector_node]: frames 701, map updates 167 (92 truncated), depth rejects 88, tf failures 254, confirmed objects 5
+[controller_server-6] [INFO] [1794980653.779112123] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980654.785525242] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980655.779269496] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980656.838052975] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.51 ms, max 5.56 ms over 500 ticks
+[controller_server-6] [INFO] [1794980656.879179086] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980657.879223863] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980658.639408283] [detector_node]: frames 712, map updates 167 (92 truncated), depth rejects 88, tf failures 259, confirmed objects 5
+[controller_server-6] [INFO] [1794980658.879394555] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980659.879326324] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980660.879110416] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980661.979112686] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980662.979084711] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980663.553392059] [detector_node]: frames 722, map updates 174 (97 truncated), depth rejects 88, tf failures 262, confirmed objects 5
+[controller_server-6] [INFO] [1794980663.979146868] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980665.079173223] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980666.079072964] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980667.079081416] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980668.079108172] [controller_server]: Passing new path to controller.
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[detector_node-24] [INFO] [1794980668.557885588] [detector_node]: frames 733, map updates 187 (100 truncated), depth rejects 88, tf failures 264, confirmed objects 6
+[controller_server-6] [INFO] [1794980669.080738384] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980670.179250197] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980671.179108272] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980672.179113063] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980673.179110640] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980673.600673109] [detector_node]: frames 744, map updates 192 (104 truncated), depth rejects 89, tf failures 267, confirmed objects 6
+[controller_server-6] [INFO] [1794980674.279087098] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980674.619361210] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.49 ms, max 5.10 ms over 500 ticks
+[controller_server-6] [INFO] [1794980675.279097113] [controller_server]: Passing new path to controller.
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[controller_server-6] [INFO] [1794980676.279166616] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980677.379419865] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980678.379186529] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980678.553486916] [detector_node]: frames 753, map updates 192 (104 truncated), depth rejects 89, tf failures 270, confirmed objects 6
+[controller_server-6] [INFO] [1794980679.379108275] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980680.379115609] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980681.379160333] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980682.479092890] [controller_server]: Passing new path to controller.
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[controller_server-6] [INFO] [1794980683.479821990] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980683.554098118] [detector_node]: frames 760, map updates 196 (108 truncated), depth rejects 89, tf failures 271, confirmed objects 6
+[controller_server-6] [INFO] [1794980684.575394606] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980685.575403062] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980686.575414972] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980687.575375802] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980688.553117886] [detector_node]: frames 770, map updates 202 (112 truncated), depth rejects 92, tf failures 275, confirmed objects 6
+[controller_server-6] [INFO] [1794980688.575526058] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980689.675368642] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980690.675394925] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980691.675345539] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980692.675343846] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980693.552827752] [detector_node]: frames 784, map updates 208 (115 truncated), depth rejects 92, tf failures 280, confirmed objects 6
+[policy_node-22] [INFO] [1794980693.599500252] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.54 ms, max 10.23 ms over 500 ticks
+[controller_server-6] [INFO] [1794980693.675445563] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980694.675375372] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980695.775344974] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980696.779688865] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980697.775475009] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980698.553326452] [detector_node]: frames 795, map updates 208 (115 truncated), depth rejects 92, tf failures 284, confirmed objects 6
+[controller_server-6] [INFO] [1794980698.776217763] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980699.775451428] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980700.875371432] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980701.876650147] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980702.875355611] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980703.674156526] [detector_node]: frames 806, map updates 208 (115 truncated), depth rejects 92, tf failures 288, confirmed objects 6
+[controller_server-6] [INFO] [1794980703.875412730] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980704.975393260] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980705.975372562] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980706.975427242] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980707.987256930] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980708.746386510] [detector_node]: frames 816, map updates 208 (115 truncated), depth rejects 92, tf failures 291, confirmed objects 6
+[controller_server-6] [INFO] [1794980708.975391762] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980710.075404911] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980711.076209261] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980711.225925794] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.56 ms, max 11.42 ms over 500 ticks
+[controller_server-6] [INFO] [1794980712.075552674] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980713.075412388] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980713.754310396] [detector_node]: frames 827, map updates 208 (115 truncated), depth rejects 92, tf failures 296, confirmed objects 6
+[controller_server-6] [INFO] [1794980714.172147048] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980715.172350712] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980716.172135354] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980717.172118409] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980718.272427531] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980718.625996744] [detector_node]: frames 838, map updates 211 (118 truncated), depth rejects 92, tf failures 300, confirmed objects 6
+[controller_server-6] [INFO] [1794980719.272314008] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980720.274600105] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980721.374823755] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980722.372345497] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980723.372177256] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980723.660576612] [detector_node]: frames 846, map updates 211 (118 truncated), depth rejects 92, tf failures 303, confirmed objects 6
+[controller_server-6] [INFO] [1794980724.372157876] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980725.372460177] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980726.472125276] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980727.472134938] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980728.476200770] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980728.687768720] [detector_node]: frames 856, map updates 211 (118 truncated), depth rejects 92, tf failures 306, confirmed objects 6
+[controller_server-6] [INFO] [1794980729.472116761] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980730.472195628] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980731.098768189] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.55 ms, max 5.13 ms over 500 ticks
+[controller_server-6] [INFO] [1794980731.572214952] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980732.572142884] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980733.554396746] [detector_node]: frames 863, map updates 211 (118 truncated), depth rejects 92, tf failures 308, confirmed objects 6
+[controller_server-6] [INFO] [1794980733.572138552] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980734.572295746] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980735.672168463] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980736.672103495] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980737.672443825] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980738.601140736] [detector_node]: frames 874, map updates 211 (118 truncated), depth rejects 92, tf failures 312, confirmed objects 6
+[controller_server-6] [INFO] [1794980738.676562721] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980739.772112054] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980740.772322215] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980741.772971812] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980742.772509447] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980743.793370124] [detector_node]: frames 885, map updates 211 (118 truncated), depth rejects 92, tf failures 316, confirmed objects 6
+[controller_server-6] [INFO] [1794980743.868820214] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980744.867921437] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980745.868242639] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980746.867973451] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980747.867923015] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980748.564505852] [detector_node]: frames 896, map updates 211 (118 truncated), depth rejects 92, tf failures 321, confirmed objects 6
+[controller_server-6] [INFO] [1794980748.967940411] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980749.220283603] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.51 ms, max 9.00 ms over 500 ticks
+[controller_server-6] [INFO] [1794980749.967981519] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980750.967932874] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980751.967960513] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980753.067953578] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980753.555896654] [detector_node]: frames 904, map updates 211 (118 truncated), depth rejects 92, tf failures 325, confirmed objects 6
+[controller_server-6] [INFO] [1794980754.067935655] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980755.067983535] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980756.067930011] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980757.167947266] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980758.167933102] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980758.553489782] [detector_node]: frames 914, map updates 211 (118 truncated), depth rejects 92, tf failures 330, confirmed objects 6
+[controller_server-6] [INFO] [1794980759.167946096] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980760.167952982] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980761.168122567] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980762.267957487] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980763.268120563] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980763.733753854] [detector_node]: frames 926, map updates 211 (118 truncated), depth rejects 92, tf failures 336, confirmed objects 6
+[controller_server-6] [INFO] [1794980764.268023638] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980765.267941581] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980766.270072037] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980767.370657770] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980768.367951003] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980768.554177822] [detector_node]: frames 934, map updates 211 (118 truncated), depth rejects 92, tf failures 339, confirmed objects 6
+[policy_node-22] [INFO] [1794980768.871295165] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.59 ms, max 11.18 ms over 500 ticks
+[controller_server-6] [INFO] [1794980769.368012652] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980770.367987121] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980771.368270505] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980772.467976700] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980773.465621763] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980773.553243430] [detector_node]: frames 942, map updates 211 (118 truncated), depth rejects 92, tf failures 345, confirmed objects 6
+[controller_server-6] [INFO] [1794980774.465730111] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980775.565600698] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980776.565605338] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980777.565782576] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980778.554071774] [detector_node]: frames 951, map updates 211 (118 truncated), depth rejects 92, tf failures 348, confirmed objects 6
+[controller_server-6] [INFO] [1794980778.565606203] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980779.665940683] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980780.666012043] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980781.665772388] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980782.665608909] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980783.554194324] [detector_node]: frames 960, map updates 211 (118 truncated), depth rejects 92, tf failures 351, confirmed objects 6
+[controller_server-6] [INFO] [1794980783.665972502] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980784.765840423] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980785.765909298] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980786.765605473] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980787.865588556] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980788.553286863] [detector_node]: frames 969, map updates 211 (118 truncated), depth rejects 92, tf failures 355, confirmed objects 6
+[controller_server-6] [INFO] [1794980788.865645191] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980789.866128666] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980790.021760109] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.56 ms, max 4.18 ms over 500 ticks
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[controller_server-6] [INFO] [1794980790.866131105] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980791.865587443] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980792.965778616] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980793.552982451] [detector_node]: frames 979, map updates 211 (118 truncated), depth rejects 92, tf failures 359, confirmed objects 6
+[controller_server-6] [INFO] [1794980793.965630250] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980794.965625762] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980795.965586185] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980797.065643829] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980798.065650085] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980798.553035344] [detector_node]: frames 988, map updates 211 (118 truncated), depth rejects 92, tf failures 363, confirmed objects 6
+[controller_server-6] [INFO] [1794980799.065608462] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980800.165586531] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980801.166035191] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980802.165634961] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980803.166040775] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980803.553113470] [detector_node]: frames 997, map updates 211 (118 truncated), depth rejects 92, tf failures 368, confirmed objects 6
+[controller_server-6] [INFO] [1794980804.261921251] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980805.262001039] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980806.261941575] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980807.262508303] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980808.261992516] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980808.750863577] [detector_node]: frames 1007, map updates 211 (118 truncated), depth rejects 92, tf failures 373, confirmed objects 6
+[controller_server-6] [INFO] [1794980809.262036437] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980810.319161713] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.56 ms, max 7.62 ms over 500 ticks
+[controller_server-6] [INFO] [1794980810.361902090] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980811.362414522] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980812.366675843] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980813.361884713] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980813.553766159] [detector_node]: frames 1016, map updates 211 (118 truncated), depth rejects 92, tf failures 377, confirmed objects 6
+[controller_server-6] [INFO] [1794980814.361975003] [controller_server]: Reached the goal!
+[controller_server-6] [INFO] [1794980814.363073428] [controller_server]: Optimizer reset
+[bt_navigator-11] [INFO] [1794980814.390531329] [bt_navigator]: Goal succeeded
+[policy_node-22] [INFO] [1794980818.088261253] [policy_node]: status: stand:cmd_vel timeout
+[detector_node-24] [INFO] [1794980818.553686797] [detector_node]: frames 1024, map updates 211 (118 truncated), depth rejects 92, tf failures 378, confirmed objects 6
+[planner_server-8] [WARN] [1794980822.891341299] [planner_server]:  plugin failed to plan from (0.10, -0.03) to (4.50, 0.00): "Failed to create plan with tolerance of: 0.300000"
+[planner_server-8] [WARN] [1794980822.892564857] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+[detector_node-24] [INFO] [1794980823.553380003] [detector_node]: frames 1031, map updates 211 (118 truncated), depth rejects 92, tf failures 382, confirmed objects 6
+[detector_node-24] [INFO] [1794980828.552937185] [detector_node]: frames 1039, map updates 211 (118 truncated), depth rejects 92, tf failures 385, confirmed objects 6
+[detector_node-24] [INFO] [1794980833.552634211] [detector_node]: frames 1048, map updates 211 (118 truncated), depth rejects 92, tf failures 388, confirmed objects 6
+[detector_node-24] [INFO] [1794980838.553537238] [detector_node]: frames 1058, map updates 211 (118 truncated), depth rejects 92, tf failures 392, confirmed objects 6
+[detector_node-24] [INFO] [1794980843.555016062] [detector_node]: frames 1067, map updates 211 (118 truncated), depth rejects 92, tf failures 397, confirmed objects 6
+[detector_node-24] [INFO] [1794980848.553202002] [detector_node]: frames 1077, map updates 211 (118 truncated), depth rejects 92, tf failures 401, confirmed objects 6
+[detector_node-24] [INFO] [1794980853.553750968] [detector_node]: frames 1087, map updates 211 (118 truncated), depth rejects 92, tf failures 405, confirmed objects 6
+[detector_node-24] [INFO] [1794980858.552715063] [detector_node]: frames 1096, map updates 211 (118 truncated), depth rejects 92, tf failures 410, confirmed objects 6
+[planner_server-8] [WARN] [1794980858.903863285] [planner_server]:  plugin failed to plan from (0.10, -0.03) to (4.50, 0.00): "Failed to create plan with tolerance of: 0.300000"
+[planner_server-8] [WARN] [1794980858.904034227] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+[planner_server-8] [WARN] [1794980858.933154014] [planner_server]:  plugin failed to plan from (0.10, -0.03) to (4.50, 0.00): "Failed to create plan with tolerance of: 0.300000"
+[planner_server-8] [WARN] [1794980858.933316681] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+[bt_navigator-11] [INFO] [1794980858.953117875] [bt_navigator]: Begin navigating from current location (0.10, -0.03) to (0.25, 0.00)
+[controller_server-6] [INFO] [1794980858.970818486] [controller_server]: Received a goal, begin computing control effort.
+[controller_server-6] [INFO] [1794980858.970949305] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980859.097947954] [policy_node]: status: policy
+[controller_server-6] [INFO] [1794980860.071075970] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980861.071199589] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980862.071067719] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980863.071105223] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980863.553346029] [detector_node]: frames 1105, map updates 211 (118 truncated), depth rejects 92, tf failures 415, confirmed objects 6
+[controller_server-6] [INFO] [1794980864.168179187] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980865.168055712] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980866.168371588] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980867.169398856] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980868.168057934] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980868.602499898] [detector_node]: frames 1115, map updates 215 (119 truncated), depth rejects 92, tf failures 418, confirmed objects 6
+[controller_server-6] [INFO] [1794980869.268139319] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980870.268059982] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980871.268144549] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980871.940097353] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.62 ms, max 5.92 ms over 500 ticks
+[controller_server-6] [INFO] [1794980872.268067463] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980873.368060570] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980873.553524190] [detector_node]: frames 1124, map updates 219 (122 truncated), depth rejects 94, tf failures 423, confirmed objects 6
+[controller_server-6] [INFO] [1794980874.368088627] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980875.368154841] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980876.368025315] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980877.468056198] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980878.468074660] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980878.553292588] [detector_node]: frames 1133, map updates 220 (123 truncated), depth rejects 97, tf failures 427, confirmed objects 6
+[controller_server-6] [INFO] [1794980879.468053099] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980880.468115752] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980881.468119386] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980882.568066617] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980883.562082113] [detector_node]: frames 1146, map updates 226 (129 truncated), depth rejects 98, tf failures 433, confirmed objects 6
+[controller_server-6] [INFO] [1794980883.568029564] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980884.568167605] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980885.568040408] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980886.568013642] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980887.668160417] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980888.260163279] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.45 ms, max 3.54 ms over 500 ticks
+[detector_node-24] [INFO] [1794980888.553359663] [detector_node]: frames 1159, map updates 228 (131 truncated), depth rejects 106, tf failures 438, confirmed objects 6
+[controller_server-6] [INFO] [1794980888.668066880] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980889.668042485] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980890.668028267] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980891.668041827] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980892.768036516] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980893.737349166] [detector_node]: frames 1174, map updates 229 (132 truncated), depth rejects 115, tf failures 443, confirmed objects 6
+[controller_server-6] [INFO] [1794980893.762179979] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980894.762202930] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980895.762183839] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980896.762166988] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980897.862222040] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980898.724845925] [detector_node]: frames 1188, map updates 234 (135 truncated), depth rejects 120, tf failures 449, confirmed objects 6
+[controller_server-6] [INFO] [1794980898.862173195] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980899.862187249] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980900.962164373] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980901.610428929] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.41 ms, max 4.91 ms over 500 ticks
+[controller_server-6] [INFO] [1794980901.962192179] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980902.962178188] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980903.552798988] [detector_node]: frames 1201, map updates 242 (137 truncated), depth rejects 120, tf failures 453, confirmed objects 6
+[controller_server-6] [INFO] [1794980903.962417630] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980904.962569785] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980906.062229395] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980907.062172189] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980908.062312804] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980908.673536486] [detector_node]: frames 1212, map updates 246 (138 truncated), depth rejects 120, tf failures 458, confirmed objects 6
+[controller_server-6] [INFO] [1794980909.062179075] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980910.062391779] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980910.062652765] [controller_server]: Reached the goal!
+[controller_server-6] [INFO] [1794980910.063020219] [controller_server]: Optimizer reset
+[bt_navigator-11] [INFO] [1794980910.104280092] [bt_navigator]: Goal succeeded
+[bt_navigator-11] [INFO] [1794980910.572287612] [bt_navigator]: Begin navigating from current location (0.16, -0.01) to (4.50, 0.00)
+[planner_server-8] [WARN] [1794980910.573802956] [planner_server]: GridBased plugin failed to plan from (0.16, -0.01) to (4.50, 0.00): "Failed to create plan with tolerance of: 0.300000"
+[planner_server-8] [WARN] [1794980910.573967529] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle.
+[planner_server-8] [INFO] [1794980910.596014612] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+[planner_server-8] [WARN] [1794980910.989463337] [planner_server]: Planner loop missed its desired rate of 20.0000 Hz. Current loop rate is 5.6818 Hz
+[controller_server-6] [INFO] [1794980911.005518044] [controller_server]: Received a goal, begin computing control effort.
+[controller_server-6] [INFO] [1794980912.108177032] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980913.106020963] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980913.555551173] [detector_node]: frames 1223, map updates 249 (141 truncated), depth rejects 128, tf failures 461, confirmed objects 6
+[controller_server-6] [INFO] [1794980914.106474915] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980915.205933353] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980916.205979663] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980917.206267424] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980918.205956301] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980918.265568014] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.47 ms, max 6.68 ms over 500 ticks
+[detector_node-24] [INFO] [1794980918.577867785] [detector_node]: frames 1235, map updates 254 (141 truncated), depth rejects 131, tf failures 465, confirmed objects 6
+[controller_server-6] [INFO] [1794980919.305890740] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980920.305968116] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980921.306019097] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980922.306460972] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980923.402687905] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980923.553014626] [detector_node]: frames 1243, map updates 256 (141 truncated), depth rejects 131, tf failures 471, confirmed objects 6
+[controller_server-6] [INFO] [1794980924.402944042] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980925.403216510] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980926.502762480] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980927.502729024] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980928.502794467] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980928.552662528] [detector_node]: frames 1255, map updates 264 (145 truncated), depth rejects 131, tf failures 474, confirmed objects 6
+[controller_server-6] [INFO] [1794980929.502700939] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980930.602737770] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980931.604258985] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980932.602810149] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980933.553403461] [detector_node]: frames 1268, map updates 277 (147 truncated), depth rejects 131, tf failures 475, confirmed objects 6
+[controller_server-6] [INFO] [1794980933.603254441] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980934.628517592] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.50 ms, max 14.97 ms over 500 ticks
+[controller_server-6] [INFO] [1794980934.702647824] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980935.702946246] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980936.702691970] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980937.702663487] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980938.552548338] [detector_node]: frames 1282, map updates 285 (155 truncated), depth rejects 131, tf failures 478, confirmed objects 6
+[controller_server-6] [INFO] [1794980938.802746936] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980939.802628725] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980940.802632816] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980941.802701269] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980942.802638399] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980943.552861173] [detector_node]: frames 1295, map updates 288 (158 truncated), depth rejects 131, tf failures 480, confirmed objects 6
+[controller_server-6] [INFO] [1794980943.902611443] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980944.902613924] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980945.902640914] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980947.002740969] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980948.002664118] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980948.553397963] [detector_node]: frames 1309, map updates 294 (161 truncated), depth rejects 131, tf failures 485, confirmed objects 6
+[policy_node-22] [INFO] [1794980948.612781343] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.41 ms, max 2.88 ms over 500 ticks
+[controller_server-6] [INFO] [1794980949.002703193] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980950.002759349] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980951.003451633] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980952.104657758] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980953.102690152] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980953.553931914] [detector_node]: frames 1322, map updates 300 (162 truncated), depth rejects 131, tf failures 486, confirmed objects 6
+[controller_server-6] [INFO] [1794980954.101810612] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980955.101097950] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980956.101128909] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980957.202541801] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980958.201431607] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980958.553405637] [detector_node]: frames 1332, map updates 302 (163 truncated), depth rejects 131, tf failures 491, confirmed objects 6
+[controller_server-6] [INFO] [1794980959.201285044] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980960.201044404] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980961.301249703] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980962.301033463] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980963.301062999] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980963.553063674] [detector_node]: frames 1341, map updates 304 (165 truncated), depth rejects 131, tf failures 495, confirmed objects 6
+[controller_server-6] [INFO] [1794980964.301084213] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980965.401191182] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980966.401081961] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980966.478600512] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.51 ms, max 6.67 ms over 500 ticks
+[controller_server-6] [INFO] [1794980967.402703683] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980968.401118994] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980968.552616419] [detector_node]: frames 1351, map updates 310 (165 truncated), depth rejects 131, tf failures 499, confirmed objects 6
+[controller_server-6] [INFO] [1794980969.401051073] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980970.501185911] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980971.501080098] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980972.501048178] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980973.501068426] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980973.563153830] [detector_node]: frames 1365, map updates 312 (167 truncated), depth rejects 131, tf failures 504, confirmed objects 6
+[controller_server-6] [INFO] [1794980974.501023860] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980975.601083703] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980976.601031640] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980977.605075583] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980978.552803019] [detector_node]: frames 1375, map updates 312 (167 truncated), depth rejects 131, tf failures 508, confirmed objects 6
+[controller_server-6] [INFO] [1794980978.601421933] [controller_server]: Passing new path to controller.
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[controller_server-6] [INFO] [1794980979.701028071] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980980.701057556] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980981.701138087] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794980982.361540493] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.45 ms, max 3.82 ms over 500 ticks
+[controller_server-6] [INFO] [1794980982.701564701] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980983.552673601] [detector_node]: frames 1387, map updates 314 (169 truncated), depth rejects 131, tf failures 512, confirmed objects 6
+[controller_server-6] [INFO] [1794980983.798168134] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980984.799268234] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980985.797521878] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980986.801429129] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980987.897470494] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980988.552659813] [detector_node]: frames 1398, map updates 318 (169 truncated), depth rejects 131, tf failures 516, confirmed objects 6
+[controller_server-6] [INFO] [1794980988.897550831] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980989.900918863] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980990.899749047] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980991.897509662] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980992.997495832] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980993.552959046] [detector_node]: frames 1409, map updates 324 (171 truncated), depth rejects 131, tf failures 521, confirmed objects 6
+[controller_server-6] [INFO] [1794980993.998261616] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980994.997538001] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980995.997479898] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980997.097444096] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794980998.097586331] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794980998.554947632] [detector_node]: frames 1419, map updates 324 (171 truncated), depth rejects 131, tf failures 525, confirmed objects 6
+[controller_server-6] [INFO] [1794980999.097524488] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981000.108386042] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981000.170672828] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.49 ms, max 4.73 ms over 500 ticks
+[controller_server-6] [INFO] [1794981001.097662537] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981002.197567246] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981003.198144007] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981003.553315178] [detector_node]: frames 1428, map updates 326 (173 truncated), depth rejects 131, tf failures 531, confirmed objects 6
+[controller_server-6] [INFO] [1794981004.197517629] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981005.197512781] [controller_server]: Passing new path to controller.
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[controller_server-6] [INFO] [1794981006.297514551] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981007.297490107] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981008.297522313] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981008.552797397] [detector_node]: frames 1437, map updates 327 (174 truncated), depth rejects 131, tf failures 534, confirmed objects 6
+[controller_server-6] [INFO] [1794981009.297638987] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981010.297609407] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981011.397511966] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981012.397519501] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981013.394030897] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981013.554162415] [detector_node]: frames 1446, map updates 331 (178 truncated), depth rejects 131, tf failures 537, confirmed objects 6
+[controller_server-6] [INFO] [1794981014.394053571] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981015.494035305] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981016.493964793] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981017.494143507] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981018.494226903] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981018.553208085] [detector_node]: frames 1455, map updates 332 (178 truncated), depth rejects 131, tf failures 541, confirmed objects 6
+[controller_server-6] [INFO] [1794981019.494074635] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981020.594144512] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981021.021504870] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.59 ms, max 4.53 ms over 500 ticks
+[controller_server-6] [INFO] [1794981021.594210623] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981022.594412935] [controller_server]: Passing new path to controller.
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[detector_node-24] [INFO] [1794981023.552923393] [detector_node]: frames 1464, map updates 338 (180 truncated), depth rejects 131, tf failures 544, confirmed objects 6
+[controller_server-6] [INFO] [1794981023.594132161] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981024.593964180] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981025.594023830] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981026.694014178] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981027.693989850] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981028.553277466] [detector_node]: frames 1473, map updates 339 (181 truncated), depth rejects 131, tf failures 548, confirmed objects 6
+[controller_server-6] [INFO] [1794981028.694020296] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981029.694126236] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981030.694234463] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981031.794050736] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981032.794545915] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981033.494294260] [controller_server]: Reached the goal!
+[controller_server-6] [INFO] [1794981033.494970485] [controller_server]: Optimizer reset
+[bt_navigator-11] [INFO] [1794981033.518550816] [bt_navigator]: Goal succeeded
+[detector_node-24] [INFO] [1794981033.774981901] [detector_node]: frames 1482, map updates 339 (181 truncated), depth rejects 131, tf failures 553, confirmed objects 6
+[policy_node-22] [INFO] [1794981036.443130987] [policy_node]: status: stand:cmd_vel timeout
+[detector_node-24] [INFO] [1794981038.553329714] [detector_node]: frames 1490, map updates 339 (181 truncated), depth rejects 131, tf failures 556, confirmed objects 6
+[detector_node-24] [INFO] [1794981043.648810984] [detector_node]: frames 1500, map updates 339 (181 truncated), depth rejects 131, tf failures 561, confirmed objects 6
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[detector_node-24] [INFO] [1794981048.751249406] [detector_node]: frames 1513, map updates 339 (181 truncated), depth rejects 131, tf failures 566, confirmed objects 6
+[bt_navigator-11] [INFO] [1794981049.417703185] [bt_navigator]: Begin navigating from current location (4.60, -0.06) to (0.00, 0.00)
+[controller_server-6] [INFO] [1794981049.429072950] [controller_server]: Received a goal, begin computing control effort.
+[policy_node-22] [INFO] [1794981049.602731282] [policy_node]: status: policy
+[controller_server-6] [INFO] [1794981050.531824492] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981051.530397290] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981052.530437692] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981053.530656375] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981053.601616921] [detector_node]: frames 1525, map updates 339 (181 truncated), depth rejects 131, tf failures 572, confirmed objects 6
+[policy_node-22] [INFO] [1794981054.224704592] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.59 ms, max 5.67 ms over 500 ticks
+[controller_server-6] [INFO] [1794981054.630629831] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981055.630908503] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981056.630446637] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981057.630394679] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981058.730440992] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981058.797732798] [detector_node]: frames 1534, map updates 339 (181 truncated), depth rejects 131, tf failures 576, confirmed objects 6
+[controller_server-6] [INFO] [1794981059.730647980] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981060.731266073] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981061.731071964] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981062.830398343] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981063.553518001] [detector_node]: frames 1543, map updates 340 (182 truncated), depth rejects 131, tf failures 580, confirmed objects 6
+[controller_server-6] [INFO] [1794981063.830571187] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981064.830391846] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981065.830408098] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981066.930405957] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981067.930998525] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981068.553408716] [detector_node]: frames 1554, map updates 345 (182 truncated), depth rejects 132, tf failures 583, confirmed objects 6
+[controller_server-6] [INFO] [1794981068.930404678] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981069.930453402] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981071.030379178] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981072.030443375] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981072.669438211] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.51 ms, max 5.50 ms over 500 ticks
+[controller_server-6] [INFO] [1794981073.030404719] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981073.795864584] [detector_node]: frames 1565, map updates 351 (185 truncated), depth rejects 132, tf failures 589, confirmed objects 6
+[controller_server-6] [INFO] [1794981074.027354623] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981075.127238901] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981076.127294602] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981077.128046680] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981078.127290262] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981078.553634994] [detector_node]: frames 1577, map updates 351 (185 truncated), depth rejects 132, tf failures 594, confirmed objects 6
+[controller_server-6] [INFO] [1794981079.227258011] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981080.227410097] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981081.227270629] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981082.227370469] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981083.327277653] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981083.552458287] [detector_node]: frames 1591, map updates 351 (185 truncated), depth rejects 132, tf failures 599, confirmed objects 6
+[controller_server-6] [INFO] [1794981084.327259549] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981085.327268170] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981086.327304322] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981086.845673647] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.44 ms, max 4.79 ms over 500 ticks
+[controller_server-6] [INFO] [1794981087.427320681] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981088.427269917] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981088.552928292] [detector_node]: frames 1605, map updates 361 (188 truncated), depth rejects 132, tf failures 603, confirmed objects 6
+[controller_server-6] [INFO] [1794981089.427281187] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981090.427267436] [controller_server]: Passing new path to controller.
+[collision_monitor-14] [INFO] [1794981091.349669187] [collision_monitor]: Robot to approach for 2.000000 seconds away from collision
+[controller_server-6] [INFO] [1794981091.527284980] [controller_server]: Passing new path to controller.
+[collision_monitor-14] [INFO] [1794981091.592628034] [collision_monitor]: Robot to continue normal operation
+[collision_monitor-14] [INFO] [1794981091.689875085] [collision_monitor]: Robot to approach for 2.000000 seconds away from collision
+[collision_monitor-14] [INFO] [1794981091.769533361] [collision_monitor]: Robot to continue normal operation
+[collision_monitor-14] [INFO] [1794981091.879148953] [collision_monitor]: Robot to approach for 2.000000 seconds away from collision
+[collision_monitor-14] [INFO] [1794981091.989367924] [collision_monitor]: Robot to continue normal operation
+[controller_server-6] [INFO] [1794981092.527453463] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981093.527273088] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981093.552575950] [detector_node]: frames 1619, map updates 366 (192 truncated), depth rejects 132, tf failures 607, confirmed objects 6
+[controller_server-6] [INFO] [1794981094.527304092] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981095.627297814] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981096.627260282] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981097.627248887] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981098.552866504] [detector_node]: frames 1633, map updates 374 (198 truncated), depth rejects 132, tf failures 612, confirmed objects 6
+[controller_server-6] [INFO] [1794981098.628399675] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981099.727277307] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981100.073386346] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.39 ms, max 2.61 ms over 500 ticks
+[controller_server-6] [INFO] [1794981100.727263790] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981101.727481851] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981102.727932324] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981103.560286990] [detector_node]: frames 1645, map updates 378 (202 truncated), depth rejects 132, tf failures 617, confirmed objects 6
+[controller_server-6] [INFO] [1794981103.824364792] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981104.825450683] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981105.824557552] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981106.824363163] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981107.924521055] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981108.570458676] [detector_node]: frames 1657, map updates 384 (204 truncated), depth rejects 132, tf failures 623, confirmed objects 6
+[controller_server-6] [INFO] [1794981108.924352016] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981109.924350445] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981110.924788033] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981111.924916270] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981113.024355829] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981113.552883073] [detector_node]: frames 1670, map updates 385 (205 truncated), depth rejects 132, tf failures 627, confirmed objects 6
+[controller_server-6] [INFO] [1794981114.028855002] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981115.024405336] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981115.407019509] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.44 ms, max 6.86 ms over 500 ticks
+[controller_server-6] [INFO] [1794981116.024382733] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981117.024670482] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981118.124945522] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981118.553407090] [detector_node]: frames 1684, map updates 385 (205 truncated), depth rejects 132, tf failures 632, confirmed objects 6
+[controller_server-6] [INFO] [1794981119.124415248] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981120.124446186] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981121.124845930] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981122.224866569] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981123.224664033] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981123.553637689] [detector_node]: frames 1695, map updates 388 (208 truncated), depth rejects 132, tf failures 635, confirmed objects 6
+[controller_server-6] [INFO] [1794981124.224472483] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981125.224323090] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981126.224573096] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981127.324403400] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981128.324448596] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981128.553268072] [detector_node]: frames 1706, map updates 394 (211 truncated), depth rejects 132, tf failures 637, confirmed objects 6
+[controller_server-6] [INFO] [1794981129.324353046] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981130.324719522] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981131.324339456] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981131.769320909] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.50 ms, max 4.71 ms over 500 ticks
+[controller_server-6] [INFO] [1794981132.424375591] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981133.417581581] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981133.553088846] [detector_node]: frames 1717, map updates 394 (211 truncated), depth rejects 132, tf failures 642, confirmed objects 6
+[controller_server-6] [INFO] [1794981134.417126231] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981135.417043138] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981136.417090221] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981137.517087672] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981138.517092249] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981138.593140388] [detector_node]: frames 1730, map updates 394 (211 truncated), depth rejects 132, tf failures 648, confirmed objects 6
+[controller_server-6] [INFO] [1794981139.517112959] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981140.517181586] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981141.617155436] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981142.618130217] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981143.585894274] [detector_node]: frames 1742, map updates 408 (218 truncated), depth rejects 132, tf failures 650, confirmed objects 6
+[controller_server-6] [INFO] [1794981143.617326751] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981144.617125352] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981145.617088808] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981146.717113227] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981146.754531167] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.43 ms, max 5.04 ms over 500 ticks
+[controller_server-6] [INFO] [1794981147.717578531] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981148.553144364] [detector_node]: frames 1755, map updates 416 (219 truncated), depth rejects 132, tf failures 656, confirmed objects 6
+[controller_server-6] [INFO] [1794981148.720999175] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981149.718041099] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981150.717278901] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981151.817122451] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981152.817107613] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981153.636222728] [detector_node]: frames 1768, map updates 422 (221 truncated), depth rejects 132, tf failures 662, confirmed objects 6
+[controller_server-6] [INFO] [1794981153.817085834] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981154.817166396] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981155.917128322] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981156.917131975] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981157.917899058] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981158.631531544] [detector_node]: frames 1782, map updates 422 (221 truncated), depth rejects 132, tf failures 665, confirmed objects 6
+[controller_server-6] [INFO] [1794981158.917136978] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981160.017994743] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981160.962614143] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.42 ms, max 4.72 ms over 500 ticks
+[controller_server-6] [INFO] [1794981161.017206421] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981162.017108332] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981163.017108865] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981163.554396382] [detector_node]: frames 1794, map updates 422 (221 truncated), depth rejects 132, tf failures 671, confirmed objects 6
+[controller_server-6] [INFO] [1794981164.117590421] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981165.117468644] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981166.120674038] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981167.117543331] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981168.117599830] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981168.553402054] [detector_node]: frames 1803, map updates 422 (221 truncated), depth rejects 132, tf failures 673, confirmed objects 6
+[controller_server-6] [INFO] [1794981169.121417522] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981170.218099730] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981171.220835044] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981172.217867798] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981173.218976108] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981173.553298669] [detector_node]: frames 1810, map updates 422 (221 truncated), depth rejects 132, tf failures 677, confirmed objects 6
+[controller_server-6] [INFO] [1794981174.317600002] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981175.317469272] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981176.317507191] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981177.317782229] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981178.417520206] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981178.552915579] [detector_node]: frames 1820, map updates 422 (221 truncated), depth rejects 132, tf failures 679, confirmed objects 6
+[controller_server-6] [INFO] [1794981179.417548721] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981179.990171899] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.52 ms, max 6.66 ms over 500 ticks
+[controller_server-6] [INFO] [1794981180.417504217] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981181.417505942] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981182.417512638] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981183.518603471] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981183.553318720] [detector_node]: frames 1835, map updates 422 (221 truncated), depth rejects 132, tf failures 683, confirmed objects 6
+[controller_server-6] [INFO] [1794981184.517512623] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981185.517724672] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981186.517513227] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981187.617531170] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981188.552681672] [detector_node]: frames 1849, map updates 427 (225 truncated), depth rejects 132, tf failures 689, confirmed objects 6
+[controller_server-6] [INFO] [1794981188.617585898] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981189.617539117] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981190.617594608] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981191.617528724] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981192.717814120] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981192.989822815] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.38 ms, max 2.33 ms over 500 ticks
+[detector_node-24] [INFO] [1794981193.552834584] [detector_node]: frames 1864, map updates 439 (226 truncated), depth rejects 133, tf failures 695, confirmed objects 6
+[controller_server-6] [INFO] [1794981193.714049004] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981194.714505995] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981195.714100123] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981196.714066186] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981197.814039125] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981198.553493826] [detector_node]: frames 1879, map updates 442 (229 truncated), depth rejects 133, tf failures 702, confirmed objects 6
+[controller_server-6] [INFO] [1794981198.814071985] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981199.814290829] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981200.814035032] [controller_server]: Passing new path to controller.
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[controller_server-6] [INFO] [1794981201.915822740] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981202.914087212] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981203.553316928] [detector_node]: frames 1893, map updates 448 (235 truncated), depth rejects 133, tf failures 708, confirmed objects 6
+[controller_server-6] [INFO] [1794981203.914042073] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981204.914012538] [controller_server]: Passing new path to controller.
+[policy_node-22] [INFO] [1794981205.833464589] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.39 ms, max 3.71 ms over 500 ticks
+[controller_server-6] [INFO] [1794981206.014041038] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981207.014072221] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981208.014428573] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981208.552684572] [detector_node]: frames 1907, map updates 452 (235 truncated), depth rejects 133, tf failures 711, confirmed objects 6
+[controller_server-6] [INFO] [1794981209.015026976] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981210.014307437] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981211.114515330] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981212.114042799] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981213.114028403] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981213.694448527] [detector_node]: frames 1922, map updates 453 (236 truncated), depth rejects 133, tf failures 718, confirmed objects 6
+[controller_server-6] [INFO] [1794981214.114262045] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981215.114049571] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981216.214031892] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981217.214284712] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981218.214052640] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981218.553187907] [detector_node]: frames 1936, map updates 453 (236 truncated), depth rejects 133, tf failures 722, confirmed objects 6
+[gazebo-18] NodeShared::Publish() Error: Interrupted system call
+[policy_node-22] [INFO] [1794981219.124432826] [policy_node]: policy tick (obs+ONNX+mapping): mean 0.38 ms, max 1.60 ms over 500 ticks
+[controller_server-6] [INFO] [1794981219.214290011] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981220.214183545] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981221.314023738] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981222.314053684] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981223.310757762] [controller_server]: Passing new path to controller.
+[detector_node-24] [INFO] [1794981223.555084657] [detector_node]: frames 1951, map updates 453 (236 truncated), depth rejects 133, tf failures 728, confirmed objects 6
+[controller_server-6] [INFO] [1794981224.311284821] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981225.310693706] [controller_server]: Passing new path to controller.
+[controller_server-6] [INFO] [1794981225.810865955] [controller_server]: Reached the goal!
+[controller_server-6] [INFO] [1794981225.811782229] [controller_server]: Optimizer reset
+[bt_navigator-11] [INFO] [1794981225.838751563] [bt_navigator]: Goal succeeded
+[policy_node-22] [INFO] [1794981227.996830463] [policy_node]: status: stand:cmd_vel timeout
+[detector_node-24] [INFO] [1794981228.553327088] [detector_node]: frames 1964, map updates 453 (236 truncated), depth rejects 133, tf failures 733, confirmed objects 6
+[detector_node-24] [INFO] [1794981233.757748869] [detector_node]: frames 1977, map updates 453 (236 truncated), depth rejects 133, tf failures 740, confirmed objects 6
+[detector_node-24] [INFO] [1794981238.553019283] [detector_node]: frames 1989, map updates 453 (236 truncated), depth rejects 133, tf failures 745, confirmed objects 6

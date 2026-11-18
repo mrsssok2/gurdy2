@@ -25,6 +25,7 @@ class AlertMonitorNode(Node):
         super().__init__("alert_monitor_node")
         self.declare_parameter("odom_topic", "/odometry/filtered")
         self.declare_parameter("cmd_topic", "cmd_vel_smoothed")
+        self.declare_parameter("clock_topic", "/clock")      # /clock_slow (sim_clock_node) saves ~50 % of a core while idle
         self.mon = AlertMonitor(AlertConfig())
         self.t = None
         self.speed = self.cmd_speed = self.tilt = self.battery = self.legs = self.objects = None
@@ -32,7 +33,7 @@ class AlertMonitorNode(Node):
         self.aborted: set = set()
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE)
         self.pub = self.create_publisher(String, "/gurdy/alerts", 50)
-        self.create_subscription(Clock, "/clock", lambda m: setattr(self, "t", m.clock.sec + m.clock.nanosec * 1e-9), 10)
+        self.create_subscription(Clock, self.get_parameter("clock_topic").value, lambda m: setattr(self, "t", m.clock.sec + m.clock.nanosec * 1e-9), 10)
         self.create_subscription(Odometry, self.get_parameter("odom_topic").value, self._odom, 10)
         self.create_subscription(Twist, self.get_parameter("cmd_topic").value, self._cmd, 10)
         self.create_subscription(Imu, "/imu", self._imu, qos_profile_sensor_data)

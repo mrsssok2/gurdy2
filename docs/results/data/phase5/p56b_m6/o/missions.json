@@ -1,0 +1,140 @@
+[
+ {
+  "n": 6,
+  "name": "stop mid-walk + why",
+  "t0": 69.046,
+  "pose0": [
+   1.7381945625640134,
+   -0.17089160894668967,
+   -0.08460886321343865
+  ],
+  "turns": [
+   {
+    "say": "go to room B",
+    "reply": "Going to room b, 3.3 metres.",
+    "calls": [
+     [
+      "go_to",
+      {
+       "place": "room b"
+      }
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "go_to",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     }
+    ],
+    "llm_calls": 1,
+    "grounding": {},
+    "latency_s": 0.55,
+    "sim_t": 0.2
+   },
+   {
+    "say": "stop",
+    "reply": "Stopped.",
+    "calls": [
+     [
+      "stop",
+      {}
+     ]
+    ],
+    "verdicts": [
+     {
+      "outcome": "allow",
+      "rule": "estop_fast_path"
+     }
+    ],
+    "llm_calls": 0,
+    "grounding": {},
+    "latency_s": 0.0,
+    "sim_t": 12.4
+   },
+   {
+    "say": "why did you stop",
+    "reply": "You told me to stop.",
+    "calls": [
+     [
+      "why",
+      {
+       "about": "stop"
+      }
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "why",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     }
+    ],
+    "llm_calls": 2,
+    "grounding": {
+     "attempts": 1,
+     "fallback": false,
+     "rejected": [],
+     "violations": []
+    },
+    "latency_s": 0.7,
+    "sim_t": 15.0
+   }
+  ],
+  "pumped": [],
+  "sim_s": 15.0,
+  "pose1": [
+   2.1573295551060756,
+   0.4705130567533187,
+   0.8346160435199395
+  ],
+  "mission_state": "cancelled",
+  "events": [
+   {
+    "stamp": 69.28,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "go_to started.",
+    "data": {
+     "task_id": 1,
+     "tool": "go_to"
+    }
+   },
+   {
+    "stamp": 81.47,
+    "type": "task_failed",
+    "severity": "warning",
+    "source": "ros_backend",
+    "text": "go_to finished: cancelled.",
+    "data": {
+     "tool": "go_to",
+     "reached": false,
+     "target": {
+      "kind": "place",
+      "place": "room b",
+      "x": 4.5,
+      "y": 0.0
+     },
+     "final_distance_m": 2.37,
+     "travelled_m": 1.17,
+     "duration_s": 12.2,
+     "stopped_reason": "cancelled",
+     "task_id": 1
+    }
+   },
+   {
+    "stamp": 81.47,
+    "type": "user_stop",
+    "severity": "info",
+    "source": "user",
+    "text": "You told me to stop.",
+    "data": {
+     "tool": "go_to"
+    }
+   }
+  ]
+ }
+]

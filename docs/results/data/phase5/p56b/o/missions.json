@@ -1,0 +1,1351 @@
+[
+ {
+  "n": 1,
+  "name": "go to room B",
+  "t0": 54.48,
+  "pose0": [
+   1.2586156902912622,
+   -0.14270101749327116,
+   -0.1033092537689945
+  ],
+  "turns": [
+   {
+    "say": "go to room B",
+    "reply": "Going to room b, 4.6 metres.",
+    "calls": [
+     [
+      "go_to",
+      {
+       "place": "room b"
+      }
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "go_to",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     }
+    ],
+    "llm_calls": 1,
+    "grounding": {},
+    "latency_s": 0.77,
+    "sim_t": 0.5
+   }
+  ],
+  "pumped": [
+   [
+    15.8,
+    "New object: red box."
+   ],
+   [
+    28.0,
+    "New object: yellow box."
+   ],
+   [
+    65.0,
+    "I have arrived, 0.1 metres from the goal."
+   ]
+  ],
+  "sim_s": 65.0,
+  "pose1": [
+   4.440754314104429,
+   -0.05156059406110816,
+   0.16034399803967048
+  ],
+  "mission_state": "done",
+  "events": [
+   {
+    "stamp": 54.95,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "go_to started.",
+    "data": {
+     "task_id": 1,
+     "tool": "go_to"
+    }
+   },
+   {
+    "stamp": 70.22,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: red box.",
+    "data": {
+     "object_id": 4
+    }
+   },
+   {
+    "stamp": 82.41,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: yellow box.",
+    "data": {
+     "object_id": 6
+    }
+   },
+   {
+    "stamp": 119.53,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "go_to finished: reached.",
+    "data": {
+     "tool": "go_to",
+     "reached": true,
+     "target": {
+      "kind": "place",
+      "place": "room b",
+      "x": 4.5,
+      "y": 0.0
+     },
+     "final_distance_m": 0.08,
+     "travelled_m": 6.4,
+     "duration_s": 64.6,
+     "stopped_reason": "reached",
+     "task_id": 1
+    }
+   }
+  ]
+ },
+ {
+  "n": 2,
+  "name": "what is near you",
+  "t0": 122.609,
+  "pose0": [
+   4.4233125846181975,
+   -0.025324521081589398,
+   0.12372182211558212
+  ],
+  "turns": [
+   {
+    "say": "what is near you",
+    "reply": "In room b: a yellow box, 1.5 metres right; a green box, 1.6 metres left; a gray box, 1.8 metres behind; obstacle behind, 1.9 metres; obstacle right, 1.3 metres; obstacle ahead, 1.9 metres; obstacle left, 1.5 metres.",
+    "calls": [
+     [
+      "whats_nearby",
+      {}
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "whats_nearby",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     }
+    ],
+    "llm_calls": 2,
+    "grounding": {
+     "attempts": 1,
+     "fallback": false,
+     "rejected": [],
+     "violations": []
+    },
+    "latency_s": 1.86,
+    "sim_t": 1.1
+   }
+  ],
+  "pumped": [],
+  "sim_s": 1.1,
+  "pose1": [
+   4.423312551753518,
+   -0.02532418723408983,
+   0.12372168692614802
+  ],
+  "mission_state": "done",
+  "events": [
+   {
+    "stamp": 54.95,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "go_to started.",
+    "data": {
+     "task_id": 1,
+     "tool": "go_to"
+    }
+   },
+   {
+    "stamp": 70.22,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: red box.",
+    "data": {
+     "object_id": 4
+    }
+   },
+   {
+    "stamp": 82.41,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: yellow box.",
+    "data": {
+     "object_id": 6
+    }
+   },
+   {
+    "stamp": 119.53,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "go_to finished: reached.",
+    "data": {
+     "tool": "go_to",
+     "reached": true,
+     "target": {
+      "kind": "place",
+      "place": "room b",
+      "x": 4.5,
+      "y": 0.0
+     },
+     "final_distance_m": 0.08,
+     "travelled_m": 6.4,
+     "duration_s": 64.6,
+     "stopped_reason": "reached",
+     "task_id": 1
+    }
+   }
+  ]
+ },
+ {
+  "n": 3,
+  "name": "find the red box",
+  "t0": 126.833,
+  "pose0": [
+   4.423313541976525,
+   -0.02532616747195781,
+   0.12372509178783772
+  ],
+  "turns": [
+   {
+    "say": "find the red box",
+    "reply": "Found the red box in room a, 3.8 metres behind-left.",
+    "calls": [
+     [
+      "find",
+      {
+       "object": {
+        "class": "box",
+        "color": "red"
+       }
+      }
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "find",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     }
+    ],
+    "llm_calls": 1,
+    "grounding": {},
+    "latency_s": 0.62,
+    "sim_t": 0.4
+   }
+  ],
+  "pumped": [],
+  "sim_s": 1.5,
+  "pose1": [
+   4.42331403587927,
+   -0.025327155000483582,
+   0.12372679913455488
+  ],
+  "mission_state": "done",
+  "events": [
+   {
+    "stamp": 54.95,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "go_to started.",
+    "data": {
+     "task_id": 1,
+     "tool": "go_to"
+    }
+   },
+   {
+    "stamp": 70.22,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: red box.",
+    "data": {
+     "object_id": 4
+    }
+   },
+   {
+    "stamp": 82.41,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: yellow box.",
+    "data": {
+     "object_id": 6
+    }
+   },
+   {
+    "stamp": 119.53,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "go_to finished: reached.",
+    "data": {
+     "tool": "go_to",
+     "reached": true,
+     "target": {
+      "kind": "place",
+      "place": "room b",
+      "x": 4.5,
+      "y": 0.0
+     },
+     "final_distance_m": 0.08,
+     "travelled_m": 6.4,
+     "duration_s": 64.6,
+     "stopped_reason": "reached",
+     "task_id": 1
+    }
+   },
+   {
+    "stamp": 127.2,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "find started.",
+    "data": {
+     "task_id": 2,
+     "tool": "find"
+    }
+   },
+   {
+    "stamp": 127.2,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "find finished: done.",
+    "data": {
+     "tool": "find",
+     "found": true,
+     "object": {
+      "id": 4,
+      "class": "box",
+      "color": "red",
+      "x": 0.99,
+      "y": 1.62,
+      "distance_m": 3.81,
+      "bearing_deg": 147.3,
+      "bearing_word": "behind-left",
+      "place": "room a",
+      "last_seen_age_s": 14.3,
+      "score": 0.852
+     },
+     "source": "memory",
+     "searched_s": 0.0,
+     "areas_searched": [
+      "room b"
+     ],
+     "stopped_reason": "done",
+     "task_id": 2
+    }
+   }
+  ]
+ },
+ {
+  "n": 4,
+  "name": "where is the fire extinguisher",
+  "t0": 131.352,
+  "pose0": [
+   4.423314898715484,
+   -0.02532887993741373,
+   0.12372979678859146
+  ],
+  "turns": [
+   {
+    "say": "where is the fire extinguisher",
+    "reply": "I have not seen a fire extinguisher.",
+    "calls": [
+     [
+      "where_is",
+      {
+       "object": {
+        "class": "fire_extinguisher"
+       }
+      }
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "where_is",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     }
+    ],
+    "llm_calls": 2,
+    "grounding": {
+     "attempts": 1,
+     "fallback": false,
+     "rejected": [],
+     "violations": []
+    },
+    "latency_s": 0.82,
+    "sim_t": 0.5
+   }
+  ],
+  "pumped": [],
+  "sim_s": 0.5,
+  "pose1": [
+   4.423315021826867,
+   -0.025329126028567808,
+   0.12373022605480687
+  ],
+  "mission_state": "done",
+  "events": [
+   {
+    "stamp": 54.95,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "go_to started.",
+    "data": {
+     "task_id": 1,
+     "tool": "go_to"
+    }
+   },
+   {
+    "stamp": 70.22,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: red box.",
+    "data": {
+     "object_id": 4
+    }
+   },
+   {
+    "stamp": 82.41,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: yellow box.",
+    "data": {
+     "object_id": 6
+    }
+   },
+   {
+    "stamp": 119.53,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "go_to finished: reached.",
+    "data": {
+     "tool": "go_to",
+     "reached": true,
+     "target": {
+      "kind": "place",
+      "place": "room b",
+      "x": 4.5,
+      "y": 0.0
+     },
+     "final_distance_m": 0.08,
+     "travelled_m": 6.4,
+     "duration_s": 64.6,
+     "stopped_reason": "reached",
+     "task_id": 1
+    }
+   },
+   {
+    "stamp": 127.2,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "find started.",
+    "data": {
+     "task_id": 2,
+     "tool": "find"
+    }
+   },
+   {
+    "stamp": 127.2,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "find finished: done.",
+    "data": {
+     "tool": "find",
+     "found": true,
+     "object": {
+      "id": 4,
+      "class": "box",
+      "color": "red",
+      "x": 0.99,
+      "y": 1.62,
+      "distance_m": 3.81,
+      "bearing_deg": 147.3,
+      "bearing_word": "behind-left",
+      "place": "room a",
+      "last_seen_age_s": 14.3,
+      "score": 0.852
+     },
+     "source": "memory",
+     "searched_s": 0.0,
+     "areas_searched": [
+      "room b"
+     ],
+     "stopped_reason": "done",
+     "task_id": 2
+    }
+   }
+  ]
+ },
+ {
+  "n": 5,
+  "name": "find the red box and then go home",
+  "t0": 134.837,
+  "pose0": [
+   4.423316004168257,
+   -0.025331089416230565,
+   0.12373366523653052
+  ],
+  "turns": [
+   {
+    "say": "find the red box and then go home",
+    "reply": "Found the red box in room a, 3.8 metres behind-left. Going home, 4.6 metres.",
+    "calls": [
+     [
+      "find",
+      {
+       "object": {
+        "class": "box",
+        "color": "red"
+       }
+      }
+     ],
+     [
+      "return_home",
+      {}
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "find",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     },
+     {
+      "tool": "return_home",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     }
+    ],
+    "llm_calls": 1,
+    "grounding": {},
+    "latency_s": 0.99,
+    "sim_t": 0.6
+   }
+  ],
+  "pumped": [
+   [
+    30.9,
+    "New object: gray box."
+   ],
+   [
+    59.1,
+    "New object: blue box."
+   ],
+   [
+    135.7,
+    "I have arrived, 0.1 metres from the goal."
+   ]
+  ],
+  "sim_s": 135.7,
+  "pose1": [
+   0.1281182844969816,
+   -0.02278586415549866,
+   2.9749202300301185
+  ],
+  "mission_state": "done",
+  "events": [
+   {
+    "stamp": 135.42,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "find started.",
+    "data": {
+     "task_id": 3,
+     "tool": "find"
+    }
+   },
+   {
+    "stamp": 135.42,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "find finished: done.",
+    "data": {
+     "tool": "find",
+     "found": true,
+     "object": {
+      "id": 4,
+      "class": "box",
+      "color": "red",
+      "x": 0.99,
+      "y": 1.62,
+      "distance_m": 3.81,
+      "bearing_deg": 147.3,
+      "bearing_word": "behind-left",
+      "place": "room a",
+      "last_seen_age_s": 22.5,
+      "score": 0.852
+     },
+     "source": "memory",
+     "searched_s": 0.0,
+     "areas_searched": [
+      "room b"
+     ],
+     "stopped_reason": "done",
+     "task_id": 3
+    }
+   },
+   {
+    "stamp": 135.45,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "return_home started.",
+    "data": {
+     "task_id": 4,
+     "tool": "return_home"
+    }
+   },
+   {
+    "stamp": 165.68,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: gray box.",
+    "data": {
+     "object_id": 17
+    }
+   },
+   {
+    "stamp": 193.91,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: blue box.",
+    "data": {
+     "object_id": 22
+    }
+   },
+   {
+    "stamp": 270.57,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "return_home finished: reached.",
+    "data": {
+     "tool": "return_home",
+     "reached": true,
+     "target": {
+      "kind": "place",
+      "place": "home",
+      "x": 0.0,
+      "y": 0.0
+     },
+     "final_distance_m": 0.13,
+     "travelled_m": 12.96,
+     "duration_s": 135.1,
+     "stopped_reason": "reached",
+     "task_id": 4
+    }
+   }
+  ]
+ },
+ {
+  "n": 6,
+  "name": "stop mid-walk + why",
+  "t0": 273.682,
+  "pose0": [
+   0.0971734272202593,
+   -0.033407259378426646,
+   2.9891861770756405
+  ],
+  "turns": [
+   {
+    "say": "go to room B",
+    "reply": "I cannot find a path there; it is blocked or in unknown space.",
+    "calls": [
+     [
+      "go_to",
+      {
+       "place": "room b"
+      }
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "go_to",
+      "outcome": "refuse",
+      "rule": "unreachable",
+      "reason": "I cannot find a path there; it is blocked or in unknown space."
+     }
+    ],
+    "llm_calls": 1,
+    "grounding": {},
+    "latency_s": 0.73,
+    "sim_t": 0.2
+   },
+   {
+    "say": "stop",
+    "reply": "Stopped.",
+    "calls": [
+     [
+      "stop",
+      {}
+     ]
+    ],
+    "verdicts": [
+     {
+      "outcome": "allow",
+      "rule": "estop_fast_path"
+     }
+    ],
+    "llm_calls": 0,
+    "grounding": {},
+    "latency_s": 0.0,
+    "sim_t": 12.2
+   },
+   {
+    "say": "why did you stop",
+    "reply": "You told me to stop.",
+    "calls": [
+     [
+      "why",
+      {
+       "about": "stop"
+      }
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "why",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     }
+    ],
+    "llm_calls": 2,
+    "grounding": {
+     "attempts": 1,
+     "fallback": false,
+     "rejected": [],
+     "violations": []
+    },
+    "latency_s": 0.66,
+    "sim_t": 14.6
+   }
+  ],
+  "pumped": [],
+  "sim_s": 14.6,
+  "pose1": [
+   0.09717638693753783,
+   -0.03338878117415345,
+   2.989197120384775
+  ],
+  "mission_state": "done",
+  "events": [
+   {
+    "stamp": 135.42,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "find finished: done.",
+    "data": {
+     "tool": "find",
+     "found": true,
+     "object": {
+      "id": 4,
+      "class": "box",
+      "color": "red",
+      "x": 0.99,
+      "y": 1.62,
+      "distance_m": 3.81,
+      "bearing_deg": 147.3,
+      "bearing_word": "behind-left",
+      "place": "room a",
+      "last_seen_age_s": 22.5,
+      "score": 0.852
+     },
+     "source": "memory",
+     "searched_s": 0.0,
+     "areas_searched": [
+      "room b"
+     ],
+     "stopped_reason": "done",
+     "task_id": 3
+    }
+   },
+   {
+    "stamp": 135.45,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "return_home started.",
+    "data": {
+     "task_id": 4,
+     "tool": "return_home"
+    }
+   },
+   {
+    "stamp": 165.68,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: gray box.",
+    "data": {
+     "object_id": 17
+    }
+   },
+   {
+    "stamp": 193.91,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: blue box.",
+    "data": {
+     "object_id": 22
+    }
+   },
+   {
+    "stamp": 270.57,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "return_home finished: reached.",
+    "data": {
+     "tool": "return_home",
+     "reached": true,
+     "target": {
+      "kind": "place",
+      "place": "home",
+      "x": 0.0,
+      "y": 0.0
+     },
+     "final_distance_m": 0.13,
+     "travelled_m": 12.96,
+     "duration_s": 135.1,
+     "stopped_reason": "reached",
+     "task_id": 4
+    }
+   },
+   {
+    "stamp": 285.88,
+    "type": "user_stop",
+    "severity": "info",
+    "source": "user",
+    "text": "You told me to stop.",
+    "data": {
+     "tool": null
+    }
+   }
+  ]
+ },
+ {
+  "n": 7,
+  "name": "patrol room A and room B",
+  "t0": 291.296,
+  "pose0": [
+   0.09717565871915478,
+   -0.03338496547606902,
+   2.9892025067715258
+  ],
+  "turns": [
+   {
+    "say": "patrol room A and room B",
+    "reply": "Starting the patrol.",
+    "calls": [
+     [
+      "patrol",
+      {
+       "places": [
+        "room a",
+        "room b"
+       ]
+      }
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "patrol",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     }
+    ],
+    "llm_calls": 1,
+    "grounding": {},
+    "latency_s": 0.54,
+    "sim_t": 0.2
+   }
+  ],
+  "pumped": [
+   [
+    102.7,
+    "patrol done."
+   ]
+  ],
+  "sim_s": 102.7,
+  "pose1": [
+   4.553283130069058,
+   -0.05725870745860251,
+   0.13386621295018028
+  ],
+  "mission_state": "done",
+  "events": [
+   {
+    "stamp": 165.68,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: gray box.",
+    "data": {
+     "object_id": 17
+    }
+   },
+   {
+    "stamp": 193.91,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: blue box.",
+    "data": {
+     "object_id": 22
+    }
+   },
+   {
+    "stamp": 270.57,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "return_home finished: reached.",
+    "data": {
+     "tool": "return_home",
+     "reached": true,
+     "target": {
+      "kind": "place",
+      "place": "home",
+      "x": 0.0,
+      "y": 0.0
+     },
+     "final_distance_m": 0.13,
+     "travelled_m": 12.96,
+     "duration_s": 135.1,
+     "stopped_reason": "reached",
+     "task_id": 4
+    }
+   },
+   {
+    "stamp": 285.88,
+    "type": "user_stop",
+    "severity": "info",
+    "source": "user",
+    "text": "You told me to stop.",
+    "data": {
+     "tool": null
+    }
+   },
+   {
+    "stamp": 291.55,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "patrol started.",
+    "data": {
+     "task_id": 5,
+     "tool": "patrol"
+    }
+   },
+   {
+    "stamp": 394.02,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "patrol finished: done.",
+    "data": {
+     "tool": "patrol",
+     "places": [
+      {
+       "place": "room a",
+       "reached": true
+      },
+      {
+       "place": "room b",
+       "reached": true
+      }
+     ],
+     "reached": 2,
+     "new": [],
+     "missing": [],
+     "moved": [],
+     "travelled_m": 10.39,
+     "duration_s": 102.5,
+     "stopped_reason": "done",
+     "task_id": 5
+    }
+   }
+  ]
+ },
+ {
+  "n": 8,
+  "name": "ambiguous: go to the box",
+  "t0": 397.107,
+  "pose0": [
+   4.5980976651585745,
+   -0.05565851583900429,
+   0.11706959826253208
+  ],
+  "turns": [
+   {
+    "say": "go to the box",
+    "reply": "I know of 6 objects matching box. Which one? (yellow box in room b, green box in room b, gray box in room b, blue box in room a, gray box in room a, red box in room a)",
+    "calls": [
+     [
+      "go_to",
+      {
+       "object": {
+        "class": "box"
+       }
+      }
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "go_to",
+      "outcome": "clarify",
+      "rule": "ambiguous",
+      "reason": "I know of 6 objects matching box. Which one?"
+     }
+    ],
+    "llm_calls": 1,
+    "grounding": {},
+    "latency_s": 0.39,
+    "sim_t": 0.2
+   }
+  ],
+  "pumped": [],
+  "sim_s": 2.3,
+  "pose1": [
+   4.598097257751176,
+   -0.055658415168439876,
+   0.11707489408715924
+  ],
+  "mission_state": "done",
+  "events": [
+   {
+    "stamp": 165.68,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: gray box.",
+    "data": {
+     "object_id": 17
+    }
+   },
+   {
+    "stamp": 193.91,
+    "type": "object_new",
+    "severity": "info",
+    "source": "alert_monitor",
+    "text": "New object: blue box.",
+    "data": {
+     "object_id": 22
+    }
+   },
+   {
+    "stamp": 270.57,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "return_home finished: reached.",
+    "data": {
+     "tool": "return_home",
+     "reached": true,
+     "target": {
+      "kind": "place",
+      "place": "home",
+      "x": 0.0,
+      "y": 0.0
+     },
+     "final_distance_m": 0.13,
+     "travelled_m": 12.96,
+     "duration_s": 135.1,
+     "stopped_reason": "reached",
+     "task_id": 4
+    }
+   },
+   {
+    "stamp": 285.88,
+    "type": "user_stop",
+    "severity": "info",
+    "source": "user",
+    "text": "You told me to stop.",
+    "data": {
+     "tool": null
+    }
+   },
+   {
+    "stamp": 291.55,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "patrol started.",
+    "data": {
+     "task_id": 5,
+     "tool": "patrol"
+    }
+   },
+   {
+    "stamp": 394.02,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "patrol finished: done.",
+    "data": {
+     "tool": "patrol",
+     "places": [
+      {
+       "place": "room a",
+       "reached": true
+      },
+      {
+       "place": "room b",
+       "reached": true
+      }
+     ],
+     "reached": 2,
+     "new": [],
+     "missing": [],
+     "moved": [],
+     "travelled_m": 10.39,
+     "duration_s": 102.5,
+     "stopped_reason": "done",
+     "task_id": 5
+    }
+   }
+  ]
+ },
+ {
+  "n": 9,
+  "name": "unsafe: enter no-go zone",
+  "t0": 402.514,
+  "pose0": [
+   4.598097073479505,
+   -0.05565825485355662,
+   0.11708088508203159
+  ],
+  "turns": [
+   {
+    "say": "go home",
+    "reply": "Going home, 4.8 metres.",
+    "calls": [
+     [
+      "return_home",
+      {}
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "return_home",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     }
+    ],
+    "llm_calls": 1,
+    "grounding": {},
+    "latency_s": 0.5,
+    "sim_t": 0.3
+   },
+   {
+    "say": "mark room B as a no-go zone",
+    "reply": "1 no-go zones.",
+    "calls": [
+     [
+      "no_go_zone",
+      {
+       "action": "add",
+       "place": "room b",
+       "radius_m": 1.0
+      }
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "no_go_zone",
+      "outcome": "allow",
+      "rule": "",
+      "reason": ""
+     }
+    ],
+    "llm_calls": 1,
+    "grounding": {},
+    "latency_s": 0.74,
+    "sim_t": 118.8
+   },
+   {
+    "say": "go to room B",
+    "reply": "That is inside or behind a no-go zone.",
+    "calls": [
+     [
+      "go_to",
+      {
+       "place": "room b"
+      }
+     ]
+    ],
+    "verdicts": [
+     {
+      "tool": "go_to",
+      "outcome": "refuse",
+      "rule": "no_go_zone",
+      "reason": "That is inside or behind a no-go zone."
+     }
+    ],
+    "llm_calls": 1,
+    "grounding": {},
+    "latency_s": 0.5,
+    "sim_t": 121.0
+   }
+  ],
+  "pumped": [
+   [
+    118.3,
+    "I have arrived, 0.1 metres from the goal."
+   ]
+  ],
+  "sim_s": 124.1,
+  "pose1": [
+   0.12190628973011702,
+   0.011776116825708612,
+   3.043379211215889
+  ],
+  "mission_state": "done",
+  "events": [
+   {
+    "stamp": 270.57,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "return_home finished: reached.",
+    "data": {
+     "tool": "return_home",
+     "reached": true,
+     "target": {
+      "kind": "place",
+      "place": "home",
+      "x": 0.0,
+      "y": 0.0
+     },
+     "final_distance_m": 0.13,
+     "travelled_m": 12.96,
+     "duration_s": 135.1,
+     "stopped_reason": "reached",
+     "task_id": 4
+    }
+   },
+   {
+    "stamp": 285.88,
+    "type": "user_stop",
+    "severity": "info",
+    "source": "user",
+    "text": "You told me to stop.",
+    "data": {
+     "tool": null
+    }
+   },
+   {
+    "stamp": 291.55,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "patrol started.",
+    "data": {
+     "task_id": 5,
+     "tool": "patrol"
+    }
+   },
+   {
+    "stamp": 394.02,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "patrol finished: done.",
+    "data": {
+     "tool": "patrol",
+     "places": [
+      {
+       "place": "room a",
+       "reached": true
+      },
+      {
+       "place": "room b",
+       "reached": true
+      }
+     ],
+     "reached": 2,
+     "new": [],
+     "missing": [],
+     "moved": [],
+     "travelled_m": 10.39,
+     "duration_s": 102.5,
+     "stopped_reason": "done",
+     "task_id": 5
+    }
+   },
+   {
+    "stamp": 402.83,
+    "type": "task_started",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "return_home started.",
+    "data": {
+     "task_id": 6,
+     "tool": "return_home"
+    }
+   },
+   {
+    "stamp": 520.78,
+    "type": "task_finished",
+    "severity": "info",
+    "source": "ros_backend",
+    "text": "return_home finished: reached.",
+    "data": {
+     "tool": "return_home",
+     "reached": true,
+     "target": {
+      "kind": "place",
+      "place": "home",
+      "x": 0.0,
+      "y": 0.0
+     },
+     "final_distance_m": 0.11,
+     "travelled_m": 11.66,
+     "duration_s": 118.0,
+     "stopped_reason": "reached",
+     "task_id": 6
+    }
+   }
+  ]
+ }
+]

@@ -1,0 +1,9 @@
+[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-11-18-05-54-37-832580-eafaa83548d8-681
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [sim_clock_node-1]: process started with pid [689]
+[INFO] [battery_sim_node-2]: process started with pid [690]
+[INFO] [leg_health_node-3]: process started with pid [691]
+[INFO] [alert_monitor_node-4]: process started with pid [692]
+[battery_sim_node-2] [WARN] [1794981279.862676594] [battery_sim_node]: SIMULATED battery: the values on /battery are not measurements
+[alert_monitor_node-4] [INFO] [1794981329.265320042] [alert_monitor_node]: alert object_new: New object: green box.
+[alert_monitor_node-4] [INFO] [1794981345.243213815] [alert_monitor_node]: alert object_new: New object: gray box.

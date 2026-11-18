@@ -211,3 +211,22 @@ def test_confirmation_needs_span_score_and_consistency():
     assert len(m.confirmed()) == 1
     m.update("barrel", [1.2, 1.0, 0.4], 0.3, 9.0)
     assert len(m.confirmed()) == 1
+
+
+def test_dominance_suppresses_sparse_class_confusion_on_a_well_seen_object():
+    import numpy as np
+    from gurdy_core.vision.semantic_map import SemanticMap
+    def feed(m):
+        for i in range(60):
+            m.update("box", [1.0, 1.6, 0.15], 0.9, i * 0.5)
+        for i in range(8):                      # the same spot, a different class, 8 sightings
+            m.update("fire_extinguisher", [1.05, 1.62, 0.3], 0.7, i * 0.5)
+        m.update("traffic_cone", [3.0, 0.0, 0.2], 0.9, 1.0)
+        for i in range(1, 10):
+            m.update("traffic_cone", [3.0, 0.0, 0.2], 0.9, 1.0 + i)
+    off = SemanticMap(min_hits=5, min_span=2.0, min_mean_score=0.5)
+    feed(off)
+    assert {t.cls for t in off.confirmed()} == {"box", "fire_extinguisher", "traffic_cone"}
+    on = SemanticMap(min_hits=5, min_span=2.0, min_mean_score=0.5, dominance_ratio=4.0)
+    feed(on)
+    assert {t.cls for t in on.confirmed()} == {"box", "traffic_cone"}      # far-away real object unaffected

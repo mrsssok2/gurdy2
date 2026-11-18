@@ -21,5 +21,7 @@ setup(
     entry_points={"console_scripts": [
         "battery_sim_node = gurdy_safety.battery_sim_node:main",
         "leg_health_node = gurdy_safety.leg_health_node:main",
-        "alert_monitor_node = gurdy_safety.alert_monitor_node:main"]},
+        "alert_monitor_node = gurdy_safety.alert_monitor_node:main",
+        "estop_gate_node = gurdy_safety.estop_gate_node:main",
+        "sim_clock_node = gurdy_safety.sim_clock_node:main"]},
 )

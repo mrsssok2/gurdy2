@@ -1,0 +1,24 @@
+{
+ "1_walk": {
+  "safe_msgs": 81,
+  "safe_max": 0.12,
+  "safe_min": 0.12,
+  "odom_speed_last3s_mean": 0.129,
+  "odom_speed_max": 0.227
+ },
+ "2_estop": {
+  "safe_msgs": 75,
+  "safe_max": 0.0,
+  "safe_min": 0.0,
+  "odom_speed_last3s_mean": 0.0,
+  "odom_speed_max": 0.22
+ },
+ "3_released": {
+  "safe_msgs": 95,
+  "safe_max": 0.12,
+  "safe_min": 0.0,
+  "odom_speed_last3s_mean": 0.127,
+  "odom_speed_max": 0.24
+ },
+ "pass": true
+}

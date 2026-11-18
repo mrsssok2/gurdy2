@@ -11,6 +11,10 @@ Confirmation (a track is only reported once all hold, and stays confirmed afterw
   * the sightings span at least `min_span` seconds (a one-frame artefact seen in 3 consecutive frames is not enough);
   * mean detector score >= `min_mean_score`;
   * RMS scatter of the sightings around the track position <= `max_scatter` x gate (consistent position).
+Dominance (re-evaluated on every call, not sticky): a track is NOT reported while another track of any class sits within
+`dominance_radius` m with at least `dominance_ratio` x its hits. Two real objects cannot occupy the same spot, so a sparse
+"fire_extinguisher" on top of a box that was seen 100 times is the detector confusing classes (found in the 5.6 live test:
+red box -> 3-5 fire_extinguisher / 11 toolbox sightings vs 146 box). 0 turns the rule off.
 Sightings can carry a `weight_scale` < 1 (e.g. edge-truncated boxes: biased centre) that lowers their pull on the position.
 """
 from __future__ import annotations
@@ -67,9 +71,11 @@ class Track:
 
 class SemanticMap:
     def __init__(self, min_hits: int = 3, ttl: float = 10.0, gate_scale: float = 1.0, min_gate: float = 0.35,
-                 gates: dict | None = None, min_span: float = 0.0, min_mean_score: float = 0.0, max_scatter: float = 1e9):
+                 gates: dict | None = None, min_span: float = 0.0, min_mean_score: float = 0.0, max_scatter: float = 1e9,
+                 dominance_ratio: float = 0.0, dominance_radius: float = 0.35):
         self.min_hits, self.ttl, self.min_gate = min_hits, ttl, min_gate
         self.min_span, self.min_mean_score, self.max_scatter = min_span, min_mean_score, max_scatter
+        self.dominance_ratio, self.dominance_radius = dominance_ratio, dominance_radius
         self.gates = gates or {c: max(gate_scale * max(s[0], s[1]), min_gate) for c, s in SIZE_PRIOR.items()}
         self.tracks: list[Track] = []
         self._next = 1
@@ -137,8 +143,14 @@ class SemanticMap:
             if not merged:
                 i += 1
 
+    def _dominated(self, t: Track) -> bool:
+        if self.dominance_ratio <= 0:
+            return False
+        return any(o is not t and o.hits >= self.dominance_ratio * t.hits
+                   and float(np.linalg.norm(o.pos[:2] - t.pos[:2])) <= self.dominance_radius for o in self.tracks)
+
     def confirmed(self) -> list:
-        return [t for t in self.tracks if self._confirmed(t)]
+        return [t for t in self.tracks if self._confirmed(t) and not self._dominated(t)]
 
     def find(self, cls: str, near=None, color: str = "") -> list:
         """Confirmed tracks of a class, best first (nearest to `near` xy if given, else highest mean score)."""

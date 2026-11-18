@@ -577,10 +577,16 @@ class RosBackend:
         t = self.task
         self.p.send_cmd(0.0, 0.0, 0.0)
         if t is None:
+            self._user_stop(None)
             return ok(stopped=True, cancelled_task=None)
         tid, tool = t.id, t.tool
         self._finish(t, "cancelled")
+        self._user_stop(tool)      # the cause "why did you stop" must name
         return ok(stopped=True, cancelled_task={"task_id": tid, "tool": tool})
+
+    def _user_stop(self, tool) -> None:
+        if not self._recent("user_stop", 1.0):          # the agent's e-stop fast path calls stop() twice (executor + tool)
+            self._emit("user_stop", "info", "You told me to stop.", src="user", tool=tool)
 
     def estop(self, active: bool) -> Result:
         """Not a tool: the safety layer / e-stop button calls this. Latches /estop and cancels the task."""
@@ -696,12 +702,25 @@ class RosBackend:
                   alerts_active=list(self.alerts), policy=self.p.policy_status(), tilt_deg=self.p.tilt_deg())
 
     def why(self, about: str) -> Result:
-        types = {"stop": ("task_failed", "task_finished", "estop", "path_blocked", "fall"),
+        types = {"stop": ("task_failed", "task_finished", "estop", "path_blocked", "fall", "user_stop"),
                  "last_task": ("task_started", "task_finished", "task_failed", "path_blocked"),
                  "alert": ("leg_failure", "battery_low", "battery_critical", "path_blocked", "object_missing", "stuck", "fall"),
                  "refusal": ("refusal",)}[about]
         evs = [e for e in self.events if e["type"] in types]
-        evs = [e for e in evs if e["type"] != "task_started"][-3:] if about == "stop" else evs[-5:]
+        if about == "stop":
+            evs = evs[-1:]         # the LATEST cause only (older events are history, not the answer)
+            if evs and evs[0]["type"] == "user_stop":      # a user stop also leaves "x finished: cancelled" just before it: same cause
+                pass
+            elif evs and evs[0]["type"] == "task_finished":
+                evs = [dict(evs[0], text=f"I stopped because the {evs[0]['data'].get('tool', 'task').replace('_', ' ')} task finished.")]
+            elif evs and evs[0]["type"] == "task_failed" and evs[0]["data"].get("stopped_reason") == "blocked" \
+                    and (pb := [e for e in self.events if e["type"] == "path_blocked" and 0 <= evs[0]["stamp"] - e["stamp"] <= 5.0]):
+                evs = pb[-1:]      # the blockage is the cause, the failed task is its consequence
+            elif evs and evs[0]["type"] == "task_failed":
+                evs = [dict(evs[0], text=f"I stopped because the {evs[0]['data'].get('tool', 'task').replace('_', ' ')} task ended: "
+                                         f"{evs[0]['data'].get('stopped_reason', 'failed')}.")]
+        else:
+            evs = evs[-5:]
         return ok(events=[{k: e[k] for k in ("stamp", "type", "severity", "text")} for e in evs])
 
     def recall(self, what: str, query: dict | None = None) -> Result:

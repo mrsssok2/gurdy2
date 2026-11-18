@@ -64,6 +64,7 @@ class FrontierExplorer(Node):
         P("return_to_start", True)
         P("log_path", "explore_log.json")
         P("done_path", "explore.done")
+        P("clock_topic", "/clock")      # /clock_slow (gurdy_safety sim_clock_node): 94 % of a core idle on the 400 Hz /clock
         P("serve_action", False)         # wait for `explore` action goals instead of starting at launch
         g = lambda k: self.get_parameter(k).value
         self.p = {k: g(k) for k in ("min_cells", "clearance", "reach", "size_weight", "blacklist_radius", "goal_timeout",
@@ -76,7 +77,7 @@ class FrontierExplorer(Node):
         self.map = None
         qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE)
         self.create_subscription(OccupancyGrid, "/map", self.on_map, qos)
-        self.create_subscription(Clock, "/clock", self.on_clock, 10)
+        self.create_subscription(Clock, self.get_parameter("clock_topic").value, self.on_clock, 10)
         self._reset_state()
         self.serve = bool(self.get_parameter("serve_action").value)
         self.active = not self.serve               # tick only works while a run is active

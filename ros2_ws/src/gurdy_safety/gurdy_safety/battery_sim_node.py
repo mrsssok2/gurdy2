@@ -21,11 +21,12 @@ class BatterySim(Node):
         self.declare_parameter("drain_moving", 0.03)
         self.declare_parameter("drain_idle", 0.002)
         self.declare_parameter("odom_topic", "/odometry/filtered")
+        self.declare_parameter("clock_topic", "/clock")      # /clock_slow (sim_clock_node) saves ~40 % of a core while idle
         self.model = BatteryModel(self.get_parameter("level").value, self.get_parameter("drain_idle").value,
                                   self.get_parameter("drain_moving").value)
         self.speed = None
         self.t = None
-        self.create_subscription(Clock, "/clock", self._on_clock, 10)
+        self.create_subscription(Clock, self.get_parameter("clock_topic").value, self._on_clock, 10)
         self.create_subscription(Odometry, self.get_parameter("odom_topic").value, self._odom, 10)
         self.pub = self.create_publisher(BatteryState, "/battery", 10)
         self.add_on_set_parameters_callback(self._params)

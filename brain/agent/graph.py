@@ -275,7 +275,10 @@ class Agent:
                 events = self.executor.submit(motion, approved=s["approved"])
                 for step in self.executor.steps:
                     if step.status in ("running", "done") and step.result is not None and step.tool not in ("stop",):
-                        parts.append(templates.ack(step.tool, step.args, step.result))
+                        # a find that is answered from memory finishes inside submit(): say the RESULT (where, how far), not "Looking for"
+                        done = next((e for e in events if e["type"] in ("task_finished", "task_failed") and step.tool == "find"
+                                     and e["data"].get("task_id") == getattr(step, "task_id", None) and e["data"].get("tool") == "find"), None)
+                        parts.append(templates.describe_event(done) if done else templates.ack(step.tool, step.args, step.result))
                     elif step.status == "failed":
                         parts.append(step.result["error"]["message"] if step.result and step.result.get("error") else "I could not start that.")
                 if self.executor.state == "awaiting_confirmation" and self.executor.waiting:

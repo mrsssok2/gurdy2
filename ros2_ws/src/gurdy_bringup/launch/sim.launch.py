@@ -55,10 +55,14 @@ def generate_launch_description():
     defaults = {"gui": "true", "sensors": "true", "world": "", "robot_yaml": "", "js_rate": "100"}   # world "" = auto
     sim = OpaqueFunction(function=_gazebo_setup)
     controller = LaunchConfiguration("controller")     # tripod (gait_node) | policy (policy_node, needs sensors:=true)
-    gait = Node(package="gurdy_gait", executable="gait_node", output="screen",
+    gate = LaunchConfiguration("estop_gate")           # true: /cmd_vel -> estop_gate_node -> /cmd_vel_safe -> controller
+    cmd_in = PythonExpression(["'/cmd_vel_safe' if '", gate, "' == 'true' else '/cmd_vel'"])
+    estop_gate = Node(package="gurdy_safety", executable="estop_gate_node", output="screen",
+                      condition=IfCondition(PythonExpression(["'", gate, "' == 'true'"])))
+    gait = Node(package="gurdy_gait", executable="gait_node", output="screen", remappings=[("/cmd_vel", cmd_in)],
                 condition=IfCondition(PythonExpression(["'", controller, "' == 'tripod'"])),
                 parameters=[{"robot_yaml": LaunchConfiguration("robot_yaml")}])   # timed by /joint_states stamps
-    policy = Node(package="gurdy_policy", executable="policy_node", output="screen",
+    policy = Node(package="gurdy_policy", executable="policy_node", output="screen", remappings=[("/cmd_vel", cmd_in)],
                   condition=IfCondition(PythonExpression(["'", controller, "' == 'policy'"])),
                   parameters=[{"robot_yaml": LaunchConfiguration("robot_yaml"), "model": LaunchConfiguration("model")}])
     perception = Node(package="gurdy_perception", executable="detector_node", output="screen",
@@ -85,4 +89,5 @@ def generate_launch_description():
            DeclareLaunchArgument("detector_model", default_value="", description="ONNX in models/detector/ (default det_v2_s.onnx)"),
            DeclareLaunchArgument("detector_log", default_value="", description="JSON-lines log of every detector sighting"),
            DeclareLaunchArgument("target_frame", default_value="map", description="frame of the semantic map (odom without SLAM)"),
-           DeclareLaunchArgument("model", default_value=""), sim, gait, policy, perception, rviz])
+           DeclareLaunchArgument("estop_gate", default_value="false", description="cmd_vel e-stop gate (gurdy_safety) in front of the controller"),
+           DeclareLaunchArgument("model", default_value=""), sim, gait, policy, estop_gate, perception, rviz])

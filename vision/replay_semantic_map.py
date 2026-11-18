@@ -18,7 +18,9 @@ SETTINGS = [  # name, skip truncated, truncated weight, SemanticMap kwargs
     ("truncated mapped (w 0.25), 3 hits only", False, 0.25, dict(min_hits=3)),
     ("truncated mapped (w 0.25), 3 hits + span 1 s + score 0.5 + scatter 0.5 (first try)", False, 0.25,
      dict(min_hits=3, min_span=1.0, min_mean_score=0.5, max_scatter=0.5)),
-    ("5 hits + span 2 s + score 0.5 + scatter 0.5 (node default now)", False, 0.25, dict(min_hits=5, min_span=2.0, min_mean_score=0.5, max_scatter=0.5)),
+    ("5 hits + span 2 s + score 0.5 + scatter 0.5 (old node default)", False, 0.25, dict(min_hits=5, min_span=2.0, min_mean_score=0.5, max_scatter=0.5)),
+    ("default + dominance 4x within 0.35 m", False, 0.25, dict(min_hits=5, min_span=2.0, min_mean_score=0.5, max_scatter=0.5, dominance_ratio=4.0)),
+    ("8 hits + score 0.6 + dominance 4x (node default now)", False, 0.25, dict(min_hits=8, min_span=2.0, min_mean_score=0.6, max_scatter=0.5, dominance_ratio=4.0)),
     ("as default, but 10 hits + span 3 s + score 0.7", False, 0.25, dict(min_hits=10, min_span=3.0, min_mean_score=0.7, max_scatter=0.5)),
 ]
 

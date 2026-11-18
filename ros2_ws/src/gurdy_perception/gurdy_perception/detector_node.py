@@ -63,9 +63,10 @@ class DetectorNode(Node):
         P = self.declare_parameter
         P("model", ""); P("providers", "auto"); P("conf", 0.40); P("iou", 0.5)
         P("target_frame", "map"); P("max_range", 4.0); P("min_range", 0.25); P("max_rate_hz", 5.0)
-        P("min_hits", 5); P("ttl", 10.0); P("edge_margin", 3.0); P("tf_timeout", 0.2)
+        P("min_hits", 8); P("ttl", 10.0); P("edge_margin", 3.0); P("tf_timeout", 0.2)
         P("truncated_weight", 0.25)      # position weight of edge-truncated sightings (1 = like a full box, 0 = skip them)
-        P("min_span", 2.0); P("min_mean_score", 0.5); P("max_scatter", 0.5)   # track confirmation (semantic_map.py)
+        P("min_span", 2.0); P("min_mean_score", 0.6); P("max_scatter", 0.5)   # track confirmation (semantic_map.py)
+        P("dominance_ratio", 4.0); P("dominance_radius", 0.35)   # a sparse track on top of a >= 4x better seen one is a class confusion
         P("log_path", "")                # JSON-lines log of every sighting, for offline replay of the confirmation rules
         P("debug_image", False); P("save_path", "")
         model = self.get_parameter("model").value or DEFAULT_MODEL
@@ -75,7 +76,8 @@ class DetectorNode(Node):
         self.det = OnnxDetector(model, g("providers"), conf=g("conf"), iou=g("iou"))
         self.get_logger().info(f"detector {os.path.basename(model)} on {self.det.provider}, input {self.det.hw}")
         self.map = SemanticMap(min_hits=g("min_hits"), ttl=g("ttl"), min_span=g("min_span"), min_mean_score=g("min_mean_score"),
-                               max_scatter=g("max_scatter"))
+                               max_scatter=g("max_scatter"),
+                               dominance_ratio=g("dominance_ratio"), dominance_radius=g("dominance_radius"))
         self.log = open(g("log_path"), "w") if g("log_path") else None
         self.tf = Buffer()
         self.tfl = TransformListener(self.tf, self)

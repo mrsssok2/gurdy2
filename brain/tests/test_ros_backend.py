@@ -506,3 +506,25 @@ def test_estop_cancels_task_zeroes_velocity_and_latches(tmp_path):
     assert p.estop and p.cmd == (0.0, 0.0, 0.0) and final(b)["stopped_reason"] == "estop"
     assert b.walk("forward", 0.5).code == "ESTOP" and b.status().data["mode"] == "estop"
     assert b.estop(False).ok and b.walk("forward", 0.5).ok
+
+
+def test_why_stop_names_only_the_latest_cause(tmp_path):
+    b, p = make(tmp_path)
+    b.go_to(place="room b"); run(b, p, 60)                       # old history: a finished task
+    b.go_to(place="home"); run(b, p, 3)
+    b.stop()
+    evs = b.why("stop").data["events"]
+    assert [e["text"] for e in evs] == ["You told me to stop."]
+    b.go_to(place="room b"); run(b, p, 120)                     # a later cause replaces it
+    evs = b.why("stop").data["events"]
+    assert len(evs) == 1 and "finished" in evs[0]["text"] and "told me" not in evs[0]["text"]
+    b.stop()                                                     # a stop while idle is still the latest cause
+    assert b.why("stop").data["events"][0]["text"] == "You told me to stop."
+
+
+def test_why_stop_blocked_names_the_blockage(tmp_path):
+    b, p = make(tmp_path)
+    p.blocked.append((4.5, 0.5, 0.5))
+    b.go_to(place="room b"); run(b, p, 30)
+    evs = b.why("stop").data["events"]
+    assert len(evs) == 1 and evs[0]["type"] == "path_blocked"
