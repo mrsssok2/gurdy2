@@ -202,7 +202,9 @@ def test_low_stt_confidence_asks_to_repeat():
     llm = ScriptedLLM(plans=[{"calls": [call("go_to", place="room B")]}])
     b, l, a = agent_for(llm)
     r = a.say("go to room B", stt_confidence=0.2)
-    assert "again" in r.reply and b.task is None
+    assert r.reply == "Room B, Bravo. Shall I go?" and b.task is None          # parses cleanly: read it back and ask
+    a.say("yes")
+    assert b.task is not None and a.executor.state == "running"
 
 
 def test_mid_mission_confirmation_surfaces_and_continues():

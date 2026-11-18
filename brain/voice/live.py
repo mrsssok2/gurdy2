@@ -22,6 +22,7 @@ import numpy as np
 
 from .audio import FRAME_S, SAMPLE_RATE
 from .pipeline import VoiceConfig, VoicePipeline
+from .stt import reject_reason
 
 
 class LockedSpeaker:
@@ -54,7 +55,12 @@ class LivePipeline(VoicePipeline):
     def __init__(self, stt, speaker, host, cfg: VoiceConfig | None = None, say_prefix: str = "", out=print, debug_dir=None, **kw):
         sp = speaker if isinstance(speaker, LockedSpeaker) else LockedSpeaker(speaker)
         super().__init__(stt, sp, lambda t, c, sa=None: host.say(t, c, sa), host.estop, host.is_moving, cfg, **kw)
-        self.host, self.out = host, out
+        self.host = host
+        self._out_lock = threading.Lock()
+        self._out = out
+        self._inflight = 0                            # utterances / typed lines being processed (STT -> agent -> reply)
+        self._inflight_lock = threading.Lock()
+        self._rec_speaking = False                    # the robot was talking at some point during the current recording
         self.debug_dir, self._n_saved = debug_dir, 0     # every utterance is saved as a WAV (+ index.jsonl) to listen to later
         self.jobs: queue.Queue = queue.Queue()
         self._start_wall: float | None = None          # wall clock when the current utterance started (answer timeouts count to HERE)
@@ -65,6 +71,19 @@ class LivePipeline(VoicePipeline):
         self._alive = True
         threading.Thread(target=self._worker, daemon=True).start()
         host.on_message(self.robot_message)
+
+    def out(self, text: str) -> None:
+        with self._out_lock:
+            self._out(text)
+
+    @property
+    def busy(self) -> bool:
+        """An utterance is still being transcribed / answered: push-to-talk waits (one at a time)."""
+        return self._inflight > 0
+
+    def _inc(self, d: int) -> None:
+        with self._inflight_lock:
+            self._inflight = max(0, self._inflight + d)
 
     # ---- robot -> user (alerts, mission results)
     def robot_message(self, text: str) -> None:
@@ -89,17 +108,23 @@ class LivePipeline(VoicePipeline):
         if self._was_speaking and not sp:                # the robot just finished speaking: a question's answer window starts now
             self.host.spoken_done()
         self._was_speaking = sp
+        if sp and (self.seg.active or self.seg.ptt_down):
+            self._rec_speaking = True                    # logged with the clip: the mic may have heard the robot's own voice
         self._flush_held()
 
     # ---- user -> robot, off the mic thread
     def press(self):
         self._start_wall = time.monotonic()
+        self._rec_speaking = bool(self.speaker.speaking)
         super().press()
 
     def _on_utterance(self, audio: np.ndarray) -> None:
-        self.jobs.put(("audio", (audio, self._start_wall)))
+        self._inc(1)
+        rec, self._rec_speaking = self._rec_speaking, bool(self.speaker.speaking)
+        self.jobs.put(("audio", (audio, self._start_wall, rec)))
 
     def submit_text(self, text: str) -> None:
+        self._inc(1)
         self.jobs.put(("text", text))
 
     def _worker(self) -> None:
@@ -115,8 +140,10 @@ class LivePipeline(VoicePipeline):
                     self._text_job(payload, None)
             except Exception as e:                      # never let one bad turn kill the loop
                 self.out(f"[voice] error: {type(e).__name__}: {e}")
+            finally:
+                self._inc(-1)
 
-    def _save_debug(self, audio: np.ndarray, tr) -> None:
+    def _save_debug(self, audio: np.ndarray, tr, robot_speaking: bool = False, rejected: str | None = None) -> None:
         if not self.debug_dir:
             return
         import json
@@ -130,19 +157,26 @@ class LivePipeline(VoicePipeline):
         a = np.asarray(audio, np.float32)
         rec = {"wav": name, "text": tr.text, "confidence": tr.confidence, "audio_s": round(len(a) / SAMPLE_RATE, 2),
                "rms": float(np.sqrt(np.mean(a ** 2))) if len(a) else 0.0, "peak": float(np.abs(a).max()) if len(a) else 0.0,
-               "mode": self.cfg.mode, "robot_speaking": bool(self.speaker.speaking)}
+               "mode": self.cfg.mode, "robot_speaking": bool(robot_speaking), "rejected": rejected}
         with open(d / "index.jsonl", "a") as f:
             f.write(json.dumps(rec) + "\n")
 
-    def _utterance_job(self, audio: np.ndarray, started_wall: float | None = None) -> None:
+    def _utterance_job(self, audio: np.ndarray, started_wall: float | None = None, robot_speaking: bool = False) -> None:
         tr = self.stt.transcribe(audio)
+        why = reject_reason(tr, audio) if tr.text or len(audio) else None
+        if why and tr.text and self.is_stop(tr.text):
+            why = None                                   # a stop is never discarded
         try:
-            self._save_debug(audio, tr)
+            self._save_debug(audio, tr, robot_speaking, why)
         except Exception as e:                          # noqa: BLE001  debugging aid, never breaks the loop
             self.out(f"[voice] could not save wav: {e}")
         self.log.append({"t": self.t, "event": "transcript", "text": tr.text, "stt_s": tr.seconds, "audio_s": len(audio) / SAMPLE_RATE})
         if not tr.text:
             self.out("(heard nothing)")
+            return
+        if why:                                          # hallucination on quiet / unclear audio ("Roo. Roo. Roo.")
+            self.out(f"(heard noise: {tr.text!r}, {why}; ignored)")
+            self.say("Sorry, I didn't catch that.")
             return
         self.out(f"You: {tr.text}   [STT {tr.seconds:.1f} s, confidence {'?' if tr.confidence is None else f'{tr.confidence:.2f}'}]")
         self._text_job(tr.text, tr.confidence, started_wall)
@@ -160,6 +194,7 @@ class LivePipeline(VoicePipeline):
         for kind, audio in events:
             if kind == "start":
                 self._start_wall = time.monotonic()
+                self._rec_speaking = bool(self.speaker.speaking)   # before the barge-in below silences the robot
             if kind == "partial":
                 if self.is_moving() and not self._estop_this_utt and not self._partial_busy.is_set():
                     self._partial_busy.set()
@@ -194,7 +229,16 @@ def run_live(pipe: LivePipeline, source, ctl: "queue.Queue", stop: threading.Eve
                 break
             if c[0] == "quit":
                 return
-            if c[0] == "press" and pipe.cfg.mode == "ptt":
+            if c[0] == "enter" and pipe.cfg.mode == "ptt":      # push-to-talk key: strictly one recording at a time
+                if recording:
+                    pipe.release(); recording = False
+                    pipe.out("  ■ sent  (thinking...)" if pipe.busy else "  ■ (too short, nothing sent)")
+                elif pipe.busy:
+                    pipe.out("  (still thinking - wait for the answer, then press Enter)")
+                else:
+                    pipe.press(); recording = True
+                    pipe.out("  ● recording ... press Enter to send")
+            elif c[0] == "press" and pipe.cfg.mode == "ptt":
                 pipe.press(); recording = True
             elif c[0] == "release" and recording:
                 pipe.release(); recording = False
@@ -206,20 +250,13 @@ def run_live(pipe: LivePipeline, source, ctl: "queue.Queue", stop: threading.Eve
 
 
 def stdin_controls(ctl: "queue.Queue", mode: str, out=print) -> threading.Thread:
+    """Keyboard thread: it only forwards keys; run_live decides (and prints) what an Enter means, so terminal lines never interleave."""
     def loop():
-        recording = False
         for line in sys.stdin:
             line = line.strip()
             if line in ("q", "quit", "exit"):
                 ctl.put(("quit",)); return
-            if line == "":
-                if mode != "ptt":
-                    continue
-                ctl.put(("release",) if recording else ("press",))
-                recording = not recording
-                out("  ● recording ... press Enter to send" if recording else "  ■ sent")
-            else:
-                ctl.put(("text", line))
+            ctl.put(("enter",) if line == "" else ("text", line))
     t = threading.Thread(target=loop, daemon=True)
     t.start()
     return t

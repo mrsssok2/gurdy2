@@ -95,17 +95,17 @@ class Agent:
         self.graph = self._build()
 
     # ------------------------------------------------------------------ public API
-    def _reask(self, text: str, conf: float | None) -> "TurnResult | None":
-        """Low speech-recognition confidence: repeat what was heard and ask again, before any planning (no LLM call).
-        Never for a stop, a yes / no, or while a question is pending."""
-        if conf is None or conf >= self.safety.cfg.get("stt_reask_below", 0.5) or not text.strip():
-            return None
-        if (self.gate.pending is not None or self.pending_fix is not None or is_estop_phrase(text)
-                or is_clear_yes(text) or is_clear_no(text)):
-            return None
+    def _low_conf_message(self, text: str) -> str:
+        """The ONE message for speech that was not understood well enough (safety.yaml `stt_low_confidence_message`)."""
         heard = text.strip().rstrip(" .,;:!?-") or text.strip()      # "Bad, odd." -> "Bad, odd" (no double full stop)
-        return TurnResult(f"I heard '{heard}'. Can you say that again?", [],
-                          [{"outcome": "clarify", "rule": "low_stt_confidence"}], 0, {})
+        return self.safety.cfg["stt_low_confidence_message"].format(heard=heard)
+
+    def _is_low_conf(self, conf: float | None, text: str) -> bool:
+        """Low confidence, and not a stop / yes / no / answer to a pending question (those are short and always allowed through)."""
+        if conf is None or conf >= self.safety.cfg["stt_confidence_min"] or not text.strip():
+            return False
+        return not (self.gate.pending is not None or self.pending_fix is not None or is_estop_phrase(text)
+                    or is_clear_yes(text) or is_clear_no(text))
 
     def _room_turn(self, text: str, conf: float | None) -> "str | TurnResult":
         """Room names by voice (see rooms.py): answer to "Which room?", "no, Delta" corrections, phonetic names, a missing letter,
@@ -148,9 +148,6 @@ class Agent:
         if isinstance(room, TurnResult):
             return room
         utterance = room
-        again = self._reask(utterance, stt_confidence)
-        if again is not None:
-            return again
         fixed = self._did_you_mean(utterance, stt_confidence)
         if isinstance(fixed, TurnResult):
             return fixed
@@ -375,6 +372,9 @@ class Agent:
                         "verdicts": s["verdicts"] + [{"outcome": "confirm", "rule": g.rule}]}
             return {"calls": s["calls"] + g.calls, "cont": bool(out.get("continue")), "llm_calls": n,
                     "notes": s.get("notes", []) + g.notes, "next": "safety_check"}
+        if self._is_low_conf(s["stt_confidence"], s["utterance"]):      # nothing parseable and the recognition was shaky: ask again
+            return {"reply_parts": [self._low_conf_message(s["utterance"])], "llm_calls": n, "next": "finish",
+                    "verdicts": s["verdicts"] + [{"outcome": "clarify", "rule": "low_confidence"}]}
         text = out.get("reply", "")
         # a free-text answer from the planner (refusal / small talk) is not backed by tools: grounding applies
         gr = self._ground(lambda fb: text, s)
@@ -397,6 +397,8 @@ class Agent:
             if v.outcome == "refuse":
                 return {"reply_parts": [v.reason], "verdicts": s["verdicts"] + verdicts, "next": "finish"}
             if v.outcome == "clarify":
+                if v.rule == "low_confidence":
+                    v.reason = self._low_conf_message(s["utterance"])
                 q = v.reason + (f" ({', '.join(v.options)})" if v.options else "")
                 self.layer.call("ask_user", {"question": v.reason, **({"options": v.options[:6]} if v.options else {})})
                 return {"reply_parts": [q], "verdicts": s["verdicts"] + verdicts, "next": "finish"}

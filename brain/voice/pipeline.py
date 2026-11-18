@@ -19,7 +19,7 @@ from typing import Callable
 import numpy as np
 
 from .audio import FRAME_S, SAMPLE_RATE
-from .stt import STT
+from .stt import reject_reason, STT
 from .tts import Speaker
 from .vad import Segmenter
 
@@ -86,6 +86,11 @@ class VoicePipeline:
         tr = self.stt.transcribe(audio)
         self.log.append({"t": self.t, "event": "transcript", "text": tr.text, "stt_s": tr.seconds, "audio_s": len(audio) / SAMPLE_RATE})
         if not tr.text:
+            return
+        why = reject_reason(tr, audio)
+        if why and not self.is_stop(tr.text):
+            self.log.append({"t": self.t, "event": "rejected", "text": tr.text, "why": why})
+            self.say("Sorry, I didn't catch that.")
             return
         if self.is_stop(tr.text) and not self._estop_this_utt:
             self._fire_estop(tr.text, "final", tr.seconds)

@@ -2,6 +2,8 @@
 grounded by construction). Used for motion acknowledgements, event announcements and the grounding fallback."""
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 
@@ -67,6 +69,25 @@ def ack(tool: str, args: dict, data: dict) -> str:
     if tool == "stop":
         return "Stopped."
     return "Okay."
+
+
+def readback(tool: str, args: dict) -> str:
+    """What a low-confidence command is read back as, then "Shall I go?": 'Room A, Alpha' / 'The red box' / 'Walking forward 1 metres'."""
+    from .rooms import phonetic
+    place = args.get("place", "")
+    if tool in ("go_to", "inspect") and re.fullmatch(r"room [A-Z]", place):
+        return f"Room {place[-1]}, {phonetic(place[-1]) or place[-1]}"
+    if tool == "go_to" and place:
+        return place[0].upper() + place[1:]
+    if tool == "go_to" and args.get("object"):
+        return "The " + obj_name(args["object"])
+    if tool == "return_home":
+        return "Go home"
+    return ack(tool, args, {}).rstrip(".")
+
+
+def question_for(tool: str) -> str:
+    return "Shall I go?" if tool in ("go_to", "return_home", "inspect", "find", "explore", "patrol") else "Shall I do that?"
 
 
 def _age(s: float) -> str:

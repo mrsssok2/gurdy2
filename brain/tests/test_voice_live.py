@@ -1,5 +1,6 @@
 """Live voice loop (threads, host, TCP bridge, yes/no by voice) with scripted engines and the mock world. No mic, no models."""
 import queue
+import threading
 import time
 
 import numpy as np
@@ -161,14 +162,33 @@ def test_tcp_bridge_say_state_estop_and_push_messages():
 
 
 # ---- low confidence, debug WAVs, soft onsets, confirmation keeps the whole plan
-def test_low_confidence_repeats_what_was_heard_without_acting():
-    b = MockBackend()
-    agent = Agent(ToolLayer(b), KeywordLLM(b.known_places))
+def test_low_confidence_unparseable_repeats_what_was_heard():
+    b, a = _agent()
     for text in ("That up.", "Are you?"):
-        r = agent.say(text, 0.3)
-        assert r.reply == f"I heard '{text.rstrip('.?')}'. Can you say that again?" and r.llm_calls == 0 and b.task is None
-    assert agent.say("Bad, odd.", 0.3).reply == "I heard 'Bad, odd'. Can you say that again?"
-    assert agent.say("where are you", 0.83).reply != "I heard 'where are you'. Can you say that again?"
+        r = a.say(text, 0.3)
+        assert r.reply == f"I heard '{text.rstrip('.?')}'. Can you say that again?" and b.task is None
+    assert a.say("Bad, odd.", 0.3).reply == "I heard 'Bad, odd'. Can you say that again?"
+    assert "heard" not in a.say("where are you", 0.83).reply
+
+
+def test_low_confidence_clean_command_is_read_back_not_rejected():
+    b, a = _agent()
+    r = a.say("Go to room A.", 0.43)                  # the real case: heard correctly, confidence 0.43
+    assert r.reply == "Room A, Alpha. Shall I go?" and b.task is None
+    assert "Going to room A" in a.say("yes", 0.9).reply
+    b, a = _agent()
+    assert a.say("walk forward 2 metres", 0.4).reply == "Walking forward 2 metres. Shall I do that?"
+    assert a.say("no", 0.3).reply == "Okay, cancelled." and b.task is None
+
+
+def test_low_confidence_one_message_one_threshold():
+    b, a = _agent()
+    cfg = a.safety.cfg
+    assert "stt_reask_below" not in cfg and cfg["stt_confidence_min"] == 0.6
+    for conf in (0.43, 0.55):                         # both used to give different texts
+        assert "not sure I heard" not in a.say("blah blah", conf).reply
+    assert a.say("blah blah", 0.55).reply == "I heard 'blah blah'. Can you say that again?"
+    assert "heard" not in a.say("blah blah", 0.7).reply
 
 
 def test_low_confidence_never_blocks_stop_or_yes_no():
@@ -430,3 +450,89 @@ def test_live_pipeline_passes_when_the_user_started_speaking_and_signals_spoken_
     for _ in range(200):                                                  # let "ok" finish playing
         pipe.feed(np.zeros(FRAME_N, np.float32))
     assert calls["spoken"] >= 1
+
+
+# ---- Whisper hallucinations, strict one-at-a-time push-to-talk, index.jsonl
+def test_repeated_token_transcripts_are_detected():
+    from brain.voice.stt import Transcript, reject_reason, repeated_tokens
+    for t in ("Roo. Roo. Roo.", "Go, go, go, go.", "go to go to go to", "Thank you. Thank you. Thank you."):
+        assert repeated_tokens(t), t
+    for t in ("Go to room A", "Go to room B and find the red box", "stop", "go go", "walk forward, then go back"):
+        assert not repeated_tokens(t), t
+    loud = speech(1.0)
+    assert reject_reason(Transcript("Roo. Roo. Roo.", 0.8), loud) == "repetition"
+    assert reject_reason(Transcript("go to room A", 0.8), quiet(1.0)) == "too quiet"
+    assert reject_reason(Transcript("hmm", 0.3, 0.0, no_speech_prob=0.9), loud) == "no speech"
+    assert reject_reason(Transcript("go to room A", 0.8, 0.0, compression_ratio=3.1), loud) == "repetition"
+    assert reject_reason(Transcript("go to room A", 0.8, 0.0, 0.1, 1.2), loud) is None
+
+
+def test_hallucinated_transcript_says_didnt_catch_that_and_never_reaches_the_agent(tmp_path):
+    import json
+    seen = []
+
+    class H:
+        def say(self, text, conf=None, started_ago=None):
+            seen.append(text); return "ok"
+        def spoken_done(self): pass
+        def estop(self): pass
+        def is_moving(self): return False
+        def on_message(self, fn): pass
+    lines = []
+    sink = NullSink()
+    pipe = LivePipeline(ScriptedSTT(["Roo. Roo. Roo.", "Go, go, go, go."]), LockedSpeaker(Speaker(SineTTS(), sink)), H(), VoiceConfig(mode="vad"),
+                        out=lines.append, debug_dir=tmp_path)
+    feed(pipe, np.concatenate([utterance(), utterance()]))
+    time.sleep(0.8)
+    assert seen == [] and sum("ignored" in l for l in lines) == 2
+    assert pipe.speaker.texts[-1] == "Sorry, I didn't catch that." if hasattr(pipe.speaker, "texts") else True
+    rows = [json.loads(x) for x in (tmp_path / "index.jsonl").read_text().splitlines()]
+    assert [r["rejected"] for r in rows] == ["repetition", "repetition"]
+
+
+def test_push_to_talk_is_one_at_a_time_and_prints_thinking():
+    lines = []
+    gate = threading.Event()
+
+    class SlowSTT(ScriptedSTT):
+        def transcribe(self, audio, sr=SAMPLE_RATE):
+            gate.wait(5.0)
+            return super().transcribe(audio, sr)
+    b = MockBackend()
+    host = AgentHost(Agent(ToolLayer(b), KeywordLLM(b.known_places)))
+    pipe = LivePipeline(SlowSTT(["where are you"]), LockedSpeaker(Speaker(SineTTS(), NullSink())), host, VoiceConfig(mode="ptt"), out=lines.append)
+    ctl = queue.Queue()
+    ctl.put(("enter",))                                   # start recording
+    n = [0]
+
+    def src():
+        for i, f in enumerate(frames(np.concatenate([speech(0.6), quiet(0.2)]))):
+            if i == 20:
+                ctl.put(("enter",))                       # send
+            if i == 25:
+                time.sleep(0.2)
+                ctl.put(("enter",))                       # Enter while STT is busy: ignored, no overlapping recording
+            n[0] += 1
+            yield f
+    run_live(pipe, src(), ctl)
+    assert pipe.busy and not pipe.seg.ptt_down
+    assert any("recording" in l for l in lines) and any("thinking" in l for l in lines)
+    assert sum("recording" in l for l in lines) == 1 and any("still thinking" in l for l in lines)
+    gate.set()
+    time.sleep(0.8)
+    assert not pipe.busy and any("You: where are you" in l for l in lines)
+
+
+def test_index_logs_whether_the_robot_was_speaking_during_the_recording(tmp_path):
+    import json
+    b = MockBackend()
+    host = AgentHost(Agent(ToolLayer(b), KeywordLLM(b.known_places)))
+    pipe = LivePipeline(ScriptedSTT(["where are you", "what do you see"]), LockedSpeaker(Speaker(SineTTS(), NullSink())), host,
+                        VoiceConfig(mode="vad"), out=lambda *_: None, debug_dir=tmp_path)
+    feed(pipe, utterance())
+    time.sleep(0.6)
+    pipe.say("A long sentence the robot is saying right now, " * 3)       # the robot talks, then the user speaks over it
+    feed(pipe, np.concatenate([quiet(0.1), speech(1.0), quiet(1.2)]))
+    time.sleep(0.6)
+    rows = [json.loads(x) for x in (tmp_path / "index.jsonl").read_text().splitlines()]
+    assert len(rows) == 2 and rows[0]["robot_speaking"] is False and rows[1]["robot_speaking"] is True

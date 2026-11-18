@@ -5,7 +5,9 @@ confirm_battery_pct: 30         # explore / patrol below this: confirm first
 confirm_patrol_loops_over: 3
 person_min_distance_m: 1.0      # keep this far from a mannequin (stand-in for people)
 confirmation_timeout_s: 30
-stt_confidence_min: 0.6         # below: clarify instead of acting
-stt_reask_below: 0.5            # below: do not even plan; say what was heard and ask to repeat (yes / no / stop are exempt)
+stt_confidence_min: 0.6         # speech-recognition confidence below this is never acted on unchecked (stop / yes / no are exempt):
+                                #   it parses into a known command with known names -> read it back, ask "Shall I go?" (a yes runs it)
+                                #   anything else -> the one message below
+stt_low_confidence_message: "I heard '{heard}'. Can you say that again?"
 motion_tools: [walk, turn, go_to, find, explore, patrol, inspect, return_home]
 always_allowed: [stop, mission_control]

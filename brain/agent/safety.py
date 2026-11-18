@@ -70,8 +70,9 @@ class SafetyChecker:
             # malformed arguments (LLM output is untrusted): nothing to judge here. The tool layer rejects the call
             # (INVALID_ARGS) before any backend code runs, so nothing unsafe can execute.
             return Verdict("allow", rule="invalid_args_rejected_by_tool_layer")
-        if stt_confidence is not None and stt_confidence < self.cfg["stt_confidence_min"] and tool not in self.cfg["always_allowed"]:
-            return Verdict("clarify", "I am not sure I heard that correctly. Could you say it again?", rule="low_confidence")
+        if (stt_confidence is not None and stt_confidence < self.cfg["stt_confidence_min"] and tool not in self.cfg["always_allowed"]
+                and TOOLS[tool].kind != "query"):
+            return self._low_confidence(tool, args)
         if tool in ("stop", "mission_control", "ask_user"):
             return _allow()
         if tool == "no_go_zone":
@@ -95,6 +96,16 @@ class SafetyChecker:
         if tool in ("explore", "find"):
             return self._check_search(tool, args)
         return self._check_target(tool, args)
+
+    def _low_confidence(self, tool: str, args: dict) -> Verdict:
+        """Uncertain speech recognition. A clean parse (every place known; schema already validated) is read back and needs a yes;
+        otherwise the one "I heard ... say that again" message (`{heard}` is filled in by the agent)."""
+        from .templates import question_for, readback
+        place = args.get("place")
+        clean = tool != "schedule" and (place is None or place in self.backend.known_places() or place == "home")
+        if not clean:
+            return Verdict("clarify", self.cfg["stt_low_confidence_message"], rule="low_confidence")
+        return Verdict("confirm", f"{readback(tool, args)}. {question_for(tool)}", rule="low_confidence")
 
     # ------------------------------------------------------------------ rules
     def _check_vehicle_state(self, tool: str) -> Verdict | None:
