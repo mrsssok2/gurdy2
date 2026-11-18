@@ -1,4 +1,4 @@
-# ood_v1, assistant-written: 40 casual-style commands (my_commands.txt) written by an AI assistant, NOT by the project
+# ood_v1, assistant-written: 40 casual-style commands (brain/eval/my_commands.txt) written by an AI assistant, NOT by the project
 # owner and NOT from the training generator. Expected behaviours were decided by the assistant that built this set
 # (judgement calls are marked `# judgement`). Same format as testset_v1.yaml, plus:
 #   behaviour  may be a list of acceptable classes

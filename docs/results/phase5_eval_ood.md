@@ -1,6 +1,6 @@
 # Phase 5: out-of-distribution eval `ood_v1` (assistant-written)
 
-**Provenance:** the 40 commands in `my_commands.txt` were written by an AI assistant, not by the project owner. They are
+**Provenance:** the 40 commands in `brain/eval/my_commands.txt` were written by an AI assistant, not by the project owner. They are
 casual in style, with typos and context-dependent phrasing. Expected behaviours were also decided by the assistant, in
 `brain/eval/testset_ood_v1.yaml`. Judgement calls are marked `# judgement` there. This is a smoke test for
 distribution shift, not a human-collected benchmark. Run on the mock flat_lab world, 40 cases, 1 run each. Ollama

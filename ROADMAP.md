@@ -53,6 +53,7 @@ Core Phase 5 = milestones 5.1–5.4, 5.6–5.9 (memory/reports) and the evaluati
 ---
 
 ## Phase 2 — RL locomotion (MuJoCo → Gazebo)
+**Final selected policy: `terrain_dr2` 15M** (mentions of `dr_energy_ft` 6M / `terrain_v1` as selected below are intermediate stages).
 Plan approved 2026-11-14. Decisions: action option **A** (joint offsets around stance; B = residual on
 tripod only as fallback); observation = 3-frame history of proprioception only (gravity vector, gyro,
 joint pos/vel, previous action, command, gait clock) — no ground truth; asymmetric critic added by
