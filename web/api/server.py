@@ -4,7 +4,8 @@ It sits in front of an `AgentHost` / `RemoteHost` (brain/voice/host.py): every c
 (checks, confirmations, e-stop fast path) is untouched. Telemetry comes from a `Telemetry` source. Design: docs/phase7_design.md.
 
 Demo mode (`demo=True`, for a public simulated-robot page): no token, MockBackend ONLY (refused at construction for anything else, so a public
-page can never reach a real robot), per-IP rate limits, shorter messages, and the mock world is reset on a timer.
+page can never reach a real robot), per-IP rate limits, shorter messages, and per-visitor sessions (see `Session`): every browser session id gets its own
+mock world, agent and chat, created on first use, freed after 10 idle minutes, capped (default 30) with a "busy" answer when full.
 
 Auth: one shared token (env GURDY_WEB_TOKEN, else random and printed once by the CLI, never written anywhere). Everything under /api and the
 WebSocket needs it except /api/health; static files are public (they contain no secrets)."""
@@ -16,6 +17,7 @@ import json
 import mimetypes
 import os
 import queue
+import re
 import secrets
 import socket
 import threading
@@ -42,6 +44,12 @@ DEMO_WS_PER_IP = 3
 DEMO_SAY = (5, 4.0)               # per IP: burst 5, then one message per 4 s
 DEMO_ESTOP = (10, 1.0)
 DEMO_ANY = (60, 0.05)             # per IP: all /api requests, burst 60, 20 per second sustained
+DEMO_MAX_SESSIONS = 30            # per-visitor sessions alive at once; the 31st visitor gets "the demo is busy"
+DEMO_SESSION_IDLE_S = 600.0       # a session with no request / command for 10 minutes is freed
+DEMO_SESSIONS_PER_IP = 6          # one address cannot hold more than this many sessions (a script must not fill all slots)
+DEMO_NEW_SESSION = (4, 30.0)      # per IP: new sessions burst 4, then one per 30 s
+DEMO_MAX_WS_PER_SESSION = 3       # total WebSocket cap = this x max_sessions (also capped per IP)
+SESSION_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 IDLE_TIMEOUT_S = 30
 DEFAULT_STATIC = Path(__file__).resolve().parents[1] / "app"
 
@@ -81,6 +89,9 @@ class ChatLog:
             return self._seq
 
 
+_CLOSE_AFTER = object()
+
+
 class _WsClient:
     """One writer thread + bounded queue per client: a stalled phone can never block the broadcast to the others (it is dropped when full)."""
 
@@ -104,11 +115,21 @@ class _WsClient:
             frame = self.q.get()
             if frame is None:
                 return
+            if frame is _CLOSE_AFTER:                    # everything queued before it has been sent: now close
+                self.kill()
+                return
             try:
                 self.sock.sendall(frame)
             except OSError:
                 self.kill()
                 return
+
+    def close_after_flush(self) -> None:
+        """Close the connection once the frames already queued (e.g. a last notice) have been written."""
+        try:
+            self.q.put_nowait(_CLOSE_AFTER)
+        except queue.Full:
+            self.kill()
 
     def kill(self) -> None:
         if self.dead:
@@ -149,35 +170,58 @@ class _TlsServer(_Server):
         return self._ctx.wrap_socket(sock, server_side=True, do_handshake_on_connect=False), addr
 
 
+class Session:
+    """One visitor's isolated world: its own host (agent + mock robot), telemetry, chat log and WebSocket clients. In the private / single-robot
+    modes there is exactly one, `default`; in the public demo every browser session gets its own (nothing is shared between sessions)."""
+
+    def __init__(self, sid: str, host, telemetry, ip: str, now: float):
+        self.sid, self.host, self.telemetry, self.ip = sid, host, telemetry, ip
+        self.chat: ChatLog | None = None
+        self.voice = None
+        self.clients: list[_WsClient] = []
+        self.created = self.last_active = now
+
+
 class GurdyWebServer:
-    def __init__(self, host, telemetry: Telemetry | None = None, token: str | None = None, static_dir: str | Path | None = DEFAULT_STATIC,
-                 bind: str = "127.0.0.1", port: int = 8080, state_s: float = 0.5, demo: bool = False, agent_factory=None,
-                 reset_every_s: float = 0.0, trust_proxy: bool = False, clock=time.monotonic, speech=None,
-                 tls_port: int | None = None, tls_cert: str | None = None, tls_key: str | None = None, ca_file: str | None = None):
-        self.host, self.state_s = host, state_s
-        self.telemetry = telemetry or MockTelemetry(host)
-        self.demo, self.agent_factory, self.reset_every_s, self.trust_proxy = demo, agent_factory, reset_every_s, trust_proxy
-        if demo:
-            self._require_mock_only()
+    def __init__(self, host=None, telemetry: Telemetry | None = None, token: str | None = None, static_dir: str | Path | None = DEFAULT_STATIC,
+                 bind: str = "127.0.0.1", port: int = 8080, state_s: float = 0.5, demo: bool = False, host_factory=None,
+                 trust_proxy: bool = False, clock=time.monotonic, speech=None,
+                 tls_port: int | None = None, tls_cert: str | None = None, tls_key: str | None = None, ca_file: str | None = None,
+                 max_sessions: int = DEMO_MAX_SESSIONS, session_idle_s: float = DEMO_SESSION_IDLE_S, reap_every_s: float = 15.0):
+        """`host_factory` (demo only) turns on per-visitor sessions: it returns a fresh `AgentHost` on the MockBackend for every new session id.
+        Without it, `host` is the one robot everybody talks to (private mode, or the single-session demo used by some tests)."""
+        self.state_s, self.clock = state_s, clock
+        self.demo, self.trust_proxy = demo, trust_proxy
+        self.multi = bool(demo and host_factory is not None)
+        if host_factory is not None and not demo:
+            raise ValueError("host_factory (per-visitor sessions) is for the public demo only")
+        if not self.multi and host is None:
+            raise ValueError("a host is required (or demo=True with a host_factory)")
+        self.host_factory, self.max_sessions, self.session_idle_s, self.reap_every_s = host_factory, max_sessions, session_idle_s, reap_every_s
         self.max_text = DEMO_MAX_TEXT if demo else MAX_TEXT
         self.max_body = DEMO_MAX_BODY if demo else MAX_BODY
-        self.max_ws = DEMO_MAX_WS_CLIENTS if demo else MAX_WS_CLIENTS
+        self.max_ws = (DEMO_MAX_WS_PER_SESSION * max_sessions if self.multi else DEMO_MAX_WS_CLIENTS) if demo else MAX_WS_CLIENTS
         self.ws_per_ip = DEMO_WS_PER_IP if demo else None
         self.say_limiter = RateLimiter(*DEMO_SAY, clock=clock) if demo else None
         self.estop_limiter = RateLimiter(*DEMO_ESTOP, clock=clock) if demo else None
         self.any_limiter = RateLimiter(*DEMO_ANY, clock=clock) if demo else None
+        self.new_session_limiter = RateLimiter(*DEMO_NEW_SESSION, clock=clock) if self.multi else None
         self._ip_clients: dict[str, int] = {}
+        self._n_clients = 0
         self.token = token or os.environ.get("GURDY_WEB_TOKEN") or secrets.token_urlsafe(16)
         self.static_dir = Path(static_dir).resolve() if static_dir else None
-        self.chat = ChatLog(on_add=lambda item: self.broadcast({"type": "chat", **item}))
-        from .voice import VoiceGateway
-        self.voice = VoiceGateway(host, speech, self.chat) if (speech is not None and not demo) else None      # no microphone in the public demo
         self.ca_file = Path(ca_file) if ca_file else None
-        self._clients: list[_WsClient] = []
+        self._speech = speech
         self._clients_lock = threading.Lock()
+        self._sessions: dict[str, Session] = {}
+        self._sess_lock = threading.RLock()
         self._stop = threading.Event()
-        if hasattr(host, "on_message"):
-            host.on_message(lambda text: self.chat.add("robot", text))        # pump announcements / alerts
+        self.default: Session | None = None
+        if not self.multi:
+            tel = telemetry or MockTelemetry(host)
+            if demo:
+                self._require_mock_only(host, tel)
+            self.default = self._make_session("default", host, tel, "")
         server = self
         handler = type("Handler", (_Handler,), {"app": server})
         self.httpd = _Server((bind, port), handler)
@@ -192,13 +236,112 @@ class GurdyWebServer:
             self.tls_port = self.httpd_tls.server_address[1]
         self._threads: list[threading.Thread] = []
 
+    # ------------------------------------------------------------------ the single-robot attributes (private mode / single-session demo)
+    @property
+    def host(self):
+        return self.default.host
+
+    @property
+    def telemetry(self):
+        return self.default.telemetry
+
+    @telemetry.setter
+    def telemetry(self, value) -> None:
+        self.default.telemetry = value
+
+    @property
+    def chat(self) -> ChatLog:
+        return self.default.chat
+
+    @property
+    def voice(self):
+        return self.default.voice if self.default else None
+
+    # ------------------------------------------------------------------ sessions
+    def _make_session(self, sid: str, host, telemetry, ip: str) -> Session:
+        sess = Session(sid, host, telemetry, ip, self.clock())
+        sess.chat = ChatLog(on_add=lambda item: self.broadcast(sess, {"type": "chat", **item}))
+        if self._speech is not None and not self.demo:                       # no microphone in the public demo
+            from .voice import VoiceGateway
+            sess.voice = VoiceGateway(host, self._speech, sess.chat)
+        if hasattr(host, "on_message"):
+            host.on_message(lambda text: sess.chat.add("robot", text))        # pump announcements / alerts
+        return sess
+
+    def session_for(self, sid: str | None, ip: str):
+        """-> (Session, None) or (None, (http_status, message, retry_after_s)). In multi-session mode a new valid id creates a session on its
+        first request (within the caps); known ids are touched (idle clock restarts). Ids are random 128-bit values chosen by the browser."""
+        if not self.multi:
+            return self.default, None
+        if not sid or not SESSION_ID_RE.match(sid):
+            return None, (400, "missing or malformed session id", None)
+        with self._sess_lock:
+            sess = self._sessions.get(sid)
+            if sess is not None:
+                sess.last_active = self.clock()
+                return sess, None
+            if len(self._sessions) >= self.max_sessions:
+                return None, (503, "The demo is busy, try again in a minute.", 60)
+            if sum(1 for x in self._sessions.values() if x.ip == ip) >= DEMO_SESSIONS_PER_IP:
+                return None, (429, "Too many demo sessions from your address. Close other tabs or wait a few minutes.", 60)
+            ok, wait = self.new_session_limiter.allow(ip)
+            if not ok:
+                return None, (429, "You are opening demo sessions too quickly. Wait a moment.", int(wait) + 1)
+            host = self.host_factory()
+            tel = MockTelemetry(host)
+            self._require_mock_only(host, tel)
+            sess = self._make_session(sid, host, tel, ip)
+            if hasattr(host, "start"):
+                host.start()
+            self._sessions[sid] = sess
+            return sess, None
+
+    def sessions(self) -> list[Session]:
+        if not self.multi:
+            return [self.default]
+        with self._sess_lock:
+            return list(self._sessions.values())
+
+    @property
+    def n_sessions(self) -> int:
+        return len(self._sessions) if self.multi else 1
+
+    def reap(self) -> int:
+        """Free sessions idle for longer than `session_idle_s`; returns how many. Their pump threads, worlds and chats are dropped."""
+        now = self.clock()
+        with self._sess_lock:
+            dead = [self._sessions.pop(sid) for sid, x in list(self._sessions.items()) if now - x.last_active > self.session_idle_s]
+        for sess in dead:
+            self._free(sess)
+        return len(dead)
+
+    def _free(self, sess: Session) -> None:
+        self.broadcast(sess, {"type": "session_expired", "message": "This demo session timed out after a period of inactivity. A fresh one starts when you reload."})
+        for c in list(sess.clients):
+            c.close_after_flush()
+        close = getattr(sess.host, "close", None)
+        if close:
+            try:
+                close()
+            except Exception:                            # noqa: BLE001
+                pass
+
+    def _reap_loop(self) -> None:
+        while not self._stop.wait(self.reap_every_s):
+            try:
+                self.reap()
+            except Exception:                            # noqa: BLE001  one failed sweep must not stop the next
+                import sys
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+
     # ------------------------------------------------------------------ lifecycle
     def start(self) -> "GurdyWebServer":
         loops = [lambda: self.httpd.serve_forever(poll_interval=0.05), self._broadcast_loop]
         if self.httpd_tls is not None:
             loops.append(lambda: self.httpd_tls.serve_forever(poll_interval=0.05))
-        if self.demo and self.reset_every_s > 0 and self.agent_factory is not None:
-            loops.append(self._reset_loop)
+        if self.multi:
+            loops.append(self._reap_loop)
         for fn in loops:
             t = threading.Thread(target=fn, daemon=True)
             t.start()
@@ -212,96 +355,84 @@ class GurdyWebServer:
         if self.httpd_tls is not None:
             self.httpd_tls.shutdown()
             self.httpd_tls.server_close()
-        for c in list(self._clients):
-            c.kill()
+        for sess in self.sessions():
+            for c in list(sess.clients):
+                c.kill()
+            if self.multi:
+                close = getattr(sess.host, "close", None)
+                if close:
+                    close()
 
     # ------------------------------------------------------------------ helpers used by the handler
-    def _require_mock_only(self) -> None:
+    @staticmethod
+    def _require_mock_only(host, telemetry) -> None:
         """Demo = simulated robot only. Checked on the real objects, so a RemoteHost / RosBackend / any other telemetry is refused."""
         from brain.mock import MockBackend
-        backend = getattr(getattr(getattr(self.host, "agent", None), "layer", None), "backend", None)
-        if not isinstance(backend, MockBackend) or not isinstance(self.telemetry, MockTelemetry):
+        backend = getattr(getattr(getattr(host, "agent", None), "layer", None), "backend", None)
+        if not isinstance(backend, MockBackend) or not isinstance(telemetry, MockTelemetry):
             raise ValueError("demo mode serves the MockBackend only (it is meant to be public and must never reach a real robot)")
 
-    def reset_demo(self) -> None:
-        """Fresh mock world + fresh agent; waits for a running turn (host.lock), then tells every client to start over."""
-        if not self.demo or self.agent_factory is None:
-            return
-        agent = self.agent_factory()
-        with self.host.lock:
-            self.host.agent = agent
-            self._require_mock_only()                    # the replacement must be a mock too
-            if hasattr(self.telemetry, "reset"):
-                self.telemetry.reset()
-        self.chat.clear()
-        self.broadcast(self.hello())
-        self.chat.add("system", "The demo world was reset.")
+    def hello(self, sess: Session) -> dict:
+        return {"type": "hello", "version": VERSION, "demo": self.demo, "voice": self.voice_available(sess), "map": sess.telemetry.map(), "chat": sess.chat.since(0)}
 
-    def _reset_loop(self) -> None:
-        while not self._stop.wait(self.reset_every_s):
-            try:
-                self.reset_demo()
-            except Exception:                            # noqa: BLE001  a failed reset must not stop the next one
-                import sys
-                import traceback
-                traceback.print_exc(file=sys.stderr)
-
-    def hello(self) -> dict:
-        return {"type": "hello", "version": VERSION, "demo": self.demo, "voice": self.voice_available(), "map": self.telemetry.map(), "chat": self.chat.since(0)}
-
-    def voice_available(self) -> bool:
-        return self.voice is not None and self.voice.available()
+    def voice_available(self, sess: Session | None = None) -> bool:
+        v = (sess or self.default).voice if (sess or self.default) else None
+        return v is not None and v.available()
 
     def check_token(self, given: str | None) -> bool:
         if self.demo:
             return True                                  # public simulated robot: nothing to protect
         return bool(given) and hmac.compare_digest(given.encode("utf-8", "replace"), self.token.encode())
 
-    def state(self) -> dict[str, Any]:
+    def state(self, sess: Session) -> dict[str, Any]:
         try:
-            snap = self.telemetry.snapshot()
+            snap = sess.telemetry.snapshot()
             return {**snap, "demo": True} if self.demo else snap
         except Exception as e:                       # noqa: BLE001  a broken source must not kill the stream
             return {"connected": False, "error": f"{type(e).__name__}: {e}"}
 
-    def say(self, text: str) -> dict:
-        self.chat.add("user", text)
-        reply = self.host.say(text)
-        return self.chat.add("robot", reply)
+    def say(self, sess: Session, text: str) -> dict:
+        sess.chat.add("user", text)
+        reply = sess.host.say(text)
+        return sess.chat.add("robot", reply)
 
-    def estop(self) -> None:
-        self.host.estop()
-        self.chat.add("system", "Emergency stop sent.")
+    def estop(self, sess: Session) -> None:
+        sess.host.estop()
+        sess.chat.add("system", "Emergency stop sent.")
 
-    def release_estop(self) -> bool:
-        fn = getattr(self.host, "release_estop", None)
+    def release_estop(self, sess: Session) -> bool:
+        fn = getattr(sess.host, "release_estop", None)
         if fn is None or self.demo:
             return False
         fn()
-        self.chat.add("system", "Emergency stop released.")
+        sess.chat.add("system", "Emergency stop released.")
         return True
 
-    def broadcast(self, obj: dict) -> None:
+    def broadcast(self, sess: Session, obj: dict) -> None:
+        """To the WebSocket clients of THIS session only."""
         frame = ws.encode_frame(ws.OP_TEXT, json.dumps(obj, separators=(",", ":")).encode())
         with self._clients_lock:
-            clients = list(self._clients)
+            clients = list(sess.clients)
         for c in clients:
             c.send(frame)
 
-    def add_client(self, sock: socket.socket, ip: str = "") -> _WsClient | None:
+    def add_client(self, sess: Session, sock: socket.socket, ip: str = "") -> _WsClient | None:
         with self._clients_lock:
-            if len(self._clients) >= self.max_ws or (self.ws_per_ip and self._ip_clients.get(ip, 0) >= self.ws_per_ip):
+            if self._n_clients >= self.max_ws or (self.ws_per_ip and self._ip_clients.get(ip, 0) >= self.ws_per_ip):
                 return None
             c = _WsClient(sock, self._drop_client)
-            c.ip = ip
-            self._clients.append(c)
+            c.ip, c.session = ip, sess
+            sess.clients.append(c)
+            self._n_clients += 1
             self._ip_clients[ip] = self._ip_clients.get(ip, 0) + 1
             return c
 
     def _drop_client(self, c: _WsClient) -> None:
         with self._clients_lock:
-            if c in self._clients:
-                self._clients.remove(c)
+            sess = getattr(c, "session", None)
+            if sess is not None and c in sess.clients:
+                sess.clients.remove(c)
+                self._n_clients -= 1
                 n = self._ip_clients.get(c.ip, 1) - 1
                 if n > 0:
                     self._ip_clients[c.ip] = n
@@ -311,12 +442,13 @@ class GurdyWebServer:
     @property
     def n_clients(self) -> int:
         with self._clients_lock:
-            return len(self._clients)
+            return self._n_clients
 
     def _broadcast_loop(self) -> None:
         while not self._stop.wait(self.state_s):
-            if self.n_clients:
-                self.broadcast({"type": "state", **self.state()})
+            for sess in self.sessions():
+                if sess.clients:
+                    self.broadcast(sess, {"type": "state", **self.state(sess)})
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -366,6 +498,24 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
         return True
+
+    def _session(self, query: dict):
+        """The visitor's Session (header `X-Session`, or `?sid=` for WebSockets), created on first use in the public demo. Sends the error and
+        returns None when there is none (400 bad id, 503 demo busy, 429 too many sessions / too fast)."""
+        sid = self.headers.get("X-Session") or (query.get("sid") or [None])[0]
+        sess, err = self.app.session_for(sid, self._ip())
+        if err is None:
+            return sess
+        status, msg, retry = err
+        body = json.dumps({"error": msg, "busy": status == 503}).encode()
+        self.send_response(status)
+        if retry:
+            self.send_header("Retry-After", str(retry))
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+        return None
 
     def _authed(self, query: dict) -> bool:
         h = self.headers.get("Authorization", "")
@@ -427,12 +577,15 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._err(401, "missing or wrong token")
             if self._limited(self.app.any_limiter):
                 return
+            sess = self._session(q)
+            if sess is None:
+                return
             if u.path == "/api/state":
-                return self._json(self.app.state())
+                return self._json(self.app.state(sess))
             if u.path == "/api/map":
-                return self._json(self.app.telemetry.map())
+                return self._json(sess.telemetry.map())
             if u.path == "/api/camera":      # real robot only: one JPEG (base64) + the detector's 2D boxes; the page polls it at ~2 Hz
-                cam = getattr(self.app.telemetry, "camera", None)
+                cam = getattr(sess.telemetry, "camera", None)
                 c = cam() if cam else None
                 if c is None:
                     return self._json({"available": False})
@@ -442,7 +595,7 @@ class _Handler(BaseHTTPRequestHandler):
                     since = int((q.get("since") or ["0"])[0])
                 except ValueError:
                     return self._err(400, "since must be an integer")
-                return self._json({"messages": self.app.chat.since(since), "seq": self.app.chat.last_seq})
+                return self._json({"messages": sess.chat.since(since), "seq": sess.chat.last_seq})
             return self._err(404, "unknown route")
         self._static(u.path)
 
@@ -454,13 +607,16 @@ class _Handler(BaseHTTPRequestHandler):
             return self._err(401, "missing or wrong token")
         if self._limited(self.app.any_limiter):
             return
+        sess = self._session(parse_qs(u.query))
+        if sess is None:
+            return
         if u.path == "/api/estop":
             if self._limited(self.app.estop_limiter):
                 return
-            self.app.estop()
+            self.app.estop(sess)
             return self._json({"ok": True})
         if u.path in ("/api/voice", "/api/tts"):
-            if self.app.voice is None or not self.app.voice.available():
+            if sess.voice is None or not sess.voice.available():
                 return self._err(503, "voice is not available on this server")
             from .voice import MAX_AUDIO_BYTES, MAX_TTS_CHARS, SpeechError
             try:
@@ -468,18 +624,18 @@ class _Handler(BaseHTTPRequestHandler):
                     audio = self._raw_body(MAX_AUDIO_BYTES)
                     if audio is None:
                         return
-                    return self._json(self.app.voice.handle_audio(audio))
+                    return self._json(sess.voice.handle_audio(audio))
                 body = self._body()
                 if body is None:
                     return
                 text = body.get("text")
                 if not isinstance(text, str) or not text.strip() or len(text) > MAX_TTS_CHARS:
                     return self._err(400, "bad 'text'")
-                return self._send_bytes(200, self.app.voice.speak(text.strip()), "audio/wav")
+                return self._send_bytes(200, sess.voice.speak(text.strip()), "audio/wav")
             except SpeechError as e:
                 return self._err(502, str(e))
         if u.path == "/api/estop/release":
-            return self._json({"ok": self.app.release_estop()})
+            return self._json({"ok": self.app.release_estop(sess)})
         if u.path == "/api/say":
             body = self._body()
             if body is None:
@@ -489,7 +645,7 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._err(400, f"'text' must be a non-empty string of at most {self.app.max_text} characters")
             if self._limited(self.app.say_limiter):
                 return
-            item = self.app.say(text.strip())
+            item = self.app.say(sess, text.strip())
             return self._json({"reply": item["text"], "seq": item["seq"]})
         self._err(404, "unknown route")
 
@@ -517,7 +673,10 @@ class _Handler(BaseHTTPRequestHandler):
             return self._err(400, "WebSocket upgrade required")
         if not self._authed(q):
             return self._err(401, "missing or wrong token")
-        client = self.app.add_client(self.connection, self._ip())
+        sess = self._session(q)
+        if sess is None:
+            return
+        client = self.app.add_client(sess, self.connection, self._ip())
         if client is None:
             return self._err(503, "too many clients")
         self.close_connection = True
@@ -526,8 +685,8 @@ class _Handler(BaseHTTPRequestHandler):
                           f"Sec-WebSocket-Accept: {ws.accept_key(key)}\r\n\r\n").encode())
         self.wfile.flush()
         send_json = lambda o: client.send(ws.encode_frame(ws.OP_TEXT, json.dumps(o).encode()))
-        send_json(self.app.hello())
-        send_json({"type": "state", **self.app.state()})
+        send_json(self.app.hello(sess))
+        send_json({"type": "state", **self.app.state(sess)})
         try:
             while True:
                 msg = ws.read_message(self.rfile, client.send)
@@ -535,7 +694,7 @@ class _Handler(BaseHTTPRequestHandler):
                     break
                 op, payload = msg
                 if op == ws.OP_TEXT:
-                    self._ws_command(payload, send_json)
+                    self._ws_command(payload, send_json, sess)
         except ws.WsError as e:
             client.send(ws.encode_frame(ws.OP_CLOSE, e.code.to_bytes(2, "big")))
         except (EOFError, OSError):
@@ -544,7 +703,8 @@ class _Handler(BaseHTTPRequestHandler):
             client.send(ws.encode_frame(ws.OP_CLOSE, (1000).to_bytes(2, "big")))
             client.kill()
 
-    def _ws_command(self, payload: bytes, send_json) -> None:
+    def _ws_command(self, payload: bytes, send_json, sess) -> None:
+        sess.last_active = self.app.clock()                           # a command is activity: the idle clock restarts
         try:
             cmd = json.loads(payload)
             op = cmd["op"]
@@ -553,10 +713,10 @@ class _Handler(BaseHTTPRequestHandler):
         if op == "estop":                                             # inline: no thread, no lock
             if self.app.estop_limiter is not None and not self.app.estop_limiter.allow(self._ip())[0]:
                 return send_json({"type": "error", "error": "too many stop requests, slow down"})
-            self.app.estop()
+            self.app.estop(sess)
             send_json({"type": "ack", "op": "estop"})
         elif op == "release":
-            send_json({"type": "ack", "op": "release", "ok": self.app.release_estop()})
+            send_json({"type": "ack", "op": "release", "ok": self.app.release_estop(sess)})
         elif op == "say":
             text = cmd.get("text")
             if not isinstance(text, str) or not text.strip() or len(text) > self.app.max_text:
@@ -564,7 +724,7 @@ class _Handler(BaseHTTPRequestHandler):
             if self.app.say_limiter is not None and not self.app.say_limiter.allow(self._ip())[0]:
                 return send_json({"type": "error", "error": "too many messages, slow down"})
             # off this reading thread: a slow LLM turn must not delay an estop arriving on the same socket.
-            threading.Thread(target=self.app.say, args=(text.strip(),), daemon=True).start()
+            threading.Thread(target=self.app.say, args=(sess, text.strip()), daemon=True).start()
             send_json({"type": "ack", "op": "say"})
         else:
             send_json({"type": "error", "error": f"unknown op {op!r}"})

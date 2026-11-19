@@ -5,6 +5,16 @@ const C = { bg: "#0B0E13", room: "#121821", wall: "#3A4552", obstacle: "#4B5563"
 
 const S = { demo: false, token: "", ws: null, attempt: 0, timer: null, map: null, state: null, lastSeq: 0, seen: new Set(), history: [], tab: "map", disp: null, voice: false, muted: false, voiceUsed: false, live: false };
 
+// Public demo: every browser session has its own random 128-bit id (sessionStorage, so each tab / visit is a separate simulated robot);
+// the server keys the world, agent and chat on it. Not secret-critical elsewhere (private mode ignores it), never shown or shared.
+function newSid() { const b = new Uint8Array(16); (window.crypto || window.msCrypto).getRandomValues(b); return [...b].map((x) => x.toString(16).padStart(2, "0")).join(""); }
+let memSid = "";
+function getSid() {
+  try { let s = sessionStorage.getItem("gurdy_sid"); if (!s) { s = newSid(); sessionStorage.setItem("gurdy_sid", s); } return s; }
+  catch { return memSid || (memSid = newSid()); }                // storage blocked (private mode, partitioned iframe): the id lives as long as the page
+}
+function resetSid() { memSid = ""; try { sessionStorage.removeItem("gurdy_sid"); } catch { /* fine */ } }
+
 function store(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode: fine */ } }
 function load(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }
 
@@ -13,9 +23,9 @@ function setConn(kind, text) { $("conn").className = "conn " + kind; $("connText
 
 async function api(path, opts = {}) {
   const auth = S.demo ? {} : { Authorization: "Bearer " + S.token };      // the public demo has no token
-  const r = await fetch(path, { ...opts, headers: { ...auth, "Content-Type": "application/json", ...(opts.headers || {}) } });
+  const r = await fetch(path, { ...opts, headers: { ...auth, "X-Session": getSid(), "Content-Type": "application/json", ...(opts.headers || {}) } });
   if (r.status === 401) throw Object.assign(new Error("unauthorized"), { code: 401 });
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+  if (!r.ok) { const j = await r.json().catch(() => ({})); throw Object.assign(new Error(j.error || r.statusText), { code: r.status, busy: !!j.busy }); }
   return r.json();
 }
 
@@ -29,16 +39,22 @@ async function connect() {
   } catch { return retry("server not reachable"); }
   if (!S.token && !S.demo) return askToken();
   try {
-    S.map = await api("/api/map");                     // also validates the token (a WebSocket cannot report a 401 to the page)
+    S.map = await api("/api/map");                     // also validates the token (a WebSocket cannot report a 401 to the page) and opens the demo session
+    $("busyBanner").hidden = true;
   } catch (e) {
     if (e.code === 401) return askToken("That token was not accepted.");
+    if (e.code === 503 && e.busy || e.code === 429) {                       // demo full / too many sessions: friendly message, try again later
+      $("busyBanner").textContent = e.busy ? "The demo is busy right now. Trying again in a minute…" : e.message;
+      $("busyBanner").hidden = false; setConn("off", "busy");
+      clearTimeout(S.timer); S.timer = setTimeout(connect, 20000); return;
+    }
     return retry("server not reachable");
   }
-  const ws = new WebSocket(wsUrl(location, S.demo ? "" : S.token));
+  const ws = new WebSocket(wsUrl(location, S.demo ? "" : S.token, getSid()));
   S.ws = ws;
   ws.onopen = () => { S.attempt = 0; setConn("on", "connected"); };
   ws.onmessage = (ev) => { try { onMessage(JSON.parse(ev.data)); } catch { /* ignore malformed */ } };
-  ws.onclose = () => { if (S.ws === ws) { S.ws = null; retry("disconnected"); } };
+  ws.onclose = () => { if (S.ws === ws) { S.ws = null; if (S.expired) { S.expired = false; S.attempt = 0; setConn("off", "starting a new session"); S.timer = setTimeout(connect, 1500); } else retry("disconnected"); } };
   ws.onerror = () => ws.close();
 }
 
@@ -50,6 +66,7 @@ function retry(text) {
 function onMessage(m) {
   if (m.type === "hello") { S.live = false; S.map = m.map; S.lastSeq = 0; S.seen.clear(); S.history = []; $("chatList").replaceChildren(); m.chat.forEach(addChat); S.live = true; renderChips(); }   // also sent after a demo reset
   else if (m.type === "state") onState(m);
+  else if (m.type === "session_expired") { resetSid(); S.expired = true; addChat({ seq: -1, role: "system", text: m.message || "This demo session timed out." }); }
   else if (m.type === "chat") addChat(m);
   else if (m.type === "error") addChat({ seq: -1, role: "system", text: m.error });
 }

@@ -1,7 +1,7 @@
 // Service worker: caches the app SHELL (html, css, js, fonts, icons) so the page opens with no connection.
 // It NEVER caches robot data: /api/* and /ws are not handled here at all (the browser goes straight to the network), and only
 // same-origin GET requests for the listed shell files are ever stored. Bump VERSION when the shell file list changes.
-const VERSION = "gurdy-shell-v3";
+const VERSION = "gurdy-shell-v4";
 const SHELL = [
   "./", "index.html", "style.css", "app.js", "lib.js", "manifest.json",
   "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png",

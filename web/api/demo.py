@@ -1,4 +1,5 @@
-"""Builders for the public demo: the mock world with the keyword planner (no LLM, no GPU, no robot). `make_agent` is also the reset factory."""
+"""Builders for the public demo: the mock world (Gazebo flat_lab layout) with the keyword planner (no LLM, no GPU, no robot).
+`build_host` is the per-visitor factory: the server calls it once per browser session, so every visitor gets their own world, agent and chat."""
 from __future__ import annotations
 
 
@@ -13,4 +14,4 @@ def make_agent():
 
 def build_host():
     from brain.voice.host import AgentHost
-    return AgentHost(make_agent(), sim_speed=3.0)          # mock world: virtual clock runs 3x wall time
+    return AgentHost(make_agent(), sim_speed=3.0)          # mock world: virtual clock runs 3x wall time (the server starts the pump)

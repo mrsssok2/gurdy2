@@ -359,7 +359,7 @@ class DemoBase(unittest.TestCase):
             a = FakeAgent()
             self.made.append(a)
             return a
-        args = dict(port=0, state_s=0.05, demo=True, agent_factory=factory, clock=self.clock)
+        args = dict(port=0, state_s=0.05, demo=True, clock=self.clock)
         args.update(kw)
         self.srv = GurdyWebServer(self.host, **args).start()
         return self.srv
@@ -415,14 +415,6 @@ class DemoMode(DemoBase):
         with self.assertRaises(ValueError):
             GurdyWebServer(FakeHost(), telemetry=OtherTelemetry(), port=0, demo=True)
         GurdyWebServer(FakeHost(), port=0, demo=True).httpd.server_close()        # the mock itself is fine
-
-    def test_reset_refuses_a_non_mock_replacement(self):
-        class Bad:
-            class layer:
-                backend = object()
-        srv = self.make(agent_factory=lambda: Bad())
-        with self.assertRaises(ValueError):
-            srv.reset_demo()
 
     def test_message_length_cap(self):
         srv = self.make()
@@ -489,44 +481,6 @@ class DemoMode(DemoBase):
         again = WsClient(srv, path="/ws")                                 # slots are released
         self.assertEqual(again.status, 101)
         again.close()
-
-    def test_reset_gives_a_fresh_world_and_tells_clients(self):
-        srv = self.make()
-        old_agent = self.host.agent
-        old_agent.layer.backend.walk("forward", 2.0)
-        old_agent.layer.backend.advance(30)
-        request(srv, "GET", "/api/state", token=None)
-        request(srv, "POST", "/api/say", {"text": "hello"}, token=None)
-        c = WsClient(srv, path="/ws")
-        c.recv_json("hello")
-        srv.reset_demo()
-        hello = c.recv_json("hello")
-        self.assertEqual([m["role"] for m in hello["chat"]], [])
-        self.assertIn("reset", c.recv_json("chat")["text"])
-        self.assertIsNot(self.host.agent, old_agent)
-        st = request(srv, "GET", "/api/state", token=None)[1]
-        self.assertEqual((st["mode"], st["pose"]["x"], st["pose"]["y"]), ("idle", 0.0, 0.0))
-        self.assertEqual(len(st["trail"]), 1)
-        msgs = request(srv, "GET", "/api/messages", token=None)[1]["messages"]
-        self.assertEqual([m["text"] for m in msgs], ["The demo world was reset."])
-        c.close()
-
-    def test_automatic_reset_timer(self):
-        srv = self.make(reset_every_s=0.15)
-        first = self.host.agent
-        for _ in range(60):
-            if self.made:
-                break
-            time.sleep(0.05)
-        self.assertTrue(self.made, "no reset happened")
-        self.assertIsNot(self.host.agent, first)
-
-    def test_reset_is_off_outside_demo_and_without_factory(self):
-        srv = GurdyWebServer(FakeHost(), token=TOKEN, port=0, agent_factory=lambda: FakeAgent())
-        before = srv.host.agent
-        srv.reset_demo()
-        self.assertIs(srv.host.agent, before)
-        srv.httpd.server_close()
 
     def test_cli_rejects_llm_in_demo_and_needs_a_mode(self):
         import subprocess
@@ -667,7 +621,7 @@ class TokenSource(unittest.TestCase):
             def snapshot(self): raise RuntimeError("boom")
             def map(self): return {}
         b.telemetry = Broken()
-        self.assertEqual(b.state(), {"connected": False, "error": "RuntimeError: boom"})
+        self.assertEqual(b.state(b.default), {"connected": False, "error": "RuntimeError: boom"})
         b.httpd.server_close(); c.httpd.server_close()
 
 

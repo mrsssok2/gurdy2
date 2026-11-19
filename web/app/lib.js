@@ -45,8 +45,9 @@ export function newAlerts(active, seen, now) {
   return out;
 }
 
-export function wsUrl(loc, token) {
-  return `${loc.protocol === "https:" ? "wss" : "ws"}://${loc.host}/ws${token ? "?token=" + encodeURIComponent(token) : ""}`;
+export function wsUrl(loc, token, sid) {
+  const q = [token ? "token=" + encodeURIComponent(token) : "", sid ? "sid=" + encodeURIComponent(sid) : ""].filter(Boolean).join("&");
+  return `${loc.protocol === "https:" ? "wss" : "ws"}://${loc.host}/ws${q ? "?" + q : ""}`;
 }
 
 /** Reconnect delay: 0.5 s doubling to 8 s. */

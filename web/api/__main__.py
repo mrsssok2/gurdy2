@@ -11,7 +11,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--mock", action="store_true", help="serve the mock-world agent (the only source so far)")
     ap.add_argument("--demo", action="store_true", help="public demo: MockBackend only, no token, per-IP rate limits, 200-char messages, periodic world reset")
-    ap.add_argument("--demo-reset-min", type=float, default=10.0, help="demo: reset the mock world every N minutes (0 = never)")
+    ap.add_argument("--max-sessions", type=int, default=30, help="demo: visitors (isolated worlds) alive at once; more get 'the demo is busy'")
+    ap.add_argument("--session-idle-min", type=float, default=10.0, help="demo: a session with no activity for N minutes is freed")
     ap.add_argument("--trust-proxy", action="store_true", help="behind ONE reverse proxy: take the client IP from the last X-Forwarded-For entry (otherwise ignored)")
     ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8080)), help="default: $PORT or 8080 (hosting platforms set PORT)")
     ap.add_argument("--bind", default="127.0.0.1", help="127.0.0.1 (default) or 0.0.0.0 for the LAN / a container")
@@ -27,12 +28,11 @@ def main() -> None:
     if not (a.mock or a.demo):
         ap.error("pass --mock (private) or --demo (public)")
     if a.demo:
-        from .demo import build_host, make_agent
-        host = build_host()
-        host.start()
-        srv = GurdyWebServer(host, bind=a.bind, port=a.port, demo=True, agent_factory=make_agent, reset_every_s=a.demo_reset_min * 60,
-                             trust_proxy=a.trust_proxy).start()
-        print(f"DEMO mode on http://{a.bind}:{srv.port}/  (simulated robot only, no token, resets every {a.demo_reset_min:g} min)", flush=True)
+        from .demo import build_host
+        srv = GurdyWebServer(None, bind=a.bind, port=a.port, demo=True, host_factory=build_host, max_sessions=a.max_sessions,
+                             session_idle_s=a.session_idle_min * 60, trust_proxy=a.trust_proxy).start()
+        print(f"DEMO mode on http://{a.bind}:{srv.port}/  (simulated robot only, no token, one isolated world per visitor, "
+              f"max {a.max_sessions} at once, freed after {a.session_idle_min:g} idle min)", flush=True)
     else:
         from brain.voice.cli import build_local_host
         host, _ = build_local_host(a.ollama, lab=True)

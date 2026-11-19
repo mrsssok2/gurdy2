@@ -330,7 +330,7 @@ Design (2026-11-17, plan only): **`docs/phase6_design.md`** (incident definition
 - [x] Private remote access from anywhere: Tailscale Serve (tailnet-only https, valid certificate), `scripts/start_web_robot.sh tailscale voice` (`docs/phase7_remote.md`); used from a phone on mobile data
 - [x] Docker compose profile `web`, one-command start scripts; README section with screenshots
 - [x] LLM-unreachable fix: agent says "My language model is not running right now.", start script checks the model from inside the container before READY
-- [~] Public demo on a Hugging Face Docker Space: `--demo` mode (MockBackend only, flat_lab world, smart keyword planner, no token, rate limits, no voice, periodic reset), separate small image (`docker/demo`, measured 366 MB, 69 MiB RAM), `scripts/demo_space.py stage|deploy`, `docs/phase7_demo_deploy.md`. Tested locally (docker build + run + curl + headless screenshots); **not yet deployed** (needs the user's HF account + token) — the last open Phase 7 item
+- [~] Public demo on a Hugging Face Docker Space: `--demo` mode (MockBackend only, flat_lab world, smart keyword planner, no token, rate limits, no voice, per-visitor isolated sessions: cap 30, freed after 10 idle min, busy message), separate small image (`docker/demo`, measured 366 MB; 101 MiB RAM with 30 live sessions), `scripts/demo_space.py stage|deploy`, `docs/phase7_demo_deploy.md`. Tested locally (docker build + run + curl + headless screenshots); **not yet deployed** (needs the user's HF account + token) — the last open Phase 7 item
 - [ ] GitHub Actions CI (lint + unit tests; ROS build/test job) and a project website — still open (no `.github/workflows` yet)
 - [ ] Optional: three.js 3D robot view, incidents page (after Phase 6 resumes)
 

@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir --retries 8 --timeout 60 -r requirements.txt
 COPY --chown=user . .
 USER user
 EXPOSE 7860
-# --demo: MockBackend only, no token, per-IP rate limits, 200-char messages, world reset every 10 min, no voice.
+# --demo: MockBackend only, no token, per-IP rate limits, 200-char messages, no voice; every browser session gets its own isolated world / agent / chat
+# (max 30 at once, freed after 10 idle minutes, "demo is busy" when full).
 # --trust-proxy: the Space sits behind ONE reverse proxy; the client address comes from X-Forwarded-For (otherwise every visitor shares one rate-limit bucket).
-CMD ["python", "-m", "web.api", "--demo", "--bind", "0.0.0.0", "--demo-reset-min", "10", "--trust-proxy"]
+CMD ["python", "-m", "web.api", "--demo", "--bind", "0.0.0.0", "--max-sessions", "30", "--session-idle-min", "10", "--trust-proxy"]
