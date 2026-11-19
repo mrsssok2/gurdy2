@@ -30,11 +30,15 @@
   <div class="banner warn" id="staleBanner" hidden>Robot is busy thinking; showing the last known state.</div>
 </div>
 
-<main id="app">
+<section class="card camBox" id="camBox" hidden aria-label="Camera">
+  <button type="button" class="camhead" id="camHead" aria-expanded="false"><span class="k">Camera</span><span class="caminfo" id="camInfo"></span><svg viewBox="0 0 24 24" aria-hidden="true" class="chev"><path d="m6 9 6 6 6-6"/></svg></button>
+  <div class="cambody"><canvas id="camCanvas" width="320" height="240"></canvas><div class="camlist mono" id="camList"></div></div>
+</section>
+
+<main id="app" data-tab="map">
   <section class="view active" id="view-map" aria-label="Map">
     <div class="card map-card">
       <canvas id="map"></canvas>
-      <figure class="cam" id="cam" hidden><canvas id="camCanvas" width="320" height="240"></canvas><figcaption class="k">Camera <span id="camInfo" class="mono"></span></figcaption></figure>
       <div class="readout" id="poseCard">
         <div><span class="k">x</span><span class="v mono" id="px">–</span></div>
         <div><span class="k">y</span><span class="v mono" id="py">–</span></div>
@@ -42,15 +46,17 @@
         <div><span class="k">place</span><span class="v" id="pplace">–</span></div>
       </div>
     </div>
+    <div id="camSlotPhone"></div>
   </section>
 
   <section class="view" id="view-status" aria-label="Status">
     <div class="grid">
       <div class="card stat"><span class="k">Mode</span><span class="big" id="sMode">–</span></div>
       <div class="card stat"><span class="k">Task</span><span class="big" id="sTask">–</span></div>
-      <div class="card stat"><span class="k">Speed</span><span class="big mono" id="sSpeed">–</span></div>
+      <div class="card stat"><span class="k">Speed</span><span class="valrow"><span class="big mono" id="sSpeed">–</span><span class="unit" id="sSpeedUnit"></span></span></div>
       <div class="card stat"><span class="k">Uptime</span><span class="big mono" id="sTime">–</span></div>
     </div>
+    <div id="camSlotDesk"></div>
     <div class="card phone-only">
       <div class="row"><span class="k">Battery</span><span class="tag" id="sSim" hidden>simulated</span><span class="v mono" id="sBat">–</span></div>
       <div class="bar"><div id="sBatBar"></div></div>
@@ -64,10 +70,14 @@
 
   <section class="view" id="view-chat" aria-label="Chat">
     <div class="card chatcard">
-      <div class="k cardtitle">Chat</div>
+      <div class="chathead"><span class="k">Chat</span>
+        <button type="button" class="iconbtn" id="muteBtn" aria-label="Mute spoken replies" aria-pressed="false" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/><path class="slash" d="m3 3 18 18"/></svg></button></div>
       <div class="chat-list" id="chatList" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
       <form class="chat-form" id="chatForm" autocomplete="off">
         <input id="chatInput" type="text" maxlength="500" placeholder="Tell the robot what to do" enterkeyhint="send" aria-label="Message">
+        <button type="button" class="micbtn" id="micBtn" aria-label="Hold to talk" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
         <button type="submit" class="send">Send</button>
       </form>
     </div>
@@ -81,6 +91,8 @@
       <ul class="alerts" id="alertHist"></ul>
     </div>
   </section>
+  <button type="button" class="micfab" id="micFab" aria-label="Hold to talk" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="micFabText">Hold to talk</span></button>
+  <div class="toast" id="toast" role="status" hidden></div>
 </main>
 
 <nav class="tabs" aria-label="Sections">

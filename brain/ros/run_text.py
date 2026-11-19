@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import threading
 import time
@@ -21,6 +22,11 @@ def main() -> None:
     ap.add_argument("--web", type=int, default=None, metavar="PORT",
                     help="also serve the mission-control dashboard (web/app) on this port, with telemetry from ROS; token = $GURDY_WEB_TOKEN or random (printed)")
     ap.add_argument("--web-bind", default="0.0.0.0", help="address the dashboard listens on inside the container (the compose / docker -p mapping decides who can reach it)")
+    ap.add_argument("--speech-url", default=os.environ.get("GURDY_SPEECH_URL") or None, help="speech service for the dashboard's mic button / spoken replies")
+    ap.add_argument("--tls-port", type=int, default=int(os.environ.get("GURDY_TLS_PORT") or 0) or None, help="dashboard https port (needs --tls-cert / --tls-key)")
+    ap.add_argument("--tls-cert", default=os.environ.get("GURDY_TLS_CERT") or None)
+    ap.add_argument("--tls-key", default=os.environ.get("GURDY_TLS_KEY") or None)
+    ap.add_argument("--ca", default=os.environ.get("GURDY_TLS_CA") or None)
     ap.add_argument("--ollama", default=None, help="model name; needs OLLAMA_URL")
     a = ap.parse_args()
     from ..agent.graph import Agent
@@ -60,8 +66,12 @@ def main() -> None:
             from web.api.ros_telemetry import RosTelemetry
             from web.api.server import GurdyWebServer
             tel = RosTelemetry(host, port, RosExtras(port.node))
-            srv = GurdyWebServer(host, telemetry=tel, bind=a.web_bind, port=a.web).start()
-            print(f"mission control on port {srv.port} (real robot)", flush=True)
+            from web.api.voice import SpeechClient
+            speech = SpeechClient(a.speech_url) if a.speech_url else None
+            srv = GurdyWebServer(host, telemetry=tel, bind=a.web_bind, port=a.web, speech=speech, tls_port=a.tls_port, tls_cert=a.tls_cert,
+                                 tls_key=a.tls_key, ca_file=a.ca).start()
+            print(f"mission control on port {srv.port} (real robot)" + (f", https on {srv.tls_port}" if srv.tls_port else "")
+                  + (f", voice via {a.speech_url}" if speech else ""), flush=True)
             print(f"access token: {srv.token}", flush=True)
         if not sys.stdin.isatty():            # started without a terminal (voice / web mode of the start scripts): just serve
             threading.Event().wait()

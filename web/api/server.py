@@ -61,10 +61,11 @@ class ChatLog:
         with self._lock:
             self._items.clear()
 
-    def add(self, role: str, text: str) -> dict:
+    def add(self, role: str, text: str, **meta) -> dict:
+        """`meta`: optional extra fields on the item (voice messages: voice=True, confidence, stt_s)."""
         with self._lock:
             self._seq += 1
-            item = {"seq": self._seq, "t": round(time.time(), 1), "role": role, "text": text}
+            item = {"seq": self._seq, "t": round(time.time(), 1), "role": role, "text": text, **{k: v for k, v in meta.items() if v is not None}}
             self._items.append(item)
         if self.on_add:
             self.on_add(item)
@@ -135,10 +136,24 @@ class _Server(ThreadingHTTPServer):
         super().handle_error(request, client_address)
 
 
+class _TlsServer(_Server):
+    """Same server on a second port, TLS. The handshake happens lazily in the handler thread (do_handshake_on_connect=False), so a client that
+    connects and says nothing cannot stall the accept loop."""
+
+    def __init__(self, addr, handler, ctx):
+        self._ctx = ctx
+        super().__init__(addr, handler)
+
+    def get_request(self):
+        sock, addr = super().get_request()
+        return self._ctx.wrap_socket(sock, server_side=True, do_handshake_on_connect=False), addr
+
+
 class GurdyWebServer:
     def __init__(self, host, telemetry: Telemetry | None = None, token: str | None = None, static_dir: str | Path | None = DEFAULT_STATIC,
                  bind: str = "127.0.0.1", port: int = 8080, state_s: float = 0.5, demo: bool = False, agent_factory=None,
-                 reset_every_s: float = 0.0, trust_proxy: bool = False, clock=time.monotonic):
+                 reset_every_s: float = 0.0, trust_proxy: bool = False, clock=time.monotonic, speech=None,
+                 tls_port: int | None = None, tls_cert: str | None = None, tls_key: str | None = None, ca_file: str | None = None):
         self.host, self.state_s = host, state_s
         self.telemetry = telemetry or MockTelemetry(host)
         self.demo, self.agent_factory, self.reset_every_s, self.trust_proxy = demo, agent_factory, reset_every_s, trust_proxy
@@ -155,6 +170,9 @@ class GurdyWebServer:
         self.token = token or os.environ.get("GURDY_WEB_TOKEN") or secrets.token_urlsafe(16)
         self.static_dir = Path(static_dir).resolve() if static_dir else None
         self.chat = ChatLog(on_add=lambda item: self.broadcast({"type": "chat", **item}))
+        from .voice import VoiceGateway
+        self.voice = VoiceGateway(host, speech, self.chat) if (speech is not None and not demo) else None      # no microphone in the public demo
+        self.ca_file = Path(ca_file) if ca_file else None
         self._clients: list[_WsClient] = []
         self._clients_lock = threading.Lock()
         self._stop = threading.Event()
@@ -164,11 +182,21 @@ class GurdyWebServer:
         handler = type("Handler", (_Handler,), {"app": server})
         self.httpd = _Server((bind, port), handler)
         self.port = self.httpd.server_address[1]
+        self.httpd_tls, self.tls_port = None, None
+        if tls_cert and tls_key:                         # microphones need a secure context: https on a second port (localhost works without)
+            import ssl
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+            ctx.load_cert_chain(tls_cert, tls_key)
+            self.httpd_tls = _TlsServer((bind, tls_port if tls_port is not None else 0), handler, ctx)
+            self.tls_port = self.httpd_tls.server_address[1]
         self._threads: list[threading.Thread] = []
 
     # ------------------------------------------------------------------ lifecycle
     def start(self) -> "GurdyWebServer":
         loops = [lambda: self.httpd.serve_forever(poll_interval=0.05), self._broadcast_loop]
+        if self.httpd_tls is not None:
+            loops.append(lambda: self.httpd_tls.serve_forever(poll_interval=0.05))
         if self.demo and self.reset_every_s > 0 and self.agent_factory is not None:
             loops.append(self._reset_loop)
         for fn in loops:
@@ -181,6 +209,9 @@ class GurdyWebServer:
         self._stop.set()
         self.httpd.shutdown()
         self.httpd.server_close()
+        if self.httpd_tls is not None:
+            self.httpd_tls.shutdown()
+            self.httpd_tls.server_close()
         for c in list(self._clients):
             c.kill()
 
@@ -216,7 +247,10 @@ class GurdyWebServer:
                 traceback.print_exc(file=sys.stderr)
 
     def hello(self) -> dict:
-        return {"type": "hello", "version": VERSION, "demo": self.demo, "map": self.telemetry.map(), "chat": self.chat.since(0)}
+        return {"type": "hello", "version": VERSION, "demo": self.demo, "voice": self.voice_available(), "map": self.telemetry.map(), "chat": self.chat.since(0)}
+
+    def voice_available(self) -> bool:
+        return self.voice is not None and self.voice.available()
 
     def check_token(self, given: str | None) -> bool:
         if self.demo:
@@ -357,12 +391,35 @@ class _Handler(BaseHTTPRequestHandler):
             return None
         return obj
 
+    def _send_bytes(self, status: int, body: bytes, ctype: str, headers: dict | None = None) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        for k, v in (headers or {}).items():
+            self.send_header(k, v)
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _raw_body(self, limit: int) -> bytes | None:
+        try:
+            n = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            n = -1
+        if n <= 0 or n > limit:
+            self.close_connection = True
+            self._err(413 if n > limit else 400, "bad or too large body")
+            return None
+        return self.rfile.read(n)
+
     # ---- routes
     def do_GET(self) -> None:
         u = urlsplit(self.path)
         q = parse_qs(u.query)
         if u.path == "/api/health":
-            return self._json({"ok": True, "version": VERSION, "demo": self.app.demo})
+            return self._json({"ok": True, "version": VERSION, "demo": self.app.demo, "voice": self.app.voice_available()})
+        if u.path == "/ca.crt" and self.app.ca_file is not None and self.app.ca_file.exists():      # the PUBLIC certificate of the local CA, for phones to trust
+            return self._send_bytes(200, self.app.ca_file.read_bytes(), "application/x-x509-ca-cert", {"Content-Disposition": 'attachment; filename="gurdy-ca.crt"'})
         if u.path == "/ws":
             return self._websocket(q)
         if u.path.startswith("/api/"):
@@ -402,6 +459,25 @@ class _Handler(BaseHTTPRequestHandler):
                 return
             self.app.estop()
             return self._json({"ok": True})
+        if u.path in ("/api/voice", "/api/tts"):
+            if self.app.voice is None or not self.app.voice.available():
+                return self._err(503, "voice is not available on this server")
+            from .voice import MAX_AUDIO_BYTES, MAX_TTS_CHARS, SpeechError
+            try:
+                if u.path == "/api/voice":
+                    audio = self._raw_body(MAX_AUDIO_BYTES)
+                    if audio is None:
+                        return
+                    return self._json(self.app.voice.handle_audio(audio))
+                body = self._body()
+                if body is None:
+                    return
+                text = body.get("text")
+                if not isinstance(text, str) or not text.strip() or len(text) > MAX_TTS_CHARS:
+                    return self._err(400, "bad 'text'")
+                return self._send_bytes(200, self.app.voice.speak(text.strip()), "audio/wav")
+            except SpeechError as e:
+                return self._err(502, str(e))
         if u.path == "/api/estop/release":
             return self._json({"ok": self.app.release_estop()})
         if u.path == "/api/say":

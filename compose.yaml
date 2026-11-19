@@ -72,6 +72,11 @@ services:
     image: gurdy2/brain:cpu
     environment:
       GURDY_WEB_TOKEN: ${GURDY_WEB_TOKEN:-}   # from the environment only; empty -> random token printed at start
+      GURDY_SPEECH_URL: ${GURDY_SPEECH_URL:-}   # speech service (Whisper + Piper) -> mic button / spoken replies
+      GURDY_TLS_PORT: ${GURDY_TLS_PORT:-}       # https port (scripts/start_web.sh https); cert files come from ~/.gurdy/tls mounted at /tls
+      GURDY_TLS_CERT: ${GURDY_TLS_CERT:-}
+      GURDY_TLS_KEY: ${GURDY_TLS_KEY:-}
+      GURDY_TLS_CA: ${GURDY_TLS_CA:-}
     ports:
       - "${WEB_PUBLISH:-127.0.0.1}:8080:8080"
     mem_limit: 512m

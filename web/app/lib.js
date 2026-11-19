@@ -68,26 +68,28 @@ const overlaps = (a, b, gap) => a.x < b.x + b.w + gap && b.x < a.x + a.w + gap &
  * Greedy label layout. items: [{text, ax, ay, r}] (anchor point in px, marker radius r) in priority order; `measure(text)` -> width px;
  * lineH = text height. `taken` = rectangles already used (e.g. room titles). Every label is tried at 8 positions around its anchor and the first
  * one that is inside [0,w]x[0,h] and overlaps nothing placed so far wins; if none is free the least-overlapping inside position is used, so a
- * label is ALWAYS inside the map. Returns [{text, x, y, w, h, ax, ay}] with (x,y) the top-left of the text box.
+ * label is ALWAYS inside the map. Returns [{text, x, y, w, h, ax, ay, leader}] with (x,y) the top-left of the text box; `leader` = draw a thin line to the anchor.
  */
 export function placeLabels(items, w, h, measure, lineH = 16, taken = [], margin = 4) {
   const placed = taken.map((t) => ({ ...t }));
   const out = [];
+  const dirs = [[1, 0], [-1, 0], [0, -1], [0, 1], [0.7, -0.7], [-0.7, -0.7], [0.7, 0.7], [-0.7, 0.7]];
   for (const it of items) {
     const tw = measure(it.text), r = (it.r ?? 4) + 4;
-    const cand = [[r, -lineH / 2], [-r - tw, -lineH / 2], [-tw / 2, -r - lineH], [-tw / 2, r], [r, -r - lineH], [-r - tw, -r - lineH], [r, r], [-r - tw, r]];
     let best = null, bestScore = Infinity;
-    for (const [dx, dy] of cand) {
-      let x = it.ax + dx, y = it.ay + dy;
-      const cx = Math.min(Math.max(x, margin), Math.max(margin, w - tw - margin)), cy = Math.min(Math.max(y, margin), Math.max(margin, h - lineH - margin));
-      const clamped = Math.abs(cx - x) + Math.abs(cy - y);
-      x = cx; y = cy;
-      const box = { x, y, w: tw, h: lineH };
-      const hits = placed.reduce((n, p) => n + (overlaps(box, p, 2) ? 1 : 0), 0);
-      const score = hits * 1000 + clamped;
-      if (score < bestScore) { bestScore = score; best = box; if (score === 0) break; }
+    search: for (const ring of [0, 16, 36, 64, 100]) {            // close first, then further away (a leader line joins label and marker)
+      for (const [dx, dy] of dirs) {
+        const ox = dx * (r + ring), oy = dy * (r + ring);
+        let x = it.ax + ox - (dx < 0 ? tw : dx > 0 ? 0 : tw / 2), y = it.ay + oy - (dy < 0 ? lineH : dy > 0 ? 0 : lineH / 2);
+        const cx = Math.min(Math.max(x, margin), Math.max(margin, w - tw - margin)), cy = Math.min(Math.max(y, margin), Math.max(margin, h - lineH - margin));
+        const clamped = Math.abs(cx - x) + Math.abs(cy - y);
+        const box = { x: cx, y: cy, w: tw, h: lineH };
+        const hits = placed.reduce((n, p) => n + (overlaps(box, p, 2) ? 1 : 0), 0);
+        const score = hits * 1000 + clamped + ring * 0.01;
+        if (score < bestScore) { bestScore = score; best = { ...box, leader: ring > 0 || clamped > 0 }; if (hits === 0 && clamped === 0) break search; }
+      }
     }
-    placed.push(best);
+    placed.push({ x: best.x, y: best.y, w: best.w, h: best.h });
     out.push({ text: it.text, ...best, ax: it.ax, ay: it.ay });
   }
   return out;

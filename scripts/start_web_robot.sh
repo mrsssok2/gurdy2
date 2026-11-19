@@ -2,6 +2,7 @@
 # Mission control on the REAL simulated robot: Gazebo (headless) + Nav2 + policy + detector + monitors + the agent + the web app, ONE heavy stack.
 #   scripts/start_web_robot.sh            # this PC only:  http://localhost:8080/#token=...
 #   scripts/start_web_robot.sh lan        # also reachable from the phone on the same Wi-Fi (docs/phase7_phone.md: firewall rule)
+#   scripts/start_web_robot.sh lan https voice   # + https on :8443 (the phone's microphone needs it) + hold-to-talk mic and spoken replies (docs/phase7_voice.md)
 #   MODEL=keyword scripts/start_web_robot.sh   # no LLM (smart keyword planner; no Ollama / GPU needed)
 #   MODEL=gurdy-sft-400 (default)         # the fine-tuned brain via this project's Ollama on :11435
 #   GUI=true scripts/start_web_robot.sh   # also the Gazebo window (WSLg)
@@ -11,7 +12,8 @@
 set -eo pipefail
 cd "$(dirname "$0")/.."
 export MODEL=${MODEL:-gurdy-sft-400} GUI=${GUI:-false} MEMORY=${MEMORY:-true}; PORT=11435
-PUBLISH=127.0.0.1; [ "${1:-}" = lan ] && PUBLISH=0.0.0.0
+PUBLISH=127.0.0.1; HTTPS=false; VOICE=false
+for a in "$@"; do case "$a" in lan) PUBLISH=0.0.0.0 ;; https) HTTPS=true ;; voice) VOICE=true ;; *) echo "unknown argument: $a (lan | https | voice)"; exit 2 ;; esac; done
 export GURDY_WEB_TOKEN="${GURDY_WEB_TOKEN:-$(python3 -c 'import secrets;print(secrets.token_urlsafe(24))')}"
 mkdir -p "$HOME/.gurdy"
 if [ -n "$(docker ps -q)" ]; then echo "Other containers are running (docker ps). Stop them first (one heavy workload at a time):"; docker ps --format '  {{.Names}}'; exit 1; fi
@@ -25,11 +27,18 @@ if [ "$MODEL" != keyword ]; then
   curl -s "localhost:$PORT/api/generate" -d "{\"model\":\"$MODEL\",\"keep_alive\":\"30m\"}" >/dev/null   # load the model before the sim competes for RAM
   export OLLAMA_URL=http://$(hostname -I | cut -d' ' -f1):$PORT
 fi
+PORTS=(-p "$PUBLISH:8080:8080"); EXTRA=()
+if $HTTPS; then
+  [ -f "$HOME/.gurdy/tls/gurdy.crt" ] || { echo "no certificate yet: run scripts/make_web_cert.sh <the laptop's Wi-Fi / hotspot IP> first (docs/phase7_voice.md)"; exit 1; }
+  export GURDY_TLS_PORT=8443 GURDY_TLS_CERT=/tls/gurdy.crt GURDY_TLS_KEY=/tls/gurdy.key GURDY_TLS_CA=/tls/ca.crt
+  EXTRA+=(-v "$HOME/.gurdy/tls:/tls:ro" -e GURDY_TLS_PORT -e GURDY_TLS_CERT -e GURDY_TLS_KEY -e GURDY_TLS_CA); PORTS+=(-p "$PUBLISH:8443:8443")
+fi
+if $VOICE; then source scripts/lib_speech.sh; start_speech_service; EXTRA+=(-e GURDY_SPEECH_URL); fi
 LOG=/tmp/gurdy_web.log; RAM=/tmp/gurdy_web_ram.log; : > "$LOG"; : > "$RAM"
-cleanup() { [ -n "${SAMPLER:-}" ] && kill "$SAMPLER" 2>/dev/null || true; docker rm -f gurdy_agent >/dev/null 2>&1 || true
+cleanup() { [ -n "${SAMPLER:-}" ] && kill "$SAMPLER" 2>/dev/null || true; docker rm -f gurdy_agent gurdy_speech >/dev/null 2>&1 || true
   if [ -s "$RAM" ]; then awk '{ if ($2>c) c=$2; if ($3>w) w=$3; if ($4>g) g=$4 } END { printf "peak: container %d MiB, WSL used %d MiB, GPU %d MiB (samples: /tmp/gurdy_web_ram.log)\n", c, w, g }' "$RAM"; fi; }
 trap cleanup EXIT INT TERM
-docker compose run --rm -T --name gurdy_agent -p "$PUBLISH:8080:8080" -e OLLAMA_URL -e MODEL -e GUI -e MEMORY -e GURDY_WEB_TOKEN \
+docker compose run --rm -T --name gurdy_agent "${PORTS[@]}" "${EXTRA[@]}" -e OLLAMA_URL -e MODEL -e GUI -e MEMORY -e GURDY_WEB_TOKEN \
   -v "$HOME/.gurdy:/home/ubuntu/.gurdy" sim bash -c '
   cd ~/gurdy2 && source ros2_ws/install/setup.bash && export PYTHONPATH=$HOME/gurdy2:$HOME/gurdy2/gurdy_core:$HOME/gurdy2/sim_mujoco:$PYTHONPATH
   source scripts/lib_nav_start.sh; mkdir -p /tmp/chat; cp maps/flat_lab.places.yaml /tmp/chat/places.yaml
@@ -61,5 +70,7 @@ grep -q "access token:" "$LOG" || { echo "the web app did not start in time"; ta
 echo
 echo "READY. Open in the laptop browser:  http://localhost:8080/#token=$GURDY_WEB_TOKEN"
 [ "$PUBLISH" = 0.0.0.0 ] && echo "Phone (same Wi-Fi):                 http://<PC Wi-Fi IPv4>:8080/#token=$GURDY_WEB_TOKEN   (docs/phase7_phone.md)"
+$HTTPS && echo "https (phone microphone):           https://<PC IPv4>:8443/#token=$GURDY_WEB_TOKEN   (trust the CA first: docs/phase7_voice.md)"
+$VOICE && echo "Voice: hold the mic button (laptop: hold Space) and speak; the speech service is container gurdy_speech."
 echo "Ctrl+C stops everything. Agent / robot log: $LOG"
 wait $AGENT_PID

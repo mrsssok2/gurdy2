@@ -2,12 +2,44 @@
 `MockTelemetry` reads a MockBackend; the ROS version (rclpy) comes in Phase 7 step 5 and implements the same two methods."""
 from __future__ import annotations
 
+import math
 import time
 from collections import deque
 from typing import Any, Protocol
 
 TRAIL_MAX = 200
-TRAIL_MIN_STEP_M = 0.05
+TRAIL_MIN_STEP_M = 0.12          # a new trail point only after the robot moved this far: in-place spins and pose jitter add nothing
+TRAIL_KEEP_M = 12.0              # the trail keeps the last N metres of path, older points are dropped
+
+
+class TrailBuffer:
+    """Decimated trail: points >= `min_step` apart (spinning on the spot and localisation jitter are skipped), at most `keep_m` of path length."""
+
+    def __init__(self, min_step: float = TRAIL_MIN_STEP_M, keep_m: float = TRAIL_KEEP_M, maxlen: int = TRAIL_MAX):
+        self.min_step, self.keep_m = min_step, keep_m
+        self._pts: deque[tuple[float, float]] = deque(maxlen=maxlen)
+
+    def add(self, x: float, y: float) -> None:
+        if self._pts and math.hypot(x - self._pts[-1][0], y - self._pts[-1][1]) < self.min_step:
+            return
+        if self._pts and math.hypot(x - self._pts[-1][0], y - self._pts[-1][1]) > 3.0:      # teleport (new world / relocalisation): start over
+            self._pts.clear()
+        self._pts.append((x, y))
+        total, i = 0.0, len(self._pts) - 1
+        while i > 0 and total <= self.keep_m:
+            total += math.hypot(self._pts[i][0] - self._pts[i - 1][0], self._pts[i][1] - self._pts[i - 1][1])
+            i -= 1
+        for _ in range(i):
+            self._pts.popleft()
+
+    def clear(self) -> None:
+        self._pts.clear()
+
+    def points(self) -> list[list[float]]:
+        return [[round(x, 3), round(y, 3)] for x, y in self._pts]
+
+    def __len__(self) -> int:
+        return len(self._pts)
 
 
 class Telemetry(Protocol):
@@ -27,7 +59,7 @@ class MockTelemetry:
     def __init__(self, host, lock_timeout_s: float = 0.2, wall=time.monotonic):
         self.host, self.lock_timeout_s, self.wall = host, lock_timeout_s, wall
         self._last: dict[str, Any] | None = None
-        self._trail: deque[tuple[float, float]] = deque(maxlen=TRAIL_MAX)
+        self._trail = TrailBuffer()
 
     def reset(self) -> None:
         """New world behind the host: forget the trail and the cached snapshot."""
@@ -54,8 +86,7 @@ class MockTelemetry:
         b = self.backend
         st, pos = b.status().data, b.where_am_i().data
         xy = (pos["x"], pos["y"])
-        if not self._trail or abs(xy[0] - self._trail[-1][0]) + abs(xy[1] - self._trail[-1][1]) >= TRAIL_MIN_STEP_M:
-            self._trail.append(xy)
+        self._trail.add(*xy)
         objs = b.recall("object").data.get("records", [])
         return {
             "connected": True, "stale": False, "source": "mock", "sim_time_s": round(b.now(), 1),
@@ -65,7 +96,7 @@ class MockTelemetry:
             "legs": st["legs"], "alerts": list(st["alerts_active"]),
             "objects": [{k: o[k] for k in ("id", "class", "color", "x", "y", "place", "age_s", "stale")} for o in objs],
             "zones": [dict(z) for z in getattr(b, "zones", [])],
-            "trail": [list(p) for p in self._trail],
+            "trail": self._trail.points(),
             "path": self._planned_path(b),
         }
 

@@ -114,7 +114,7 @@ class Base(unittest.TestCase):
 
 class RestTests(Base):
     def test_health_is_public(self):
-        self.assertEqual(request(self.srv, "GET", "/api/health", token=None), (200, {"ok": True, "version": "0.1", "demo": False}))
+        self.assertEqual(request(self.srv, "GET", "/api/health", token=None), (200, {"ok": True, "version": "0.1", "demo": False, "voice": False}))
 
     def test_auth_required_everywhere(self):
         for m, p in (("GET", "/api/state"), ("GET", "/api/map"), ("GET", "/api/messages"), ("POST", "/api/say"), ("POST", "/api/estop")):
@@ -372,7 +372,7 @@ class DemoBase(unittest.TestCase):
 class DemoMode(DemoBase):
     def test_no_token_needed_and_flagged_as_demo(self):
         srv = self.make()
-        self.assertEqual(request(srv, "GET", "/api/health", token=None), (200, {"ok": True, "version": "0.1", "demo": True}))
+        self.assertEqual(request(srv, "GET", "/api/health", token=None), (200, {"ok": True, "version": "0.1", "demo": True, "voice": False}))
         st, state = request(srv, "GET", "/api/state", token=None)
         self.assertEqual((st, state["demo"], state["source"]), (200, True, "mock"))
         self.assertEqual(request(srv, "GET", "/api/map", token="anything")[0], 200)

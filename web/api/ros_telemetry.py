@@ -11,7 +11,7 @@ import time
 from collections import deque
 from typing import Any
 
-from .telemetry import TRAIL_MAX, TRAIL_MIN_STEP_M
+from .telemetry import TrailBuffer
 
 STALE_AFTER_S = 30.0          # same idea as brain.ros.backend.STALE_AFTER_S: a remembered object not seen for this long is drawn faded
 PATH_POINTS = 40
@@ -46,7 +46,7 @@ def grid_to_rects(width: int, height: int, res: float, ox: float, oy: float, dat
 class RosTelemetry:
     def __init__(self, host, port, extras=None, wall=time.monotonic):
         self.host, self.port, self.extras, self.wall = host, port, extras, wall
-        self._trail: deque[tuple[float, float]] = deque(maxlen=TRAIL_MAX)
+        self._trail = TrailBuffer()
         self._map: dict[str, Any] | None = None
 
     @property
@@ -67,8 +67,7 @@ class RosTelemetry:
         except Exception as e:                       # noqa: BLE001  (a backend hiccup must not kill the stream)
             return {"connected": False, "stale": False, "source": "ros", "error": f"status failed: {e}"}
         x, y, yaw = pose
-        if not self._trail or abs(x - self._trail[-1][0]) + abs(y - self._trail[-1][1]) >= TRAIL_MIN_STEP_M:
-            self._trail.append((x, y))
+        self._trail.add(x, y)
         now = self.port.now()
         objs = []
         for t in self.port.semantic_objects() or []:
@@ -84,7 +83,7 @@ class RosTelemetry:
             "speed_mps": st["speed_mps"], "battery_pct": st["battery_pct"], "battery_simulated": st["battery_simulated"],
             "legs": st["legs"], "alerts": list(st["alerts_active"]), "policy": st.get("policy"),
             "objects": objs, "zones": [dict(z) for z in getattr(b, "zones", [])],
-            "trail": [list(p) for p in self._trail], "path": self._planned_path(st),
+            "trail": self._trail.points(), "path": self._planned_path(st),
             "camera_available": bool(self.extras and self.extras.has_camera()),
         }
 

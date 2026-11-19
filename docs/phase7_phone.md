@@ -69,6 +69,9 @@ Nothing loads? In order: (a) Wi-Fi profile is Private; (b) the firewall rule exi
 
 Also: the PC's Wi-Fi IP is part of the app's identity. If the router hands out a new address the home-screen app points at the old one — set a **DHCP reservation** for the PC in the router, or re-add the shortcut.
 
-## 6. Safety notes
+## 6. Voice on the phone
+The microphone needs https: see `docs/phase7_voice.md` (`scripts/make_web_cert.sh`, `scripts/start_web.sh lan https voice`).
+
+## 7. Safety notes
 - The token travels in clear text over plain http. Fine on your home Wi-Fi for a simulated robot; do not expose this port to the internet. Stop the server and remove the firewall rule when you are not using it.
 - The big red **E-STOP** is in the top bar on every tab. With a real robot it is a convenience; the voice stop and the physical power switch stay the primary stops.

@@ -3,7 +3,7 @@ import { makeView, fmtTime, fmtNum, batteryClass, legSummary, newAlerts, wsUrl, 
 const $ = (id) => document.getElementById(id);
 const C = { bg: "#0B0E13", room: "#121821", wall: "#3A4552", obstacle: "#4B5563", zone: "#D93036", accent: "#2DD4BF", text: "#E6EDF3", muted: "#8B98A5" };
 
-const S = { demo: false, token: "", ws: null, attempt: 0, timer: null, map: null, state: null, lastSeq: 0, seen: new Set(), history: [], tab: "map", disp: null };
+const S = { demo: false, token: "", ws: null, attempt: 0, timer: null, map: null, state: null, lastSeq: 0, seen: new Set(), history: [], tab: "map", disp: null, voice: false, muted: false, voiceUsed: false, live: false };
 
 function store(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode: fine */ } }
 function load(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }
@@ -22,8 +22,10 @@ async function api(path, opts = {}) {
 async function connect() {
   clearTimeout(S.timer);
   try {                                                // public, needs no token: tells us whether this is the demo server
-    S.demo = !!(await (await fetch("/api/health")).json()).demo;
+    const hl = await (await fetch("/api/health")).json();
+    S.demo = !!hl.demo; S.voice = !!hl.voice && !S.demo;
     $("demoBanner").hidden = !S.demo;
+    setupVoice();
   } catch { return retry("server not reachable"); }
   if (!S.token && !S.demo) return askToken();
   try {
@@ -46,7 +48,7 @@ function retry(text) {
 }
 
 function onMessage(m) {
-  if (m.type === "hello") { S.map = m.map; S.lastSeq = 0; S.seen.clear(); S.history = []; $("chatList").replaceChildren(); m.chat.forEach(addChat); }   // also sent after a demo reset
+  if (m.type === "hello") { S.live = false; S.map = m.map; S.lastSeq = 0; S.seen.clear(); S.history = []; $("chatList").replaceChildren(); m.chat.forEach(addChat); S.live = true; renderChips(); }   // also sent after a demo reset
   else if (m.type === "state") onState(m);
   else if (m.type === "chat") addChat(m);
   else if (m.type === "error") addChat({ seq: -1, role: "system", text: m.error });
@@ -59,6 +61,7 @@ function send(obj) {
 
 // ---------------------------------------------------------------- e-stop and chat
 async function estop() {
+  stopSpeaking();
   if (send({ op: "estop" })) return;
   try { await api("/api/estop", { method: "POST", body: "{}" }); } catch (e) { addChat({ seq: -1, role: "system", text: "E-stop failed to send: " + e.message }); }
 }
@@ -83,11 +86,23 @@ function addChat(m) {
   const el = document.createElement("div");
   el.className = "msg " + (["user", "robot", "system"].includes(m.role) ? m.role : "robot");
   el.textContent = m.text;                              // textContent only: robot / alert text is never parsed as HTML
+  if (m.voice) { const meta = document.createElement("span"); meta.className = "meta"; meta.textContent = "voice" + (m.confidence != null ? ` · ${Math.round(m.confidence * 100)} % sure` : ""); el.appendChild(meta); }
   const list = $("chatList");
   const atEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
   list.appendChild(el);
   while (list.childElementCount > 300) list.firstChild.remove();
   if (atEnd || m.role === "user") list.scrollTop = list.scrollHeight;
+  renderChips();
+  if (S.live && m.role === "robot" && S.voiceUsed && !S.muted) speak(m.text);
+}
+
+// ---------------------------------------------------------------- suggestion chips (empty chat only)
+const SUGGESTIONS = ["Go to room B", "Where are you?", "Find the yellow box", "Go home"];
+function renderChips() {
+  const box = $("chips"), empty = $("chatList").childElementCount === 0;
+  if (!empty) { box.replaceChildren(); return; }
+  if (box.childElementCount) return;
+  box.replaceChildren(...SUGGESTIONS.map((t) => { const b = document.createElement("button"); b.type = "button"; b.className = "chip-btn"; b.textContent = t; b.addEventListener("click", () => say(t)); return b; }));
 }
 
 // ---------------------------------------------------------------- state -> UI
@@ -101,8 +116,8 @@ function onState(st) {
   $("px").textContent = fmtNum(p.x, 2, " m"); $("py").textContent = fmtNum(p.y, 2, " m");
   $("ph").textContent = fmtNum(p.heading_deg, 0, "°"); $("pplace").textContent = p.place || "–";
   $("sMode").textContent = st.mode || "–";
-  $("sTask").textContent = st.task ? st.task.tool : "none";
-  $("sSpeed").textContent = fmtNum(st.speed_mps, 2, " m/s");
+  $("sTask").textContent = st.task ? prettyName(st.task.tool) : "none";
+  $("sSpeed").textContent = fmtNum(st.speed_mps, 2); $("sSpeedUnit").textContent = st.speed_mps == null ? "" : "m/s";
   $("sTime").textContent = fmtTime(st.sim_time_s);
   const b = st.battery_pct;
   $("sBat").textContent = fmtNum(b, 0, " %");
@@ -115,7 +130,7 @@ function onState(st) {
   renderLegs(st.legs || {});
   renderObjects(st.objects || []);
   renderAlerts(st.alerts || []);
-  if (!st.camera_available) $("cam").hidden = true;
+  setCameraAvailable(!!st.camera_available);
   kick();
 }
 
@@ -232,17 +247,22 @@ function drawMap() {
     const zp = v.P(z.x, z.y); g.beginPath(); g.arc(zp.x, zp.y, z.r * v.s, 0, 2 * Math.PI);
     g.fillStyle = "#D9303622"; g.fill(); g.setLineDash([6, 4]); g.strokeStyle = C.zone; g.lineWidth = 1.5; g.stroke(); g.setLineDash([]);
   }
-  // trail (fades towards the old end), then planned path (dashed, with a goal ring)
-  const tr = st.trail || [];
+  // trail: decimated server side (>= 12 cm apart, last 12 m); drawn as a smooth curve that fades towards the old end, ending at the robot
+  const D = S.disp;
+  const tr = (st.trail || []).map((p) => v.P(p[0], p[1]));
+  if (D) tr.push(v.P(D.x, D.y));
   if (tr.length > 1) {
     g.lineWidth = 3; g.lineCap = "round"; g.lineJoin = "round";
-    const n = tr.length, step = Math.max(1, Math.floor(n / 40));
-    for (let i = step; i < n; i += step) {
-      const a = v.P(...tr[i - step]), b = v.P(...tr[i]); g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y);
-      g.strokeStyle = `rgba(45,212,191,${0.15 + 0.6 * (i / n)})`; g.stroke();
+    const CH = Math.min(8, tr.length - 1), per = (tr.length - 1) / CH;
+    for (let c = 0; c < CH; c++) {
+      const i0 = Math.floor(c * per), i1 = Math.min(tr.length - 1, Math.ceil((c + 1) * per));
+      g.beginPath(); g.moveTo(tr[i0].x, tr[i0].y);
+      for (let i = i0 + 1; i < i1; i++) { const mx = (tr[i].x + tr[i + 1].x) / 2, my = (tr[i].y + tr[i + 1].y) / 2; g.quadraticCurveTo(tr[i].x, tr[i].y, mx, my); }
+      g.lineTo(tr[i1].x, tr[i1].y);
+      g.strokeStyle = `rgba(45,212,191,${0.18 + 0.6 * ((c + 1) / CH)})`; g.stroke();
     }
   }
-  const D = S.disp, path = st.path || [];
+  const path = st.path || [];
   if (path.length > 1) {
     const p0 = D ? v.P(D.x, D.y) : v.P(...path[0]);
     g.beginPath(); g.moveTo(p0.x, p0.y);
@@ -254,12 +274,11 @@ function drawMap() {
   }
   // markers first, then labels laid out so none overlap and all stay inside the map
   const items = [];
-  const placesSeen = new Set(Object.keys(S.map.rooms || {}).map((n) => n.toLowerCase()));
   for (const [name, p] of Object.entries(S.map.places || {})) {
     if (name === "doorway") continue;
     const pp = v.P(p.x, p.y);
     g.fillStyle = C.muted; g.beginPath(); g.arc(pp.x, pp.y, 3, 0, 6.2832); g.fill();
-    if (!placesSeen.has(name.toLowerCase())) items.push({ text: prettyName(name), ax: pp.x, ay: pp.y, r: 3, kind: "place" });
+    items.push({ text: prettyName(name), ax: pp.x, ay: pp.y, r: 3, kind: "place" });          // room centres too (the corner titles stay)
   }
   const sz = Math.max(6, Math.min(11, 0.16 * v.s));
   for (const o of st.objects || []) {
@@ -275,6 +294,10 @@ function drawMap() {
   for (const l of placeLabels(items, w, h, measure, LH, taken.concat(markers))) {
     const kind = items.find((i) => i.text === l.text && i.ax === l.ax)?.kind;
     g.textAlign = "left";
+    if (l.leader) {                                                 // label moved away from a crowded marker: thin line back to it
+      g.beginPath(); g.moveTo(l.ax, l.ay); g.lineTo(Math.min(Math.max(l.ax, l.x), l.x + l.w), Math.min(Math.max(l.ay, l.y), l.y + l.h));
+      g.strokeStyle = "#8B98A588"; g.lineWidth = 1; g.stroke();
+    }
     g.fillStyle = "#0B0E13BB"; g.beginPath(); g.roundRect(l.x - 3, l.y - 1, l.w + 6, l.h + 2, 5); g.fill();
     g.fillStyle = kind === "robot" ? C.accent : kind === "obj" ? C.text : C.muted;
     g.fillText(l.text, l.x, l.y + l.h / 2);
@@ -300,14 +323,23 @@ function frame() {
 function kick() { S.dirty = true; S.settled = false; if (S.tab === "map" || isDesktop()) { if (!S.raf) S.raf = requestAnimationFrame(frame); } }
 const isDesktop = () => window.matchMedia("(min-width: 900px)").matches;
 
-// ---------------------------------------------------------------- camera (real robot: JPEG + detector boxes, polled at ~2 Hz while visible)
-const cam = { busy: false, img: new Image(), timer: 0 };
+// ---------------------------------------------------------------- camera (real robot: JPEG + detector boxes, ~2 Hz while the panel is visible)
+// Phone: a collapsible row under the map (closed by default). Laptop: a docked card in the right column. Never drawn over the map.
+const cam = { busy: false, img: new Image(), open: false, available: false };
+function placeCam() {
+  const box = $("camBox"), slot = isDesktop() ? $("camSlotDesk") : $("camSlotPhone");
+  if (box.parentElement !== slot) slot.appendChild(box);
+  box.classList.toggle("open", isDesktop() || cam.open);
+  $("camHead").setAttribute("aria-expanded", String(isDesktop() || cam.open));
+}
+function setCameraAvailable(v) { cam.available = v; $("camBox").hidden = !v; $("app").toggleAttribute("data-cam", v); if (v) placeCam(); }
+$("camHead").addEventListener("click", () => { if (isDesktop()) return; cam.open = !cam.open; placeCam(); if (cam.open) pollCamera(); kick(); });
 async function pollCamera() {
-  if (cam.busy || document.hidden || !(S.state && S.state.camera_available)) return;
+  const visible = isDesktop() || cam.open;
+  if (cam.busy || document.hidden || !cam.available || !visible) return;
   cam.busy = true;
   try {
     const c = await api("/api/camera");
-    $("cam").hidden = !c.available;
     if (!c.available) return;
     await new Promise((res, rej) => { cam.img.onload = res; cam.img.onerror = rej; cam.img.src = "data:image/jpeg;base64," + c.jpeg_b64; });
     const cv = $("camCanvas"), g = cv.getContext("2d");
@@ -322,14 +354,129 @@ async function pollCamera() {
       g.fillStyle = "#2DD4BF"; g.fillRect(x1 * sx, ly, tw, 17);
       g.fillStyle = "#062B27"; g.fillText(label, x1 * sx + 4, ly + 2);
     }
-    $("camInfo").textContent = (c.boxes || []).length ? `${c.boxes.length} detected` : "";
+    const n = (c.boxes || []).length;
+    $("camInfo").textContent = n ? `${n} detected` : "nothing detected";
+    $("camList").replaceChildren(...(c.boxes || []).map((b) => { const s = document.createElement("span"); s.textContent = `${prettyName(b.name)} ${Math.round(b.score * 100)}%`; return s; }));
   } catch { /* a failed poll just leaves the last picture */ } finally { cam.busy = false; }
 }
 setInterval(pollCamera, 500);
+new ResizeObserver(() => $("app").style.setProperty("--camh", $("camBox").offsetHeight + "px")).observe($("camBox"));
+window.matchMedia("(min-width: 900px)").addEventListener("change", () => { placeCam(); kick(); });
+
+// ---------------------------------------------------------------- voice: hold-to-talk (MediaRecorder -> /api/voice) and spoken replies (/api/tts)
+const mic = { stream: null, rec: null, chunks: [], t0: 0, busy: false, idle: 0, down: false };
+const toastEl = () => $("toast");
+function toast(text, ms = 4000) { const t = toastEl(); t.textContent = text; t.hidden = false; clearTimeout(toast.k); toast.k = setTimeout(() => { t.hidden = true; }, ms); }
+
+function setupVoice() {
+  S.muted = load("gurdy_muted") === "1";
+  const on = S.voice;
+  for (const id of ["micBtn", "micFab"]) $(id).hidden = !on;
+  $("muteBtn").hidden = !on;
+  $("muteBtn").setAttribute("aria-pressed", String(S.muted));
+}
+
+function micSupport() {
+  if (!window.isSecureContext || !navigator.mediaDevices || !window.MediaRecorder)
+    return "The microphone needs a secure page: open localhost:8080 on this computer, or the https address on the phone (docs/phase7_voice.md).";
+  return "";
+}
+
+function recorderType() {
+  for (const t of ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]) if (MediaRecorder.isTypeSupported(t)) return t;
+  return "";
+}
+
+function unlockAudio() {
+  try { if (!S.ac) S.ac = new (window.AudioContext || window.webkitAudioContext)(); if (S.ac.state === "suspended") S.ac.resume(); } catch { /* no audio output */ }
+}
+
+async function micStart() {
+  if (mic.busy || mic.rec) return;
+  const why = micSupport();
+  if (why) { toast(why, 7000); return; }
+  mic.down = true;
+  stopSpeaking(); unlockAudio();                                  // barge-in: talking over the robot silences it
+  try {
+    if (!mic.stream) mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  } catch (e) { mic.down = false; toast(e && e.name === "NotAllowedError" ? "Microphone permission was denied. Allow it in the browser's site settings." : "No microphone available: " + (e && e.message || e), 7000); return; }
+  clearTimeout(mic.idle);
+  if (!mic.down) { micIdleRelease(); return; }                    // the button was released while the permission prompt was open
+  const type = recorderType();
+  mic.chunks = [];
+  mic.rec = new MediaRecorder(mic.stream, type ? { mimeType: type } : undefined);
+  mic.rec.ondataavailable = (e) => { if (e.data && e.data.size) mic.chunks.push(e.data); };
+  mic.rec.onstop = micSend;
+  mic.t0 = performance.now();
+  mic.rec.start();
+  setMicState("rec");
+}
+
+function micStop() {
+  mic.down = false;
+  if (mic.rec && mic.rec.state === "recording") setTimeout(() => { if (mic.rec && mic.rec.state === "recording") mic.rec.stop(); }, 250);   // the last word is often still being said
+}
+
+function micIdleRelease() { clearTimeout(mic.idle); mic.idle = setTimeout(() => { if (mic.stream && !mic.rec) { mic.stream.getTracks().forEach((t) => t.stop()); mic.stream = null; } }, 20000); }
+
+function setMicState(s) {
+  for (const id of ["micBtn", "micFab"]) { const b = $(id); b.classList.toggle("rec", s === "rec"); b.classList.toggle("busy", s === "busy"); }
+  $("micFabText").textContent = s === "rec" ? "Listening…" : s === "busy" ? "Thinking…" : "Hold to talk";
+}
+
+async function micSend() {
+  const dur = (performance.now() - mic.t0) / 1000, blob = new Blob(mic.chunks, { type: (mic.rec && mic.rec.mimeType) || "audio/webm" });
+  mic.rec = null; micIdleRelease();
+  if (dur < 0.4 || blob.size < 1500) { setMicState("idle"); toast("Too short. Hold the button while you speak."); return; }
+  mic.busy = true; setMicState("busy");
+  S.voiceUsed = true;
+  try {
+    const r = await fetch("/api/voice", { method: "POST", headers: S.demo ? {} : { Authorization: "Bearer " + S.token, "Content-Type": blob.type || "application/octet-stream" }, body: blob });
+    if (r.status === 401) throw new Error("not authorised");
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    if (!S.ws) await pollChat();                                  // without a WebSocket the transcript / reply arrive by polling
+  } catch (e) { addChat({ seq: -1, role: "system", text: "Voice failed: " + e.message }); }
+  finally { mic.busy = false; setMicState("idle"); }
+}
+
+// replies: one queue, one at a time; a new recording / the e-stop clears it
+const tts = { queue: [], playing: null, gen: 0 };
+async function speak(text) {
+  if (!S.ac || !S.voice) return;
+  const gen = tts.gen;
+  try {
+    const r = await fetch("/api/tts", { method: "POST", headers: { Authorization: "Bearer " + S.token, "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    if (!r.ok) return;
+    const buf = await S.ac.decodeAudioData(await r.arrayBuffer());
+    if (gen !== tts.gen) return;                                  // cancelled while synthesizing
+    tts.queue.push(buf); playNext();
+  } catch { /* spoken replies are a convenience: the text is already in the chat */ }
+}
+function playNext() {
+  if (tts.playing || !tts.queue.length || S.muted) return;
+  const src = S.ac.createBufferSource(); src.buffer = tts.queue.shift(); src.connect(S.ac.destination);
+  tts.playing = src; src.onended = () => { tts.playing = null; playNext(); }; src.start();
+}
+function stopSpeaking() { tts.gen++; tts.queue = []; if (tts.playing) { try { tts.playing.onended = null; tts.playing.stop(); } catch { /* already stopped */ } tts.playing = null; } }
+
+function wireVoiceButtons() {
+  for (const id of ["micBtn", "micFab"]) {
+    const b = $(id);
+    b.addEventListener("pointerdown", (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch { /* old browser */ } micStart(); });
+    for (const ev of ["pointerup", "pointercancel"]) b.addEventListener(ev, (e) => { e.preventDefault(); micStop(); });
+    b.addEventListener("contextmenu", (e) => e.preventDefault());              // long-press must not open the browser menu
+  }
+  $("muteBtn").addEventListener("click", () => { S.muted = !S.muted; store("gurdy_muted", S.muted ? "1" : "0"); $("muteBtn").setAttribute("aria-pressed", String(S.muted)); if (S.muted) stopSpeaking(); });
+  // laptop: hold Space (outside text fields) to talk
+  addEventListener("keydown", (e) => { if (e.code === "Space" && !e.repeat && S.voice && isDesktop() && !/INPUT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); micStart(); } });
+  addEventListener("keyup", (e) => { if (e.code === "Space" && mic.down) micStop(); });
+}
+wireVoiceButtons();
 
 // ---------------------------------------------------------------- UI wiring
 function showTab(name) {
-  S.tab = name;
+  S.tab = name; $("app").dataset.tab = name;
   for (const v of document.querySelectorAll(".view")) v.classList.toggle("active", v.id === "view-" + name);
   for (const t of document.querySelectorAll(".tab")) t.classList.toggle("active", t.dataset.view === name);
   if (name === "map") kick();
