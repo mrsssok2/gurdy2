@@ -98,3 +98,10 @@ export function placeLabels(items, w, h, measure, lineH = 16, taken = [], margin
 
 /** Shortest signed angle difference b - a in radians. */
 export function angDiff(a, b) { return Math.atan2(Math.sin(b - a), Math.cos(b - a)); }
+
+/** WebSocket address of a robot on another host: https://host[:port] -> wss://host[:port]/ws?token=...&sid=... (http -> ws, only for localhost). */
+export function remoteWsUrl(base, token, sid) {
+  const u = new URL(base);
+  const q = [token ? "token=" + encodeURIComponent(token) : "", sid ? "sid=" + encodeURIComponent(sid) : ""].filter(Boolean).join("&");
+  return `${u.protocol === "https:" ? "wss" : "ws"}://${u.host}/ws${q ? "?" + q : ""}`;
+}

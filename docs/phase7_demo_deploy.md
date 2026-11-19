@@ -53,3 +53,52 @@ The Space page embeds the demo in an iframe; Web Workers and the CDN load work t
 - Same planner as before (keyword parser, no LLM), no voice. The world is the Gazebo `flat_lab` layout, not Gazebo itself.
 - The per-visitor server mode (`python -m web.api --demo`, with sessions, caps and rate limits; tests in `web/tests/test_demo_sessions.py`) still exists for self-hosting on a machine you control; it is no longer what gets deployed.
 - Safety: the page contains no robot connection, token, secret or backend address. Everything it can do is run a simulation inside the visitor's own browser.
+
+
+---
+
+# Two extra features of the static demo (2026-11-19)
+
+## 1. "Connect to my robot" (the same page talks to your real robot)
+By default everyone gets the in-browser simulation. A small **Connect to my robot** button (**My robot** on phones) opens a dialog: paste your robot address (for example `https://mrsssok.tail4d1190.ts.net/#token=...`, the token can also go in its own field) and press Connect.
+- The page checks the robot first (`/api/health`, then an authenticated `/api/state`). Only if both pass does it reload in **real-robot mode**: a red banner **"Connected to REAL robot"** with a **Back to demo** button; REST, WebSocket and the robot's own GPU voice (when started with `voice`) now go to the robot instead of the in-browser Python. The simulator is not downloaded or started in this mode.
+- If the robot cannot be reached the dialog says **"Your robot isn't running or this device isn't on your Tailscale network."** (plus a hint about the allowed-origins setting: a browser cannot tell "down" from "blocked by CORS"), and the page stays in demo mode. A wrong token says "not accepted", a non-https address is refused before anything is sent.
+- Storage: the robot URL is remembered in `localStorage`; the **token is kept in `sessionStorage` only** (this tab; forgotten when it is closed, so a new visit asks again). If the robot disappears while the tab is reloaded, the page falls back to the demo with a message. While connected, a lost connection turns the banner amber ("Your robot isn't running or …, retrying") until it recovers.
+
+**Robot side (security).** The robot server answers cross-origin calls only for web pages on an allow-list (default `https://mrsssok2.github.io`):
+- `Access-Control-Allow-Origin` is the exact listed origin, never `*`; preflights (`OPTIONS`) need no token but need a listed origin (and answer the Private Network Access header for a public page reaching a tailnet address); any other browser origin gets **403** with no CORS headers, also on POST and on the **WebSocket handshake** (Origin is checked there too); the page the robot serves itself (any address it is reached by) is always allowed; requests without an Origin (curl, scripts) are unaffected.
+- **The access token stays required for everything.** CORS only lets that page *try*; a listed page without the token gets 401.
+- Configure with `GURDY_ALLOWED_ORIGINS=https://a.example,https://b.example` (or `--allowed-origin URL`, repeatable; `none` = only the server's own pages; a wildcard is rejected). `scripts/start_web_robot.sh` passes the variable on; for a Hugging Face static Space copy add `https://USER-gurdy-demo.static.hf.space`.
+Tests: `web/tests/test_origin.py` (9 tests: default, lookalikes, no wildcard, preflight, token still required, WebSocket origin, own pages, env / list, parsing) and the browser tests below.
+
+## 2. Voice in the demo (Whisper in the visitor's browser)
+Hold the mic button (or hold Space on a laptop) in the demo. **Nothing is downloaded until the first press**; then a progress card shows the speech model downloading (once; the browser keeps it). Whisper runs in a Web Worker through transformers.js 3.8.1 (`whisper-tiny.en`, 8-bit weights on WASM; WebGPU is tried first when the browser has it; `?whisper=base.en` selects the larger model). **Audio never leaves the device**; only the model files are fetched. Gurdy's replies are spoken with the browser's own voices (`speechSynthesis`); the speaker icon mutes, and pressing the mic silences the robot.
+The same rules as the real microphone pipeline decide what happens to the text (the Python in the browser is the repo's code):
+- **vocabulary prompt** (`brain/voice/vocab.py`: place names, objects, colours, commands) is given to Whisper as its prompt; while the agent waits for a yes / no (or a room letter) the **expected answers** replace it (`answer_hint`);
+- **stop fast path**: a stop phrase (including mishearings like "Stalk") fires the e-stop before anything else;
+- **yes / no confirmations** go through the agent's confirmation gate as usual;
+- **hallucination filter** (`brain/voice/transcript_filter.py`, shared with the server pipeline): silence / noise (RMS below 0.004), repeated chunks, and - for this small browser model, which gives no no-speech probability - stock silence phrases ("Thank you.", "you", ...) on a quiet clip are dropped as "Sorry, I didn't catch that."
+Differences to the server pipeline (honest): no Whisper confidence or no-speech probability from the browser model (the bubble says "voice" without a percentage), no voice-activity filter, and I did not measure whether the prompt improves accuracy in the browser model (it is applied and does not break decoding: transcripts contain no prompt echo).
+
+**Measured** (Chromium in Docker on this PC, WASM, whisper-tiny.en; the container needed `--disable-http2`, because Chromium 131's HTTP/2 got HTTP 405 from huggingface.co here, curl and Python were fine, desktop Chrome is the normal case for transformers.js demos):
+| | Desktop profile |
+|---|---|
+| Model download (first mic press only) | about **50 MB**: 40.8 MB weights (encoder 10.1 + decoder 30.7), ~5 MB tokenizer / config, ~4 MB ONNX Runtime from the CDN |
+| Time to a ready model on this connection | 62 s (network-bound) |
+| Transcription of a ~2.4 s clip (model warm, single-threaded WASM) | 2.7-3.2 s |
+| Throttled phone profile (1.6 Mbit/s, 150 ms latency) | model ready after **231 s** (the download is what costs: ~50 MB at 0.2 MB/s); the CPU slowdown (4x) did not reach the worker in this setup, so a phone's real transcription time is unmeasured (this PC: 1.6-3.2 s per clip; expect slower) |
+
+Found while measuring: the tiny model once printed "Go to Room B." ten times for a 2.6 s clip. The shared repetition filter only caught 1-3 word loops; it now catches loops of up to 6 words (such a transcript is dropped as "didn't catch that" instead of being executed).
+Data use: the first mic press costs about 50 MB (do it on Wi-Fi); after that nothing is downloaded again.
+
+**Hugging Face / GitHub Pages note:** the model comes straight from huggingface.co and the code from jsdelivr, so no extra files live in the repo or the Pages site.
+
+## Browser tests (not part of CI: they need Chromium)
+`scripts/run_browser_tests.sh` builds the site, starts two mock robot servers and runs `web/tests/browser/test_demo_browser.py` in headless Chromium: 31 checks, all passing on 2026-11-19 - default demo with the Connect button; unreachable robot keeps demo mode; wrong token; page not on the robot's allow-list; garbage / plain-http addresses; successful connect (banner, chat and E-STOP reach the robot, no simulator started); reload keeps the session; Back to demo; URL remembered but never the token; robot gone on reload falls back; phone layout; voice with a **stub** Whisper (lazy model: not requested before the first press, progress card, transcript bubble marked "voice", hint while a question is open, spoken replies, "Yes." by voice, "Stalk" stops, mute, barge-in) and the silent-microphone filter; the robot's own page does not get the browser mic.
+Run once with `REMOVE_IMAGE=true scripts/run_browser_tests.sh` to delete the ~1.5 GB Playwright image afterwards.
+
+## Your steps to try both
+1. **Push** (`git push`); the Pages workflow rebuilds and publishes (Actions tab → "Publish static demo" green). Open https://mrsssok2.github.io/gurdy2/ (hard-refresh once so the new files load).
+2. **Voice in the demo:** press and hold the mic button, allow the microphone, wait for the progress card (about 50 MB, once), say "go to room B", release; then hold again and say "yes". Gurdy answers aloud (speaker icon = mute).
+3. **Connect to my robot:** on the robot PC, `scripts/start_web_robot.sh tailscale voice` (the default allow-list already contains `https://mrsssok2.github.io`; for another page set `GURDY_ALLOWED_ORIGINS`). On the phone / laptop with Tailscale ON open the demo page, tap **Connect to my robot**, paste `https://<your-pc>.<tailnet>.ts.net/#token=<token>` (the line the script prints), Connect. Banner "Connected to REAL robot"; type or hold-to-talk (the robot's GPU Whisper). **Back to demo** returns to the simulation.
+4. Check the failure path: turn Tailscale off on the phone and try Connect: "Your robot isn't running or this device isn't on your Tailscale network."

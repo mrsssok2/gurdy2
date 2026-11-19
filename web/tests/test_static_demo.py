@@ -70,6 +70,29 @@ class StaticDemoTests(unittest.TestCase):
         self.assertEqual(s.say("   ")["error"][:6], "'text'")
         self.assertIn("Emergency stop", s.estop()["item"]["text"])
 
+    def test_voice_transcripts_follow_the_real_pipeline_rules(self):
+        from web.static_demo.session import DemoSession
+        s = DemoSession()
+        ctx = s.voice_context()
+        self.assertIn("room B", ctx["prompt"])
+        self.assertIsNone(ctx["hint"])
+        r = s.voice("Go to room B.", 0.05)
+        self.assertEqual((r["rejected"] if "rejected" in r else None, r["items"][0]["voice"]), (None, True))
+        self.assertTrue(s.voice_context()["hint"].startswith("Yes."))                    # a question is open: the expected answers
+        self.assertIn("Going to room B", s.voice("Yes.", 0.05)["reply"])
+        before = len(s.chat)
+        r = s.voice("Thank you.", 0.006)                                                   # silence hallucination on a quiet clip
+        self.assertEqual(r["rejected"], "no speech")
+        self.assertEqual([i["role"] for i in r["items"]], ["system", "robot"])
+        self.assertEqual(s.voice("Roo. Roo. Roo.", 0.05)["rejected"], "repetition")
+        self.assertEqual(s.voice("go home", 0.001)["rejected"], "too quiet")
+        self.assertFalse(any(i["role"] == "user" and i["text"] in ("Thank you.", "go home") for i in s.chat))
+        self.assertGreater(len(s.chat), before)
+        stop = s.voice("Stalk", 0.0001)                                                    # a stop is never dropped, even on a very quiet clip
+        self.assertTrue(stop["stop"])
+        self.assertIsNone(stop.get("rejected"))
+        self.assertEqual(s.voice("", 0.05)["rejected"], "nothing heard")
+
     def test_sessions_are_independent(self):
         from web.static_demo.session import DemoSession
         a, b = DemoSession(), DemoSession()
@@ -89,9 +112,10 @@ class StaticDemoTests(unittest.TestCase):
         import build_static_demo
         with tempfile.TemporaryDirectory() as d:
             site = build_static_demo.build(Path(d) / "site")
-            for f in ("index.html", "static_backend.js", "demo_worker.js", "demo_config.js", "gurdy_demo.zip", "app.js", "lib.js", "style.css", ".nojekyll"):
+            for f in ("index.html", "static_backend.js", "remote_connect.js", "browser_voice.js", "whisper_worker.js", "demo_worker.js", "demo_config.js", "gurdy_demo.zip", "app.js", "lib.js", "style.css", ".nojekyll"):
                 self.assertTrue((site / f).exists(), f)
-            self.assertIn('<script src="static_backend.js"></script>\n<script type="module" src="app.js">', (site / "index.html").read_text())
+            self.assertIn('<script src="remote_connect.js"></script>\n<script src="browser_voice.js"></script>\n<script src="static_backend.js"></script>\n<script type="module" src="app.js">',
+                          (site / "index.html").read_text())
             self.assertFalse((site / "sw.js").exists())
             root = Path(d) / "unzipped"
             zipfile.ZipFile(site / "gurdy_demo.zip").extractall(root)

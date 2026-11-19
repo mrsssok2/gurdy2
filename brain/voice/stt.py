@@ -21,37 +21,13 @@ class Transcript:
     compression_ratio: float | None = None   # high = repetitive text (a hallucination loop)
 
 
-MIN_RMS = 0.004             # below this the clip is silence / mic noise (speech here is 0.02 - 0.1)
-_WORD = re.compile(r"[a-z']+")
-
-
-def repeated_tokens(text: str) -> bool:
-    """"Roo. Roo. Roo." / "Go, go, go, go." / "go to go to go to": the same 1-3 word chunk at least 3 times, or one word repeated 3+
-    times in a row covering most of the text. Whisper does this on quiet or unclear audio."""
-    t = _WORD.findall(text.lower())
-    if len(t) < 3:
-        return False
-    for p in (1, 2, 3):
-        if len(t) // p >= 3 and all(t[i] == t[i % p] for i in range(len(t))):
-            return True
-    best = run = 1
-    for a, b in zip(t, t[1:]):
-        run = run + 1 if a == b else 1
-        best = max(best, run)
-    return best >= 3 and best / len(t) >= 0.7
+from .transcript_filter import MIN_RMS, repeated_tokens, reject_values      # noqa: F401  (the rules live there so the browser demo shares them; names re-exported)
 
 
 def reject_reason(tr: "Transcript", audio=None) -> str | None:
     """Why a transcript is treated as "I didn't catch that" instead of a command (None = fine)."""
-    if audio is not None and len(audio) and float(np.sqrt(np.mean(np.asarray(audio, np.float32) ** 2))) < MIN_RMS:
-        return "too quiet"
-    if repeated_tokens(tr.text):
-        return "repetition"
-    if tr.compression_ratio is not None and tr.compression_ratio > 2.4:
-        return "repetition"
-    if tr.no_speech_prob is not None and tr.no_speech_prob > 0.8 and (tr.confidence is None or tr.confidence < 0.5):
-        return "no speech"
-    return None
+    rms = float(np.sqrt(np.mean(np.asarray(audio, np.float32) ** 2))) if audio is not None and len(audio) else None
+    return reject_values(tr.text, rms, compression_ratio=tr.compression_ratio, no_speech_prob=tr.no_speech_prob, confidence=tr.confidence)
 
 
 class STT(Protocol):

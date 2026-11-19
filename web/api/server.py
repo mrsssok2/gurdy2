@@ -52,6 +52,22 @@ DEMO_MAX_WS_PER_SESSION = 3       # total WebSocket cap = this x max_sessions (a
 SESSION_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 IDLE_TIMEOUT_S = 30
 DEFAULT_STATIC = Path(__file__).resolve().parents[1] / "app"
+# Pages allowed to call this server from a browser (CORS + WebSocket Origin check): the public static demo's "Connect to my robot".
+# Same-origin use (the page served by this server, whatever address it is reached by) is always allowed. Never a wildcard. Env GURDY_ALLOWED_ORIGINS
+# (comma-separated) or --allowed-origin override; "none" = no other origin. The access token is required either way: CORS only lets that page TRY.
+DEFAULT_ALLOWED_ORIGINS = ("https://mrsssok2.github.io",)
+CORS_HEADERS = "Authorization, Content-Type, X-Session"
+
+
+def parse_origins(value: str | None) -> tuple[str, ...]:
+    """"https://a.github.io, https://b" -> ("https://a.github.io", "https://b"); None -> the default; "none" / "" -> ()."""
+    if value is None:
+        return DEFAULT_ALLOWED_ORIGINS
+    items = [x.strip().rstrip("/") for x in value.split(",") if x.strip() and x.strip().lower() != "none"]
+    for o in items:
+        if not re.match(r"^https?://[A-Za-z0-9.\-\[\]:]+$", o):
+            raise ValueError(f"bad origin {o!r}: use exactly scheme://host[:port] (a wildcard is never allowed)")
+    return tuple(items)
 
 
 class ChatLog:
@@ -187,9 +203,11 @@ class GurdyWebServer:
                  bind: str = "127.0.0.1", port: int = 8080, state_s: float = 0.5, demo: bool = False, host_factory=None,
                  trust_proxy: bool = False, clock=time.monotonic, speech=None,
                  tls_port: int | None = None, tls_cert: str | None = None, tls_key: str | None = None, ca_file: str | None = None,
-                 max_sessions: int = DEMO_MAX_SESSIONS, session_idle_s: float = DEMO_SESSION_IDLE_S, reap_every_s: float = 15.0):
+                 max_sessions: int = DEMO_MAX_SESSIONS, session_idle_s: float = DEMO_SESSION_IDLE_S, reap_every_s: float = 15.0,
+                 allowed_origins: tuple[str, ...] | list[str] | None = None):
         """`host_factory` (demo only) turns on per-visitor sessions: it returns a fresh `AgentHost` on the MockBackend for every new session id.
         Without it, `host` is the one robot everybody talks to (private mode, or the single-session demo used by some tests)."""
+        self.allowed_origins = tuple(allowed_origins) if allowed_origins is not None else parse_origins(os.environ.get("GURDY_ALLOWED_ORIGINS") or None)
         self.state_s, self.clock = state_s, clock
         self.demo, self.trust_proxy = demo, trust_proxy
         self.multi = bool(demo and host_factory is not None)
@@ -460,6 +478,48 @@ class _Handler(BaseHTTPRequestHandler):
     def log_message(self, *a) -> None:              # never log: WebSocket URLs carry the token in the query string
         pass
 
+    # ---- cross-origin access (the static demo page on GitHub Pages connecting to this robot)
+    _cors_origin: str | None = None
+
+    def end_headers(self) -> None:
+        if self._cors_origin:
+            self.send_header("Access-Control-Allow-Origin", self._cors_origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Expose-Headers", "Retry-After")
+        super().end_headers()
+
+    def _origin_allowed(self, origin: str) -> bool:
+        origin = origin.rstrip("/")
+        host = self.headers.get("Host", "")
+        return origin in self.app.allowed_origins or (bool(host) and origin in (f"http://{host}", f"https://{host}"))
+
+    def _begin(self) -> bool:
+        """Call first in every do_*: sets the CORS header for an allowed Origin and answers 403 (no CORS headers, so the browser blocks it) for any other
+        browser origin. Requests without an Origin header (curl, the app itself on a GET, servers) are unaffected: the token decides."""
+        self._cors_origin = None
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        if self._origin_allowed(origin):
+            self._cors_origin = origin.rstrip("/")
+            return True
+        self._json({"error": "origin not allowed"}, 403)
+        return False
+
+    def do_OPTIONS(self) -> None:                    # CORS preflight: no token (browsers send none), only the Origin decides
+        if not self._begin():
+            return
+        if not self._cors_origin:
+            return self._err(403, "cross-origin requests only")
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", CORS_HEADERS)
+        self.send_header("Access-Control-Max-Age", "600")
+        if self.headers.get("Access-Control-Request-Private-Network", "").lower() == "true":      # public https page -> tailnet / loopback address
+            self.send_header("Access-Control-Allow-Private-Network", "true")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     # ---- plumbing
     def _json(self, obj: Any, status: int = 200) -> None:
         body = json.dumps(obj).encode()
@@ -564,6 +624,8 @@ class _Handler(BaseHTTPRequestHandler):
 
     # ---- routes
     def do_GET(self) -> None:
+        if not self._begin():
+            return
         u = urlsplit(self.path)
         q = parse_qs(u.query)
         if u.path == "/api/health":
@@ -600,6 +662,8 @@ class _Handler(BaseHTTPRequestHandler):
         self._static(u.path)
 
     def do_POST(self) -> None:
+        if not self._begin():
+            return
         u = urlsplit(self.path)
         if not u.path.startswith("/api/"):
             return self._err(404, "unknown route")

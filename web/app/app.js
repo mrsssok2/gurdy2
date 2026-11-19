@@ -1,4 +1,4 @@
-import { makeView, fmtTime, fmtNum, batteryClass, legSummary, newAlerts, wsUrl, backoff, prettyName, colorHex, objectLabel, placeLabels, angDiff } from "./lib.js";
+import { makeView, fmtTime, fmtNum, batteryClass, legSummary, newAlerts, wsUrl, remoteWsUrl, backoff, prettyName, colorHex, objectLabel, placeLabels, angDiff } from "./lib.js";
 
 const $ = (id) => document.getElementById(id);
 const C = { bg: "#0B0E13", room: "#121821", wall: "#3A4552", obstacle: "#4B5563", zone: "#D93036", accent: "#2DD4BF", text: "#E6EDF3", muted: "#8B98A5" };
@@ -15,6 +15,10 @@ function getSid() {
 }
 function resetSid() { memSid = ""; try { sessionStorage.removeItem("gurdy_sid"); } catch { /* fine */ } }
 
+// "Connect to my robot" (static demo only): when window.GURDY_REMOTE is set the page talks to that robot server instead of the in-browser simulation.
+const baseUrl = () => (window.GURDY_REMOTE ? window.GURDY_REMOTE.base : "");
+const remoteStatus = (kind) => { if (window.GURDY_REMOTE_UI && window.GURDY_REMOTE) window.GURDY_REMOTE_UI.status(kind); };
+
 function store(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode: fine */ } }
 function load(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }
 
@@ -23,7 +27,7 @@ function setConn(kind, text) { $("conn").className = "conn " + kind; $("connText
 
 async function api(path, opts = {}) {
   const auth = S.demo ? {} : { Authorization: "Bearer " + S.token };      // the public demo has no token
-  const r = await fetch(path, { ...opts, headers: { ...auth, "X-Session": getSid(), "Content-Type": "application/json", ...(opts.headers || {}) } });
+  const r = await fetch(baseUrl() + path, { ...opts, headers: { ...auth, "X-Session": getSid(), "Content-Type": "application/json", ...(opts.headers || {}) } });
   if (r.status === 401) throw Object.assign(new Error("unauthorized"), { code: 401 });
   if (!r.ok) { const j = await r.json().catch(() => ({})); throw Object.assign(new Error(j.error || r.statusText), { code: r.status, busy: !!j.busy }); }
   return r.json();
@@ -31,9 +35,12 @@ async function api(path, opts = {}) {
 
 async function connect() {
   clearTimeout(S.timer);
+  await (window.GURDY_MODE_READY || Promise.resolve());          // static demo: remote_connect.js has decided demo vs real robot
+  if (window.GURDY_REMOTE) S.token = window.GURDY_REMOTE.token;
   try {                                                // public, needs no token: tells us whether this is the demo server
-    const hl = await (await fetch("/api/health")).json();
+    const hl = await (await fetch(baseUrl() + "/api/health")).json();
     S.demo = !!hl.demo; S.voice = !!hl.voice && !S.demo;
+    S.browserVoice = S.demo && !!window.GURDY_STATIC_DEMO && !window.GURDY_REMOTE && !!window.GURDY_BROWSER_VOICE && window.GURDY_BROWSER_VOICE.supported;
     $("demoBanner").hidden = !S.demo;
     setupVoice();
   } catch { return retry("server not reachable"); }
@@ -42,7 +49,7 @@ async function connect() {
     S.map = await api("/api/map");                     // also validates the token (a WebSocket cannot report a 401 to the page) and opens the demo session
     $("busyBanner").hidden = true;
   } catch (e) {
-    if (e.code === 401) return askToken("That token was not accepted.");
+    if (e.code === 401) { remoteStatus("token"); return askToken("That token was not accepted."); }
     if (e.code === 503 && e.busy || e.code === 429) {                       // demo full / too many sessions: friendly message, try again later
       $("busyBanner").textContent = e.busy ? "The demo is busy right now. Trying again in a minute…" : e.message;
       $("busyBanner").hidden = false; setConn("off", "busy");
@@ -50,9 +57,9 @@ async function connect() {
     }
     return retry("server not reachable");
   }
-  const ws = new WebSocket(wsUrl(location, S.demo ? "" : S.token, getSid()));
+  const ws = new WebSocket(window.GURDY_REMOTE ? remoteWsUrl(window.GURDY_REMOTE.base, S.token, getSid()) : wsUrl(location, S.demo ? "" : S.token, getSid()));
   S.ws = ws;
-  ws.onopen = () => { S.attempt = 0; setConn("on", "connected"); };
+  ws.onopen = () => { S.attempt = 0; setConn("on", "connected"); remoteStatus("ok"); };
   ws.onmessage = (ev) => { try { onMessage(JSON.parse(ev.data)); } catch { /* ignore malformed */ } };
   ws.onclose = () => { if (S.ws === ws) { S.ws = null; if (S.expired) { S.expired = false; S.attempt = 0; setConn("off", "starting a new session"); S.timer = setTimeout(connect, 1500); } else retry("disconnected"); } };
   ws.onerror = () => ws.close();
@@ -60,6 +67,7 @@ async function connect() {
 
 function retry(text) {
   setConn("off", text);
+  remoteStatus("unreachable");
   S.timer = setTimeout(connect, backoff(S.attempt++));
 }
 
@@ -387,7 +395,7 @@ function toast(text, ms = 4000) { const t = toastEl(); t.textContent = text; t.h
 
 function setupVoice() {
   S.muted = load("gurdy_muted") === "1";
-  const on = S.voice;
+  const on = S.voice || S.browserVoice;
   for (const id of ["micBtn", "micFab"]) $(id).hidden = !on;
   $("muteBtn").hidden = !on;
   $("muteBtn").setAttribute("aria-pressed", String(S.muted));
@@ -414,6 +422,10 @@ async function micStart() {
   if (why) { toast(why, 7000); return; }
   mic.down = true;
   stopSpeaking(); unlockAudio();                                  // barge-in: talking over the robot silences it
+  if (S.browserVoice && window.GURDY_BROWSER_VOICE.state === "idle") {          // lazy: the speech model is only downloaded when the visitor first presses the mic
+    window.GURDY_BROWSER_VOICE.onProgress(showModelProgress);
+    window.GURDY_BROWSER_VOICE.ensureLoaded().catch(() => {});
+  }
   try {
     if (!mic.stream) mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
   } catch (e) { mic.down = false; toast(e && e.name === "NotAllowedError" ? "Microphone permission was denied. Allow it in the browser's site settings." : "No microphone available: " + (e && e.message || e), 7000); return; }
@@ -444,11 +456,12 @@ function setMicState(s) {
 async function micSend() {
   const dur = (performance.now() - mic.t0) / 1000, blob = new Blob(mic.chunks, { type: (mic.rec && mic.rec.mimeType) || "audio/webm" });
   mic.rec = null; micIdleRelease();
-  if (dur < 0.4 || blob.size < 1500) { setMicState("idle"); toast("Too short. Hold the button while you speak."); return; }
+  if (dur < 0.4 || blob.size < 300) { setMicState("idle"); toast("Too short. Hold the button while you speak."); return; }
   mic.busy = true; setMicState("busy");
   S.voiceUsed = true;
+  if (S.browserVoice) return browserVoiceSend(blob);
   try {
-    const r = await fetch("/api/voice", { method: "POST", headers: S.demo ? {} : { Authorization: "Bearer " + S.token, "Content-Type": blob.type || "application/octet-stream" }, body: blob });
+    const r = await fetch(baseUrl() + "/api/voice", { method: "POST", headers: S.demo ? {} : { Authorization: "Bearer " + S.token, "Content-Type": blob.type || "application/octet-stream" }, body: blob });
     if (r.status === 401) throw new Error("not authorised");
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || r.statusText);
@@ -457,13 +470,36 @@ async function micSend() {
   finally { mic.busy = false; setMicState("idle"); }
 }
 
+// Static demo: the browser's own Whisper (transformers.js, downloaded on the first press) transcribes on this device; the text goes to the in-browser agent through
+// the same rules as the real pipeline (vocabulary prompt, yes/no hint, hallucination filter, stop fast path - web/static_demo/session.py). Audio never leaves the device.
+async function browserVoiceSend(blob) {
+  const BV = window.GURDY_BROWSER_VOICE;
+  try {
+    const ctx = await api("/api/voice_context");
+    const tr = await BV.transcribe(blob, ctx);                                  // waits for the model download on the very first use
+    window.__lastVoice = { text: tr.text, seconds: tr.seconds, device: tr.device, rms: tr.rms, audioSeconds: tr.audioSeconds, usedPrompt: tr.usedPrompt };
+    await api("/api/voice_text", { method: "POST", body: JSON.stringify({ text: tr.text, rms: tr.rms }) });
+    if (!S.ws) await pollChat();
+  } catch (e) { addChat({ seq: -1, role: "system", text: "Voice failed: " + e.message }); }
+  finally { mic.busy = false; setMicState("idle"); }
+}
+function showModelProgress(p) {
+  const box = $("voiceLoad");
+  if (p.state === "ready" || p.state === "idle") { box.hidden = true; return; }
+  box.hidden = false;
+  const BV = window.GURDY_BROWSER_VOICE, mb = (x) => (x / 1048576).toFixed(0);
+  $("vlBar").style.width = (p.pct || 3) + "%";
+  $("vlText").textContent = p.error ? "Speech model failed: " + p.error : p.total ? `Downloading the speech model (${BV.model}) ${mb(p.loaded)} of ${mb(p.total)} MB, once; it stays in your browser` : `Preparing the speech model (${BV.model}, about ${BV.approxMb} MB)…`;
+}
+
 // replies: one queue, one at a time; a new recording / the e-stop clears it
 const tts = { queue: [], playing: null, gen: 0 };
 async function speak(text) {
+  if (S.browserVoice) { if (!S.muted) window.GURDY_BROWSER_VOICE.speak(text); return; }       // the browser's own voices (speechSynthesis)
   if (!S.ac || !S.voice) return;
   const gen = tts.gen;
   try {
-    const r = await fetch("/api/tts", { method: "POST", headers: { Authorization: "Bearer " + S.token, "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    const r = await fetch(baseUrl() + "/api/tts", { method: "POST", headers: { Authorization: "Bearer " + S.token, "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
     if (!r.ok) return;
     const buf = await S.ac.decodeAudioData(await r.arrayBuffer());
     if (gen !== tts.gen) return;                                  // cancelled while synthesizing
@@ -475,7 +511,7 @@ function playNext() {
   const src = S.ac.createBufferSource(); src.buffer = tts.queue.shift(); src.connect(S.ac.destination);
   tts.playing = src; src.onended = () => { tts.playing = null; playNext(); }; src.start();
 }
-function stopSpeaking() { tts.gen++; tts.queue = []; if (tts.playing) { try { tts.playing.onended = null; tts.playing.stop(); } catch { /* already stopped */ } tts.playing = null; } }
+function stopSpeaking() { if (window.GURDY_BROWSER_VOICE) window.GURDY_BROWSER_VOICE.stopSpeaking(); tts.gen++; tts.queue = []; if (tts.playing) { try { tts.playing.onended = null; tts.playing.stop(); } catch { /* already stopped */ } tts.playing = null; } }
 
 function wireVoiceButtons() {
   for (const id of ["micBtn", "micFab"]) {
@@ -510,12 +546,17 @@ document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () 
 $("estop").addEventListener("click", estop);
 $("release").addEventListener("click", releaseEstop);
 $("chatForm").addEventListener("submit", (e) => { e.preventDefault(); const i = $("chatInput"), t = i.value.trim(); if (t) { i.value = ""; say(t); } });
-$("loginForm").addEventListener("submit", () => { S.token = $("tokenInput").value.trim(); $("tokenInput").value = ""; store("gurdy_token", S.token); connect(); });
+$("loginForm").addEventListener("submit", () => {
+  S.token = $("tokenInput").value.trim(); $("tokenInput").value = "";
+  if (window.GURDY_REMOTE) { window.GURDY_REMOTE.token = S.token; try { sessionStorage.setItem("gurdy_remote", JSON.stringify(window.GURDY_REMOTE)); } catch { /* */ } }
+  else store("gurdy_token", S.token);                                           // never persist a robot token typed in the static demo
+  connect();
+});
 window.addEventListener("resize", kick);
 new ResizeObserver(kick).observe($("map"));
 
 const fromUrl = new URLSearchParams(location.hash.slice(1)).get("token");      // http://host:8080/#token=...  (a fragment never reaches server logs)
-if (fromUrl) { store("gurdy_token", fromUrl); history.replaceState(null, "", location.pathname); }
+if (fromUrl && !window.GURDY_STATIC_DEMO) { store("gurdy_token", fromUrl); history.replaceState(null, "", location.pathname); }
 S.token = load("gurdy_token");
 connect();
 

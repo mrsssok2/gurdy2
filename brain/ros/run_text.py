@@ -27,6 +27,9 @@ def main() -> None:
     ap.add_argument("--tls-cert", default=os.environ.get("GURDY_TLS_CERT") or None)
     ap.add_argument("--tls-key", default=os.environ.get("GURDY_TLS_KEY") or None)
     ap.add_argument("--ca", default=os.environ.get("GURDY_TLS_CA") or None)
+    ap.add_argument("--allowed-origin", action="append", default=None, metavar="URL",
+                    help="a web page allowed to use this server from a browser (CORS + WebSocket Origin), e.g. https://mrsssok2.github.io; repeatable; 'none' = only the "
+                         "server's own pages. Default: env GURDY_ALLOWED_ORIGINS or https://mrsssok2.github.io. Never a wildcard; the token is still required.")
     ap.add_argument("--ollama", default=None, help="model name; needs OLLAMA_URL")
     a = ap.parse_args()
     from ..agent.graph import Agent
@@ -64,12 +67,13 @@ def main() -> None:
         if a.web:
             from web.api.ros_extras import RosExtras
             from web.api.ros_telemetry import RosTelemetry
-            from web.api.server import GurdyWebServer
+            from web.api.server import GurdyWebServer, parse_origins
+            origins = parse_origins(",".join(a.allowed_origin)) if a.allowed_origin else None
             tel = RosTelemetry(host, port, RosExtras(port.node))
             from web.api.voice import SpeechClient
             speech = SpeechClient(a.speech_url) if a.speech_url else None
             srv = GurdyWebServer(host, telemetry=tel, bind=a.web_bind, port=a.web, speech=speech, tls_port=a.tls_port, tls_cert=a.tls_cert,
-                                 tls_key=a.tls_key, ca_file=a.ca).start()
+                                 tls_key=a.tls_key, ca_file=a.ca, allowed_origins=origins).start()
             print(f"mission control on port {srv.port} (real robot)" + (f", https on {srv.tls_port}" if srv.tls_port else "")
                   + (f", voice via {a.speech_url}" if speech else ""), flush=True)
             print(f"access token: {srv.token}", flush=True)

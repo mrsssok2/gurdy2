@@ -26,9 +26,9 @@ class DemoSession:
         self._last = time.monotonic()
 
     # ------------------------------------------------------------------ chat log (same item shape as the server's ChatLog)
-    def _add(self, role: str, text: str) -> dict:
+    def _add(self, role: str, text: str, **meta) -> dict:
         self._seq += 1
-        item = {"seq": self._seq, "t": round(time.time(), 1), "role": role, "text": text}
+        item = {"seq": self._seq, "t": round(time.time(), 1), "role": role, "text": text, **{k: v for k, v in meta.items() if v is not None}}
         self.chat.append(item)
         del self.chat[:-CHAT_KEEP]
         return item
@@ -57,6 +57,32 @@ class DemoSession:
         user = self._add("user", text.strip())
         reply = self._add("robot", self.host.say(text.strip()))
         return {"user": user, "reply": reply, "state": self.state()}
+
+    # ------------------------------------------------------------------ voice (the browser transcribes; the rules are the real pipeline's)
+    def voice_context(self) -> dict:
+        """What the browser's Whisper should be biased towards: the vocabulary prompt (place names, objects, colours, commands) and, while the agent
+        waits for a yes / no (or a room letter), the expected answers - the same strings the live microphone pipeline gives faster-whisper."""
+        from brain.voice.vocab import initial_prompt
+        return {"prompt": initial_prompt(self.host.places()), "hint": self.host.answer_hint()}
+
+    def voice(self, text, rms=None, confidence=None) -> dict:
+        """A transcript from the browser's speech recognition -> chat, exactly like server /api/voice: a stop phrase fires the e-stop FIRST (fast path, no
+        planner), silence / noise / repetition is dropped as "I didn't catch that", otherwise the text is a normal command with its confidence."""
+        from brain.agent.stopwords import is_estop_phrase
+        from brain.voice.transcript_filter import reject_values
+        text = (text or "").strip()
+        stop = bool(text) and is_estop_phrase(text)
+        if stop:
+            self.host.estop()
+        if not text:
+            return {"heard": "", "rejected": "nothing heard", "items": [self._add("system", "(heard nothing)")], "state": self.state()}
+        why = None if stop else reject_values(text, rms, confidence=confidence, weak_signal_phrases=True)
+        if why:
+            items = [self._add("system", f"(heard noise: {text!r}, {why}; ignored)"), self._add("robot", "Sorry, I didn't catch that.")]
+            return {"heard": text, "rejected": why, "items": items, "state": self.state()}
+        user = self._add("user", text, voice=True, confidence=None if confidence is None else round(float(confidence), 3))
+        reply = self._add("robot", self.host.say(text, confidence))
+        return {"heard": text, "stop": stop, "confidence": confidence, "reply": reply["text"], "items": [user, reply], "state": self.state()}
 
     def estop(self) -> dict:
         self.host.estop()

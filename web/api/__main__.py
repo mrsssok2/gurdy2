@@ -21,8 +21,13 @@ def main() -> None:
     ap.add_argument("--tls-cert", default=os.environ.get("GURDY_TLS_CERT") or None)
     ap.add_argument("--tls-key", default=os.environ.get("GURDY_TLS_KEY") or None)
     ap.add_argument("--ca", default=os.environ.get("GURDY_TLS_CA") or None, help="public CA certificate file served at /ca.crt (for the phone to trust)")
+    ap.add_argument("--allowed-origin", action="append", default=None, metavar="URL",
+                    help="a web page allowed to use this server from a browser (CORS + WebSocket Origin), e.g. https://mrsssok2.github.io; repeatable; 'none' = only the "
+                         "server's own pages. Default: env GURDY_ALLOWED_ORIGINS or https://mrsssok2.github.io. Never a wildcard; the token is still required.")
     ap.add_argument("--ollama", default=None, help="LLM model name (needs OLLAMA_URL); default: keyword planner (not allowed with --demo)")
     a = ap.parse_args()
+    from .server import parse_origins
+    origins = parse_origins(",".join(a.allowed_origin)) if a.allowed_origin else None
     if a.demo and a.ollama:
         ap.error("--demo uses the keyword planner only (no LLM on a public page)")
     if not (a.mock or a.demo):
@@ -40,7 +45,7 @@ def main() -> None:
         from .voice import SpeechClient
         speech = SpeechClient(a.speech_url) if a.speech_url else None
         srv = GurdyWebServer(host, bind=a.bind, port=a.port, trust_proxy=a.trust_proxy, speech=speech, tls_port=a.tls_port, tls_cert=a.tls_cert,
-                             tls_key=a.tls_key, ca_file=a.ca).start()
+                             tls_key=a.tls_key, ca_file=a.ca, allowed_origins=origins).start()
         print(f"mission control on http://{a.bind}:{srv.port}/  (mock world)" + (f", https on :{srv.tls_port}" if srv.tls_port else "")
               + (f", voice via {a.speech_url}" if speech else ""))
         print(f"access token: {srv.token}   (set GURDY_WEB_TOKEN to choose your own; it is not stored anywhere)", flush=True)

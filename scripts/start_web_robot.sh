@@ -34,7 +34,7 @@ LOG=/tmp/gurdy_web.log; RAM=/tmp/gurdy_web_ram.log; : > "$LOG"; : > "$RAM"
 cleanup() { $TAIL && ts_stop; [ -n "${SAMPLER:-}" ] && kill "$SAMPLER" 2>/dev/null || true; docker rm -f gurdy_agent gurdy_speech >/dev/null 2>&1 || true
   if [ -s "$RAM" ]; then awk '{ if ($2>c) c=$2; if ($3>w) w=$3; if ($4>g) g=$4 } END { printf "peak: container %d MiB, WSL used %d MiB, GPU %d MiB (samples: /tmp/gurdy_web_ram.log)\n", c, w, g }' "$RAM"; fi; }
 trap cleanup EXIT INT TERM
-docker compose run --rm -T --name gurdy_agent "${PORTS[@]}" "${EXTRA[@]}" -e OLLAMA_URL -e MODEL -e GUI -e MEMORY -e GURDY_WEB_TOKEN \
+docker compose run --rm -T --name gurdy_agent "${PORTS[@]}" "${EXTRA[@]}" -e OLLAMA_URL -e MODEL -e GUI -e MEMORY -e GURDY_WEB_TOKEN -e GURDY_ALLOWED_ORIGINS \
   -v "$HOME/.gurdy:/home/ubuntu/.gurdy" sim bash -c '
   cd ~/gurdy2 && source ros2_ws/install/setup.bash && export PYTHONPATH=$HOME/gurdy2:$HOME/gurdy2/gurdy_core:$HOME/gurdy2/sim_mujoco:$PYTHONPATH
   source scripts/lib_nav_start.sh; mkdir -p /tmp/chat; cp maps/flat_lab.places.yaml /tmp/chat/places.yaml
