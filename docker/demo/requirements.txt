@@ -1,0 +1,4 @@
+# Only what `python -m web.api --demo` imports (checked by building the image): the agent graph, the mock world, the tool layer.
+pyyaml
+langgraph>=1.0
+numpy                 # imported by brain.voice (package __init__); the demo itself uses no audio

@@ -16,6 +16,8 @@ Spoken English goes through push-to-talk, Whisper on the GPU and the same agent 
 
 A PWA mission-control dashboard: live SLAM map, planned path, camera with detections, chat + hold-to-talk voice and an E-STOP. It works on a laptop and a phone, and privately from anywhere via Tailscale (`scripts/start_web_robot.sh tailscale voice`, [setup](docs/phase7_remote.md)).
 
+**Try the live demo** (simulated robot, keyword planner, no voice): [huggingface.co/spaces/YOUR_HF_USER/gurdy-demo](https://huggingface.co/spaces/YOUR_HF_USER/gurdy-demo) <!-- TODO: fill in after deploying, docs/phase7_demo_deploy.md -->
+
 ![Mission control on the laptop: map with the planned path, camera with detections, chat, status](docs/images/gurdy_dashboard_gazebo.png)
 
 | <img src="docs/images/gurdy_phone_voice_chat.png" width="300"> | <img src="docs/images/gurdy_phone_map.png" width="300"> |
