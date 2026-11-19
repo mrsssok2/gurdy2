@@ -16,7 +16,7 @@ Spoken English goes through push-to-talk, Whisper on the GPU and the same agent 
 
 A PWA mission-control dashboard: live SLAM map, planned path, camera with detections, chat + hold-to-talk voice and an E-STOP. It works on a laptop and a phone, and privately from anywhere via Tailscale (`scripts/start_web_robot.sh tailscale voice`, [setup](docs/phase7_remote.md)).
 
-**Try the live demo** (simulated robot, keyword planner, no voice): [huggingface.co/spaces/YOUR_HF_USER/gurdy-demo](https://huggingface.co/spaces/YOUR_HF_USER/gurdy-demo) <!-- TODO: fill in after deploying, docs/phase7_demo_deploy.md -->
+**Try the live demo** (simulated robot; the real Python simulation runs in your browser, no server; first visit downloads ~6 MB): [mrsssok2.github.io/gurdy2](https://mrsssok2.github.io/gurdy2/) ([how it is built](docs/phase7_demo_deploy.md))
 
 ![Mission control on the laptop: map with the planned path, camera with detections, chat, status](docs/images/gurdy_dashboard_gazebo.png)
 
@@ -125,7 +125,7 @@ Without the LLM: `docker compose up sim` starts the walking robot in Gazebo (tel
 ## Known limitations
 - **LLM:** 72.5 % on unseen casual phrasing; it still invents tool names and unsupported actions on some inputs (nothing invented was executed). The OOD set is assistant-written; noisy-speech cases in the main set are hand-written, not real Whisper output. The 9-mission live test was typed; voice was checked live on a few commands and on 43 read-aloud clips, not on a full mission suite.
 - **Hexapod walking:** policies stand still for tiny commands from rest (handled at deployment by lifting Nav2 commands to ≥ 0.09 m/s); steps ≥ 4 cm still fail 17–37 % of episodes for every controller.
-- **Web app:** used on Chrome (laptop) and Android Chrome (phone over Tailscale); not tried on iOS; the public demo is not deployed. Battery and the leg faults shown are simulated.
+- **Web app:** used on Chrome (laptop) and Android Chrome (phone over Tailscale); not tried on iOS. The public demo is a static in-browser build (GitHub Pages), keyword planner only. Battery and the leg faults shown are simulated.
 - **Sim only:** no real robot. Sim-to-sim gap up to 14 points (31 on one combined segment). Leg-failure adaptation did not work.
 - **Single runs:** Nav2, exploration and detector-in-Gazebo were run once per setting, in one world (`flat_lab` / `semantic_lab`); no variance estimates.
 - **Perception:** a table and a cylinder are still labelled `box` (7 false tracks in the lab run); detector trained on synthetic images only. Battery is simulated.

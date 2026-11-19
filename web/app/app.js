@@ -521,4 +521,4 @@ connect();
 
 // Offline start: the service worker caches the app shell only (never /api or the WebSocket). It needs a secure context
 // (https or localhost); over plain http on the LAN the browser simply refuses and the page works online as before.
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+if ("serviceWorker" in navigator && !window.GURDY_STATIC_DEMO) navigator.serviceWorker.register("sw.js").catch(() => {});      // the static demo (GitHub Pages / static Space) ships no worker file

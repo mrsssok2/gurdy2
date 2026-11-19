@@ -321,7 +321,7 @@ Design (2026-11-17, plan only): **`docs/phase6_design.md`** (incident definition
 ---
 
 ## Phase 7 — Mission control + polish
-**Status (2026-11-19): done except the public demo deployment** (and the open polish items at the end). Design: `docs/phase7_design.md`; decision taken: stdlib Python server + no-build static frontend instead of Next.js / rosbridge / three.js (nothing to install, runs in the existing images, offline-capable).
+**Status (2026-11-19): done except publishing the public demo (user pushes + enables GitHub Pages)** (and the open polish items at the end). Design: `docs/phase7_design.md`; decision taken: stdlib Python server + no-build static frontend instead of Next.js / rosbridge / three.js (nothing to install, runs in the existing images, offline-capable).
 - [x] API server (`web/api`: REST + WebSocket + shared-token auth + chat log; E-STOP without the agent lock, latched `/estop` on the real robot + Release button)
 - [x] Dashboard PWA (`web/app`): laptop dashboard + phone layout with tab bar, canvas map (robot, walked trail, planned path, remembered objects in their colours, collision-free labels), status / battery / legs / alerts, chat with suggestion chips, installable (manifest + service worker). Checked in Chrome on a laptop and on an Android phone, and with headless screenshots of both layouts
 - [x] Mock world generated from the Gazebo `flat_lab` files (`brain/mock/lab_world.py`) so the demo shows what the real lab contains
@@ -330,8 +330,8 @@ Design (2026-11-17, plan only): **`docs/phase6_design.md`** (incident definition
 - [x] Private remote access from anywhere: Tailscale Serve (tailnet-only https, valid certificate), `scripts/start_web_robot.sh tailscale voice` (`docs/phase7_remote.md`); used from a phone on mobile data
 - [x] Docker compose profile `web`, one-command start scripts; README section with screenshots
 - [x] LLM-unreachable fix: agent says "My language model is not running right now.", start script checks the model from inside the container before READY
-- [~] Public demo on a Hugging Face Docker Space: `--demo` mode (MockBackend only, flat_lab world, smart keyword planner, no token, rate limits, no voice, per-visitor isolated sessions: cap 30, freed after 10 idle min, busy message), separate small image (`docker/demo`, measured 366 MB; 101 MiB RAM with 30 live sessions), `scripts/demo_space.py stage|deploy`, `docs/phase7_demo_deploy.md`. Tested locally (docker build + run + curl + headless screenshots); **not yet deployed** (needs the user's HF account + token) — the last open Phase 7 item
-- [ ] GitHub Actions CI (lint + unit tests; ROS build/test job) and a project website — still open (no `.github/workflows` yet)
+- [x] Public demo as a STATIC in-browser build (2026-11-19; Hugging Face now requires PRO for Docker Spaces on free CPU): the real Python simulation (mock flat_lab world + agent + smart keyword planner) runs in the browser via Pyodide in a Web Worker, same dashboard UI, one private world per tab, no server (`scripts/build_static_demo.py`, `web/static_demo/`; a 40-line langgraph stand-in with a parity test against the real one; measured 5.6 MiB first load, 8-11 s cold / ~3 s cached). GitHub Pages workflow `.github/workflows/pages.yml` -> https://mrsssok2.github.io/gurdy2/ and a static HF Space alternative (`scripts/demo_space.py`); `docs/phase7_demo_deploy.md`. **Code + tests done; the actual publishing needs the user to push and enable Pages** (the per-visitor server demo mode remains for self-hosting)
+- [~] GitHub Actions CI: `.github/workflows/pages.yml` runs the demo / web tests before publishing; a full CI (lint, ROS build/test job) and a project website are still open
 - [ ] Optional: three.js 3D robot view, incidents page (after Phase 6 resumes)
 
 **AC**

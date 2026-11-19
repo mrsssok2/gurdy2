@@ -1,81 +1,55 @@
-# Public demo on a Hugging Face Space (Docker, free CPU)
+# Public demo: a static page that runs the simulation in the browser
 
-What gets deployed: `python -m web.api --demo` — the dashboard with a **simulated** robot in the Gazebo `flat_lab` layout (two rooms, doorway, red / blue / yellow boxes, green cylinder, table), the keyword planner with the smart phrasings ("enter room B", "take me to…", "find the yellow box"), **no token, per-IP rate limits (burst 5, then one message per 4 s), 200-character messages, no voice, and one private simulated robot per visitor** (see "Per-visitor sessions").
-The server refuses to run the demo with anything but the mock backend, so this page can never reach a real robot.
+**Why this changed:** Hugging Face now needs a PRO subscription for Docker Spaces on free CPU (static Spaces stay free). So the public demo no longer needs a server at all: the dashboard plus the **real Python simulation** (mock `flat_lab` world, agent with safety / grounding / executor, keyword planner with the smart phrasings) run inside the visitor's browser. It is published for free on **GitHub Pages** (`https://mrsssok2.github.io/gurdy2/`) and can also be uploaded as a **static Hugging Face Space**.
 
-## Per-visitor sessions
-Every browser tab gets its own isolated world: its own mock robot, agent and chat. The page makes a random 128-bit session id (`sessionStorage`, so a new tab = a new robot, a reload keeps yours) and sends it as `X-Session` / `?sid=`; the server creates the session on the first request. Nobody can see another visitor's messages or robot: every REST call and WebSocket is bound to one session object, the chat broadcast goes only to that session's sockets (tests with two sessions, REST + WebSocket + a real browser).
-- **Cap:** 30 sessions at once (`--max-sessions`). The 31st visitor gets HTTP 503 and the page shows "The demo is busy right now. Trying again in a minute…" and retries every 20 s.
-- **Idle:** a session with no request or command for 10 minutes (`--session-idle-min`) is freed (its thread, world and chat are dropped); an open but untouched tab gets a "timed out" notice and starts a fresh session by itself.
-- **Abuse limits (all per client address):** 6 sessions at most, new sessions burst 4 then one per 30 s (so one script cannot fill the 30 slots), plus the earlier message limits (burst 5, then one per 4 s), 200-character messages, 3 WebSocket connections.
-- These limits use the visitor's address from `X-Forwarded-For` (`--trust-proxy`). If Hugging Face's proxy hides the real address (everyone looks like one visitor) the limits would be shared: do the two-device check in step 7 after the first deploy.
+What a visitor gets: the same dashboard (map, planned path, chat with suggestion chips, status, alerts, demo banner, E-STOP), no mic, no token, no server, nothing sent anywhere. Every visitor automatically has a private robot (it lives in their own tab); a reload starts a new one.
 
-Measured locally (Docker Desktop, 2026-11-19, `docker/demo/Dockerfile`, python:3.12-slim): **image 366 MB**.
-**RAM:** 19 MiB before the first visitor; the first session adds ~53 MiB (one-time imports: langgraph, numpy); each further session adds **about 1.0 MiB**. With **30 sessions at once, each with a walking robot and a live WebSocket stream: 101 MiB total, CPU 3.6 % of one core** (the free CPU Space has 2 vCPU / 16 GB, so it fits with a large margin). The 31st visitor was refused with 503 as designed.
-Also checked: 5 quick commands answered, the 6th and later in a burst get HTTP 429, `/api/voice` answers 503, no JavaScript errors in headless Chromium (laptop + phone sizes), two browser contexts get separate worlds, a second tab of the same browser is a fresh world, a reload keeps the session, a full server shows the busy banner.
-Not yet tested: the real Space (it needs your account).
+## The two options I compared
 
-Files: `docker/demo/Dockerfile` (python:3.12-slim, user 1000, `$PORT`=7860), `docker/demo/requirements.txt` (pyyaml, langgraph, numpy), `docker/demo/README_SPACE.md` (the Space's front matter), `scripts/demo_space.py` (stages exactly the files the demo needs — 77 files, ~0.5 MB — and deploys them).
-Nothing from ROS, Gazebo, CUDA, Ollama, Whisper, your memory database or your TLS / Tailscale files is ever staged (the script refuses secrets and files over 5 MB; a test checks it).
+| | **A. Pyodide (chosen)**: the repo's Python runs in the browser | **B. JavaScript port** |
+|---|---|---|
+| Fidelity | The same files: agent, safety checker, grounding, executor, mock world, keyword parser, phrasing, telemetry. | A second implementation of ~4,000 lines of Python (agent ~2,200, mock world ~950, tools ~400, parsers) that must be kept in sync by hand; parity could only be spot-checked on a fixed command list. |
+| First load | **5.6 MiB** from the jsDelivr CDN (Pyodide runtime, brotli) + 0.23 MiB our site. Measured cold: **8-11 s** to a working page (desktop-class, Docker Chromium), **2.7-3.4 s** with the runtime cached; on a throttled phone profile (4x slower CPU, 1.6 Mbit/s, 150 ms latency) cold **35 s**. | Instant (< 0.2 MB). |
+| Risk | `langgraph` cannot be installed in Pyodide (checked in headless Chromium with micropip: it fails because its dependencies orjson / ormsgpack / xxhash / uuid_utils have no Pyodide wheels; pydantic 2.10 and pyyaml do load). Solved with a 40-line stand-in for the two things `brain/agent/graph.py` uses (`StateGraph`, `END`). | Drift between the JS and Python behaviour over time. |
+| Proof of equivalence | `web/tests/test_static_demo.py` runs 30 commands on the repo with the **real langgraph** and on the unzipped build with **only the stand-in**: identical replies, announcements and robot poses. | A parity test would have to be written for every behaviour. |
 
-## Step by step (in this order)
+Pyodide wins on fidelity and upkeep; its only cost is the one-time download. The page shows a loading screen ("Starting the simulated robot… everything runs in your browser") during it.
 
-### 1. Hugging Face account
-Go to https://huggingface.co/join, sign up, confirm the e-mail address. Your user name appears in the URLs below (`USER`).
+## How it works
+`scripts/build_static_demo.py` copies `web/app` (the normal dashboard, unchanged apart from one line: no service worker in the static build), adds `static_backend.js` (answers the dashboard's `fetch("/api/…")` and `WebSocket("/ws")` calls locally), `demo_worker.js` (a Web Worker that loads Pyodide from the CDN, installs `pyyaml`, unpacks `gurdy_demo.zip` and runs `web/static_demo/session.py`) and `gurdy_demo.zip` (88 KiB of the repo's Python: no server, ROS, LLM client or audio code). The simulation advances 3x faster than wall time, like the server demo.
+Pyodide version pinned: 0.27.7 (Python 3.12.7). It is loaded from `cdn.jsdelivr.net`; to host it yourself pass `--pyodide-base`.
 
-### 2. Access token (write permission)
-https://huggingface.co/settings/tokens → **Create new token** → type **Write** → name it `gurdy-demo-deploy` → Create → copy it now (it is shown once).
-Keep it out of the repo, chat, notebooks and shell history: you will type it at a silent prompt in step 5. If it ever leaks, delete it on the same page and make a new one.
+Measured 2026-11-19 in headless Chromium: first visit loads **5.6 MiB (CDN) + 0.23 MiB**; chat "enter room B", "yes" walks the robot to room B, E-STOP works, no mic button, demo banner shown, a second browser context starts with an empty chat and a robot at the origin, a reload resets the world, no JavaScript errors, works from a sub-path (`/gurdy2/`) like GitHub Pages. Not tested on a real phone or on Safari/Firefox.
 
-### 3. The Space (optional by hand; the script also creates it)
-https://huggingface.co/new-space → Owner: you · Space name: `gurdy-demo` · License: MIT · SDK: **Docker** → **Blank** → Hardware: **CPU basic · free** → **Public** → Create Space.
-(Without this step `scripts/demo_space.py deploy` creates the same public Docker Space named `USER/gurdy-demo`.)
+## Step by step: GitHub Pages (your repo `mrsssok2/gurdy2`)
+1. **The repo must be public** (Pages is free for public repositories; for a private repo it needs a paid plan).
+2. **Push** the commits (`git push`). The workflow `.github/workflows/pages.yml` runs on every push to `main` that touches the demo files.
+3. In the repo on github.com: **Settings → Pages → Build and deployment → Source: "GitHub Actions"** (not "Deploy from a branch"). Do this once; it needs no token.
+4. Open the **Actions** tab → workflow **"Publish static demo"**. If it did not start (for example because the push happened before step 3), click **Run workflow** (branch `main`). It has three jobs: `test` (runs the demo tests), `build`, `deploy`; all must be green (about 2-3 minutes).
+5. The deploy job prints the page URL; it is **https://mrsssok2.github.io/gurdy2/** (give it a minute after the job finishes).
+6. **Check it:** open the URL (laptop and phone): loading screen for a few seconds, then the dashboard with the banner "Demo: simulated robot"; type "go to room B", then "yes"; the robot walks. In the browser's developer tools (F12 → Network / Console) there must be no red 404 / CORS errors. `curl -I https://mrsssok2.github.io/gurdy2/` answers 200.
+7. If a job fails: open it and read the red step. Typical causes: Pages not set to "GitHub Actions" (step 3); the repo is private; a test fails (the log shows which).
 
-### 4. Tool for the upload (once)
-```bash
-python3 -m venv ~/.venvs/hf && ~/.venvs/hf/bin/pip install huggingface_hub
-```
+**Updating later:** change the code, `git push`; the workflow rebuilds and republishes by itself. Nothing else to do.
 
-### 5. Test the demo image locally first (recommended every time)
-```bash
-python3 scripts/demo_space.py stage                    # copies the demo files into build/demo_space (git-ignored)
-docker build -t gurdy2/demo:test build/demo_space      # a minute or two
-docker run --rm -p 127.0.0.1:7860:7860 gurdy2/demo:test
-# in a browser: http://localhost:7860  ->  banner "Demo: simulated robot", chat "go to room B", then "yes"
-# stop with Ctrl+C
-```
+## Alternative: a static Hugging Face Space (free)
+1. Create the account at https://huggingface.co/join and confirm the e-mail.
+2. Token: https://huggingface.co/settings/tokens → **Create new token** → type **Write** → copy it once. Keep it out of the repo and the chat; you type it at a silent prompt below.
+3. Tool (once): `python3 -m venv ~/.venvs/hf && ~/.venvs/hf/bin/pip install huggingface_hub`
+4. Look at what will be uploaded (optional): `python3 scripts/demo_space.py stage` → `build/demo_space` (22 files, ~290 KiB, git-ignored).
+5. Deploy:
+   ```bash
+   read -s HF_TOKEN; export HF_TOKEN        # paste the token, press Enter (nothing is shown or saved)
+   ~/.venvs/hf/bin/python scripts/demo_space.py deploy
+   unset HF_TOKEN
+   ```
+   It creates the public **static** Space `USER/gurdy-demo` if it does not exist, uploads, waits for RUNNING and fetches the page. It prints `LIVE: https://USER-gurdy-demo.static.hf.space/`.
+6. Check it like step 6 above. To update: run the deploy command again (clean snapshot; old versions stay in the Space's Files → History). To stop it: Space → Settings → Pause / delete.
+The Space page embeds the demo in an iframe; Web Workers and the CDN load work there. If something looks off in the iframe, open the direct `*.static.hf.space` URL.
 
-### 6. Deploy
-```bash
-read -s HF_TOKEN; export HF_TOKEN        # paste the token, press Enter (nothing is shown, nothing is saved)
-~/.venvs/hf/bin/python scripts/demo_space.py deploy
-unset HF_TOKEN
-```
-The script stages the files, creates the Space if needed, uploads a clean snapshot, waits for the build (the first build takes a few minutes) and calls `/api/health`. It prints `LIVE: https://USER-gurdy-demo.hf.space`.
-Use another name with `--space USER/other-name`.
-
-*Alternative with git* (the token is typed at the prompt; do not put it in the URL, that would store it in `.git/config`):
-```bash
-git -c credential.helper= clone https://huggingface.co/spaces/USER/gurdy-demo build/space_git   # user name: USER, password: the token
-rsync -a --delete --exclude .git build/demo_space/ build/space_git/ && cd build/space_git
-git add -A && git commit -m "Update demo" && git -c credential.helper= push
-```
-
-### 7. Check that it is live
-- Space page https://huggingface.co/spaces/USER/gurdy-demo : status **Running** (tab **Logs** shows the build / run log; `DEMO mode on http://0.0.0.0:7860/` is the line you want).
-- `curl https://USER-gurdy-demo.hf.space/api/health` → `{"ok": true, "version": "0.1", "demo": true, "voice": false}`.
-- Open the URL on your phone (mobile data): banner "Demo: simulated robot", no login box, no mic button; chat "go to room B" → "yes" → the robot walks.
-- **Rate limits per visitor**: the Space sits behind a proxy and the demo reads the visitor's address from `X-Forwarded-For` (`--trust-proxy`). Test it: send 8 quick messages from your laptop (some answer "too many requests") and, at the same moment, one message from your phone on mobile data must still work. If the phone is also blocked, every visitor shares one bucket: tell me and I change how the address is read.
-- Each visitor has a private robot and chat (see "Per-visitor sessions"); open the URL in two tabs or on two devices: they must not see each other's messages.
-
-### 8. Update it later
-Change the code in the repo, run step 5 (local test), then step 6 again. Each deploy replaces the Space's files with a clean snapshot (the old state stays in the Space's **Files → History**, so you can roll back in the web page) and the Space rebuilds by itself.
-To stop the demo: Space → **Settings → Pause this Space** (or delete it). Free CPU Spaces also fall asleep when nobody visits for a while and wake up on the next visit (about a minute; I have not measured how long they stay awake, check Hugging Face's current rules).
-
-### 9. Put the link in the README
-In `README.md` replace `YOUR_HF_USER` in the "Try the live demo" line with your user name.
-
-## Safety notes
-- The Space is public and has **no login by design**; the protection is: mock world only (enforced in code), rate limits, short messages, 3 WebSocket connections per address, 30 isolated sessions max with a per-address cap, idle sessions freed after 10 minutes, no voice, no GPU, no secrets inside (the image holds ~0.5 MB of source and the web page).
-- Do not add `GURDY_WEB_TOKEN`, Ollama addresses or Tailscale settings to the Space; none of them are used in demo mode.
-- Prices / limits of the free tier change: look at https://huggingface.co/docs/hub/spaces-overview before relying on it (see also `docs/phase7_hosting.md`, prices unverified there too).
+## Limits and honest notes
+- First visit: about 6 MB and several seconds (35 s on a slow phone profile). Later visits are quick because the browser caches the runtime.
+- Needs a recent browser with WebAssembly and Web Workers. If `cdn.jsdelivr.net` is blocked (some company networks), the page shows an error message instead of the simulator.
+- Same planner as before (keyword parser, no LLM), no voice. The world is the Gazebo `flat_lab` layout, not Gazebo itself.
+- The per-visitor server mode (`python -m web.api --demo`, with sessions, caps and rate limits; tests in `web/tests/test_demo_sessions.py`) still exists for self-hosting on a machine you control; it is no longer what gets deployed.
+- Safety: the page contains no robot connection, token, secret or backend address. Everything it can do is run a simulation inside the visitor's own browser.

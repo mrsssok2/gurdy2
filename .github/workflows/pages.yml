@@ -1,0 +1,68 @@
+# Publishes the STATIC public demo (the dashboard + the real Python simulation running in the browser via Pyodide) to GitHub Pages:
+#   https://<user>.github.io/<repo>/        e.g. https://mrsssok2.github.io/gurdy2/
+# One-time setup in the repo: Settings -> Pages -> Build and deployment -> Source: "GitHub Actions" (docs/phase7_demo_deploy.md).
+name: Publish static demo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/app/**"
+      - "web/static_demo/**"
+      - "web/api/demo.py"
+      - "web/api/telemetry.py"
+      - "brain/**"
+      - "gurdy_core/gurdy_core/vision/**"
+      - "scripts/build_static_demo.py"
+      - "scripts/gen_world_flat_lab.py"
+      - "maps/flat_lab.places.yaml"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: pip install pyyaml "langgraph>=1.0" numpy pytest
+      - name: Static demo tests (session, langgraph stand-in parity, build output)
+        run: PYTHONPATH=.:gurdy_core python -m unittest web.tests.test_static_demo web.tests.test_demo_stage web.tests.test_api_server web.tests.test_demo_sessions
+      - name: Phrasing and lab-world tests
+        run: PYTHONPATH=.:gurdy_core python -m pytest -q brain/tests/test_phrasing.py brain/tests/test_lab_world.py
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/build_static_demo.py --out _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

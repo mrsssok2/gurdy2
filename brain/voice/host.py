@@ -82,27 +82,33 @@ class AgentHost:
     def on_message(self, fn: Callable[[str], None]) -> None:
         self.listeners.append(fn)
 
+    def step(self, dt_wall: float) -> list[str]:
+        """One pump step: advance the mock world by `dt_wall * sim_speed` (mock only), let the agent turn executor events / alerts into messages,
+        deliver them to the listeners and return them. The pump thread calls this every `pump_s`; the browser demo (no threads) calls it from a timer."""
+        try:
+            with self.lock:
+                be = self.agent.layer.backend
+                if self.sim_speed and hasattr(be, "advance"):      # without this a mock trip never ends
+                    be.advance(dt_wall * self.sim_speed)
+                msgs = self.agent.pump()
+        except Exception as e:                                # noqa: BLE001  one bad pump must not kill the loop (alerts / mission results)
+            import sys
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            msgs = [_error_text(e)]
+        for m in msgs:
+            for fn in list(self.listeners):
+                fn(m)
+        return msgs
+
     def start(self) -> None:
         def loop():
             last = time.monotonic()
             while not self._stop.is_set():
                 time.sleep(self.pump_s)
                 now = time.monotonic()
-                try:
-                    with self.lock:
-                        be = self.agent.layer.backend
-                        if self.sim_speed and hasattr(be, "advance"):      # without this a mock trip never ends
-                            be.advance((now - last) * self.sim_speed)
-                        msgs = self.agent.pump()
-                except Exception as e:                                # noqa: BLE001  one bad pump must not kill the loop (alerts / mission results)
-                    import sys
-                    import traceback
-                    traceback.print_exc(file=sys.stderr)
-                    msgs = [_error_text(e)]
+                self.step(now - last)
                 last = now
-                for m in msgs:
-                    for fn in list(self.listeners):
-                        fn(m)
         self._thread = threading.Thread(target=loop, daemon=True)
         self._thread.start()
 
