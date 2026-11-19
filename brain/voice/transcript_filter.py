@@ -55,3 +55,23 @@ def reject_values(text: str, rms: float | None = None, *, compression_ratio: flo
     if weak_signal_phrases and rms is not None and rms < LOW_RMS and is_silence_phrase(text):
         return "no speech"
     return None
+
+
+# ---- known mishearings of room names (small Whisper models hear "room B" as a word). Pure text rules, applied to transcripts only
+# (browser demo session + the server's speech service), never to typed text or the evaluation sets.
+_B_WORDS = r"(?:ruby|rooby|roomby|rumby|roombi|rubie|roomb|rum b)"
+_CONTEXT = r"(?:go to|go into|go in|head to|head into|take me to|bring me to|walk to|enter|visit|move to|to|into|inside|in)"
+_ROOM_CTX = re.compile(rf"\b({_CONTEXT})\s+(?:the\s+)?{_B_WORDS}\b", re.I)
+_ROOM_ONLY = re.compile(rf"^\W*{_B_WORDS}\W*$", re.I)               # the whole answer to "which room?"
+_ROOM_LETTER_WORD = re.compile(r"\broom\s+(be|bee|bea)\b", re.I)
+_ROOM_C = re.compile(r"\broom\s+(see|sea)\b", re.I)
+
+
+def fix_room_mishearings(text: str) -> str:
+    """"Go to Ruby." / "go to roomby" / "room bee" -> "Go to room B." / "room B"; a lone "Ruby" (the answer to "which room?") -> "B". Context-only rules:
+    the word must follow a movement word (or be the whole answer), so ordinary sentences are untouched."""
+    if _ROOM_ONLY.match(text):
+        return "B"
+    out = _ROOM_CTX.sub(lambda m: f"{m.group(1)} room B", text)
+    out = _ROOM_LETTER_WORD.sub("room B", out)
+    return _ROOM_C.sub("room C", out)

@@ -414,16 +414,23 @@ class GurdyWebServer:
         reply = sess.host.say(text)
         return sess.chat.add("robot", reply)
 
+    @staticmethod
+    def _announces_estop(sess: Session) -> bool:
+        """The real robot's backend announces "Emergency stop engaged / released." itself (an event message); then the page must not add its own line."""
+        return callable(getattr(getattr(getattr(sess.host, "agent", None), "layer", None) and sess.host.agent.layer.backend, "estop", None))
+
     def estop(self, sess: Session) -> None:
         sess.host.estop()
-        sess.chat.add("system", "Emergency stop sent.")
+        if not self._announces_estop(sess):
+            sess.chat.add("system", "Emergency stop sent.")
 
     def release_estop(self, sess: Session) -> bool:
         fn = getattr(sess.host, "release_estop", None)
         if fn is None or self.demo:
             return False
         fn()
-        sess.chat.add("system", "Emergency stop released.")
+        if not self._announces_estop(sess):
+            sess.chat.add("system", "Emergency stop released.")
         return True
 
     def broadcast(self, sess: Session, obj: dict) -> None:

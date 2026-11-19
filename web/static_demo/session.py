@@ -69,8 +69,8 @@ class DemoSession:
         """A transcript from the browser's speech recognition -> chat, exactly like server /api/voice: a stop phrase fires the e-stop FIRST (fast path, no
         planner), silence / noise / repetition is dropped as "I didn't catch that", otherwise the text is a normal command with its confidence."""
         from brain.agent.stopwords import is_estop_phrase
-        from brain.voice.transcript_filter import reject_values
-        text = (text or "").strip()
+        from brain.voice.transcript_filter import fix_room_mishearings, reject_values
+        text = fix_room_mishearings((text or "").strip())
         stop = bool(text) and is_estop_phrase(text)
         if stop:
             self.host.estop()

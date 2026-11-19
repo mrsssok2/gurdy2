@@ -1,6 +1,6 @@
 """The hallucination rules are shared by the live pipeline, the server and the browser demo: same decisions everywhere."""
 from brain.voice.stt import Transcript, reject_reason
-from brain.voice.transcript_filter import MIN_RMS, is_silence_phrase, reject_values, repeated_tokens
+from brain.voice.transcript_filter import MIN_RMS, fix_room_mishearings, is_silence_phrase, reject_values, repeated_tokens
 
 import numpy as np
 
@@ -38,3 +38,12 @@ def test_repetition_detector():
     assert not repeated_tokens("go to room B and then go home")
     assert not repeated_tokens("go to room B go to room B")                      # said twice is a user, not a loop
     assert not repeated_tokens("go to room A then room B then room A")
+
+
+def test_room_mishearings_are_fixed_only_in_context():
+    for heard, want in [("Go to Ruby.", "Go to room B."), ("go to rooby", "go to room B"), ("take me to roomby", "take me to room B"), ("enter the ruby", "enter room B"),
+                        ("go to room bee", "go to room B"), ("find the red box in Ruby", "find the red box in room B"), ("go to room sea", "go to room C"),
+                        ("Ruby.", "B"), ("  roomby ", "B")]:
+        assert fix_room_mishearings(heard) == want, heard
+    for untouched in ["go to room B", "my ruby ring is red", "go to the doorway", "find the red box", "stop", "ruby red box", "what is the room be"[:0] + "go home"]:
+        assert fix_room_mishearings(untouched) == untouched, untouched

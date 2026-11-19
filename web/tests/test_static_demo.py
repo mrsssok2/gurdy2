@@ -92,6 +92,10 @@ class StaticDemoTests(unittest.TestCase):
         self.assertTrue(stop["stop"])
         self.assertIsNone(stop.get("rejected"))
         self.assertEqual(s.voice("", 0.05)["rejected"], "nothing heard")
+        t = DemoSession()
+        r = t.voice("Go to Ruby.", 0.05)                                                   # heard by the browser's tiny model for "go to room B"
+        self.assertEqual(r["items"][0]["text"], "Go to room B.")
+        self.assertIn("room B", r["reply"] + " " + str(t.chat))
 
     def test_sessions_are_independent(self):
         from web.static_demo.session import DemoSession

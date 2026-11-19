@@ -64,6 +64,8 @@ class SpeechEngine:
             if hasattr(self.stt, "vad_filter"):
                 self.stt.vad_filter = False             # push-to-talk: the button already marks the speech (same rule as the live pipeline)
             tr: Transcript = self.stt.transcribe(audio, prompt=hint) if hint else self.stt.transcribe(audio)
+        from .transcript_filter import fix_room_mishearings
+        tr.text = fix_room_mishearings(tr.text) if tr.text else tr.text
         stop = bool(tr.text) and is_estop_phrase(tr.text)
         why = reject_reason(tr, audio) if tr.text else None
         if stop:

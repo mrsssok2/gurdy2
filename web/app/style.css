@@ -211,3 +211,8 @@ dialog h2 { margin: 0 0 6px; } dialog p { color: var(--muted); margin: 0 0 12px;
 .voiceload[hidden] { display: none; } .vl-title { font: 600 13px var(--head); color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
 .vl-bar { height: 8px; margin: 8px 0; border-radius: 99px; background: var(--card-2); overflow: hidden; } .vl-bar i { display: block; width: 3%; height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; } .vl-text { font-size: 13px; color: var(--muted); }
 @media (max-width: 899.98px) { .remote-btn .long { display: none; } .remote-btn .short { display: inline; } .remote-btn { height: 36px; padding: 0 10px; } }
+
+/* ---- narrow laptop windows: the top bar degrades instead of overlapping (hide the sub-title, then the words next to the dots / bars) */
+.top > * { min-width: 0; } .brand, .conn, .estop, .remote-btn { flex: none; } .chip { flex: 0 1 auto; overflow: hidden; white-space: nowrap; }
+@media (min-width: 900px) and (max-width: 1279.98px) { .brand .sub { display: none; } .remote-btn .long { display: none; } .remote-btn .short { display: inline; } }
+@media (min-width: 900px) and (max-width: 1099.98px) { .conn #connText { display: none; } .chip { padding: 0 10px; gap: 8px; } .chip .k { display: none; } #tLegText { display: none; } .estop { min-width: 110px; } }

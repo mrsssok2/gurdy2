@@ -3,8 +3,8 @@
 (() => {
   "use strict";
   const params = new URLSearchParams(location.search);
-  const MODEL = ["tiny.en", "base.en"].includes(params.get("whisper")) ? params.get("whisper") : "tiny.en";      // ?whisper=base.en for the bigger model
-  const APPROX_MB = { "tiny.en": 41, "base.en": 77 };                                                          // quantised ONNX weights, measured in docs/phase7_demo_deploy.md
+  const MODEL = ["tiny.en", "base.en"].includes(params.get("whisper")) ? params.get("whisper") : "base.en";      // base.en by default (tiny.en heard "go to room B" as "Go to Ruby."); ?whisper=tiny.en for the small one
+  const APPROX_MB = { "tiny.en": 50, "base.en": 85 };                                                          // total first download (weights + tokenizer + runtime), measured in docs/phase7_demo_deploy.md
   let worker = null, loadPromise = null, nextId = 1;
   const pending = new Map(), files = new Map(), listeners = new Set();
   const api = { supported: typeof Worker !== "undefined" && typeof WebAssembly === "object" && !!(window.AudioContext || window.webkitAudioContext),

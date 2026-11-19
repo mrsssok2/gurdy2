@@ -1,5 +1,7 @@
 # Gurdy 2.0
 
+**Try the live demo: [mrsssok2.github.io/gurdy2](https://mrsssok2.github.io/gurdy2/) - runs in your browser, voice included.** Press *Connect to my robot* on that page to drive your own robot over Tailscale.
+
 **What it does:** a six-legged robot in simulation that you can talk to in plain English, typed or spoken (Whisper on the GPU, ~0.3 s per command, 3.7 % word error rate). It walks with a learned (reinforcement-learning) gait, maps and explores a building on its own, recognises objects by name, and plans missions with a fine-tuned LLM running locally.
 **What it proves:** the whole stack runs offline on one 6 GB laptop GPU. Measured: the learned gait tracks commands more accurately and uses less energy than a classic gait, the robot mapped 99 % of a lab, found 11/11 objects, and the fine-tuned LLM scored 94 % vs 59 % for the base model on 100 commands, with no hallucinated replies reaching the user.
 **What did not work:** it is simulation only, 72.5 % on unseen casual phrasing, and leg-failure adaptation missed its target (see Known limitations).
@@ -16,9 +18,13 @@ Spoken English goes through push-to-talk, Whisper on the GPU and the same agent 
 
 A PWA mission-control dashboard: live SLAM map, planned path, camera with detections, chat + hold-to-talk voice and an E-STOP. It works on a laptop and a phone, and privately from anywhere via Tailscale (`scripts/start_web_robot.sh tailscale voice`, [setup](docs/phase7_remote.md)).
 
-**Try the live demo** (simulated robot; the real Python simulation runs in your browser, no server; first visit downloads ~6 MB): [mrsssok2.github.io/gurdy2](https://mrsssok2.github.io/gurdy2/) ([how it is built](docs/phase7_demo_deploy.md)). In the demo you can also talk to the robot (Whisper runs in your browser) or press **Connect to my robot** to drive your own robot over Tailscale from the same page.
+The live demo is a static page (the real Python simulation runs in your browser, first visit ~6 MB; [how it is built](docs/phase7_demo_deploy.md)).
 
 ![Mission control on the laptop: map with the planned path, camera with detections, chat, status](docs/images/gurdy_dashboard_gazebo.png)
+
+![The public demo page connected to the real robot via Tailscale](docs/images/gurdy_github_connected_real.png)
+
+*The public demo page (mrsssok2.github.io/gurdy2) connected to the real robot via Tailscale: spoken 'Go to room B' (84 %, GPU Whisper on the laptop), the robot walking through the doorway in Gazebo (right).*
 
 | <img src="docs/images/gurdy_phone_voice_chat.png" width="300"> | <img src="docs/images/gurdy_phone_map.png" width="300"> |
 |---|---|
