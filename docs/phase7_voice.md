@@ -39,7 +39,7 @@ Windows 11 hotspot gives the laptop `192.168.137.1`; on a normal Wi-Fi use the a
 
 Safety of this setup: the CA private key `~/.gurdy/tls/ca.key` never leaves the laptop (mode 600) and is not in git. Anyone holding it could issue certificates your phone would trust, so remove the CA from the phone when you stop using this
 (Android: Settings → Encryption & credentials → User credentials → Gurdy local CA → Remove) and delete `~/.gurdy/tls` if you like. The access token still protects every API call, and the E-STOP / Release buttons work without the microphone.
-Plain `http://` on the LAN keeps working for everything except the microphone. **The tunnel step (Cloudflare Tunnel / Tailscale, `docs/phase7_hosting.md`) will give a real https certificate**, then none of the CA steps are needed.
+Plain `http://` on the LAN keeps working for everything except the microphone. **Tailscale Serve (`docs/phase7_remote.md`) gives a real https certificate and works from anywhere**, then none of the CA steps are needed.
 
 ## If something is off
 - No mic button: the page found no speech service. `docker logs gurdy_speech` (it needs the `voice_gpu` image + `~/p5_models`, `~/p5_pkgs`, `~/p5_tts`); the button appears once `GET /api/health` says `"voice": true`.
