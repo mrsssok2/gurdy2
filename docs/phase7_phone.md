@@ -10,12 +10,12 @@ Run it on `0.0.0.0` (all interfaces), not the default `127.0.0.1`.
 
 **Recommended (container, Docker Desktop publishes the port on Windows for you):**
 ```bash
-docker compose run --rm --service-ports -p 8080:8080 brain python3 -m web.api --mock --bind 0.0.0.0
+scripts/start_web.sh lan        # prints the access token and the URLs; Ctrl+C stops it
 ```
+(Without `lan` the port is published on 127.0.0.1 only: laptop browser at `http://localhost:8080/#token=...`.)
 Docker Desktop listens on the Windows side of port 8080 itself, so you only need the firewall rule in section 3 (no port forwarding).
-Note the printed `access token: ...`.
-
-*(Once step 4 lands there will be a `web` compose profile and `scripts/start_web.sh`; same idea.)*
+Set your own token with `GURDY_WEB_TOKEN=... scripts/start_web.sh lan`, otherwise a random one is printed.
+Tested 2026-11-19 (mock world, keyword planner): REST, WebSocket, chat, e-stop OK; container RAM 69 MiB. Phone step not tested.
 
 **If you run the server directly inside WSL** (not in Docker), WSL2 needs one of the two options in section 2.
 

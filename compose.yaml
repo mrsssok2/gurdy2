@@ -66,6 +66,21 @@ services:
     volumes:
       - .:/home/ubuntu/gurdy2
 
+  # Phase 7 mission control (mock world, keyword planner): scripts/start_web.sh [lan]
+  web:
+    profiles: [web]
+    image: gurdy2/brain:cpu
+    environment:
+      GURDY_WEB_TOKEN: ${GURDY_WEB_TOKEN:-}   # from the environment only; empty -> random token printed at start
+    ports:
+      - "${WEB_PUBLISH:-127.0.0.1}:8080:8080"
+    mem_limit: 512m
+    init: true
+    working_dir: /home/ubuntu/gurdy2
+    volumes:
+      - .:/home/ubuntu/gurdy2
+    command: ["python3", "-m", "web.api", "--mock", "--bind", "0.0.0.0"]
+
   # Phase 5.8 live voice: PulseAudio tools + faster-whisper (CPU). Mic/speaker through WSLg. See scripts/mic_test.sh
   voice:
     profiles: [voice]
