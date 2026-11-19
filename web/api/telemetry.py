@@ -66,7 +66,18 @@ class MockTelemetry:
             "objects": [{k: o[k] for k in ("id", "class", "color", "x", "y", "place", "age_s", "stale")} for o in objs],
             "zones": [dict(z) for z in getattr(b, "zones", [])],
             "trail": [list(p) for p in self._trail],
+            "path": self._planned_path(b),
         }
+
+    @staticmethod
+    def _planned_path(b) -> list[list[float]]:
+        """Remaining waypoints of the running task (robot position first), [] when idle."""
+        t = getattr(b, "task", None)
+        if t is None:
+            return []
+        pts = [[round(b.x, 2), round(b.y, 2)]]
+        pts += [[round(s[1][0], 2), round(s[1][1], 2)] for s in t.segments if s and s[0] == "move"]
+        return pts if len(pts) > 1 else []
 
     def map(self) -> dict[str, Any]:
         w = self.backend.world

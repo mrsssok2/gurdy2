@@ -35,7 +35,7 @@ def build_local_host(ollama: str | None):
         llm = OllamaLLM(model=ollama, constrain=not ollama.startswith("gurdy-sft"))
     else:
         from ..agent.llm import KeywordLLM
-        llm = KeywordLLM(b.known_places)
+        llm = KeywordLLM(b.known_places, smart=True)
     return AgentHost(Agent(ToolLayer(b), llm), sim_speed=3.0), b      # mock world: virtual clock runs 3x wall time
 
 

@@ -1,10 +1,20 @@
 // Pure helpers (no DOM): kept separate so they can be unit-tested under node in CI (Phase 7 step 7).
 
-/** World -> canvas transform for map bounds `b` ({x0,y0,x1,y1}) inside w x h pixels. World y points up; canvas y points down. */
-export function makeView(b, w, h, pad = 12) {
-  const s = Math.max(1e-6, Math.min((w - 2 * pad) / (b.x1 - b.x0), (h - 2 * pad) / (b.y1 - b.y0)));
-  const ox = (w - s * (b.x1 - b.x0)) / 2, oy = (h - s * (b.y1 - b.y0)) / 2;
-  return { s, X: (x) => ox + (x - b.x0) * s, Y: (y) => h - (oy + (y - b.y0) * s) };
+/**
+ * World -> canvas transform for map bounds `b` ({x0,y0,x1,y1}) inside w x h pixels. World y points up; canvas y points down.
+ * `rot`: rotate the map 90 deg counter-clockwise (world +x points up the screen). `autoRot` rotates only when that makes the map bigger
+ * (a landscape map in a portrait phone screen). Returns {s, rot, P(x, y) -> {x, y}, rect(r) -> [x, y, w, h], ang(heading_rad) -> canvas angle}.
+ */
+export function makeView(b, w, h, pad = 12, autoRot = false) {
+  const bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+  const fit = (mw, mh) => Math.min((w - 2 * pad) / mw, (h - 2 * pad) / mh);
+  const rot = autoRot && fit(bh, bw) > fit(bw, bh) * 1.05;
+  const s = Math.max(1e-6, rot ? fit(bh, bw) : fit(bw, bh));
+  const pw = (rot ? bh : bw) * s, ph = (rot ? bw : bh) * s, ox = (w - pw) / 2, oy = (h - ph) / 2;
+  const P = rot ? (x, y) => ({ x: ox + (b.y1 - y) * s, y: oy + (b.x1 - x) * s })
+                : (x, y) => ({ x: ox + (x - b.x0) * s, y: h - (oy + (y - b.y0) * s) });
+  const rect = (r) => { const p = P(r.x0, r.y0), q = P(r.x1, r.y1); return [Math.min(p.x, q.x), Math.min(p.y, q.y), Math.abs(q.x - p.x), Math.abs(q.y - p.y)]; };
+  return { s, rot, P, rect, ang: (hd) => (rot ? -hd - Math.PI / 2 : -hd) };
 }
 
 export function fmtTime(sec) {
@@ -41,3 +51,47 @@ export function wsUrl(loc, token) {
 
 /** Reconnect delay: 0.5 s doubling to 8 s. */
 export function backoff(attempt) { return Math.min(8000, 500 * 2 ** Math.min(attempt, 5)); }
+
+/** "fire_extinguisher" -> "fire extinguisher" */
+export function prettyName(s) { return String(s ?? "").replace(/_/g, " ").trim(); }
+
+/** Object colour name -> hex (the robot's own colour label, so a green barrel is drawn green). Unknown / missing -> neutral grey. */
+export const COLOR_HEX = { red: "#F25C5C", green: "#4ADE80", blue: "#5B9DFF", yellow: "#FACC15", orange: "#FB923C", white: "#F1F5F9", black: "#4B5563", grey: "#9CA3AF", gray: "#9CA3AF", purple: "#A78BFA", brown: "#A16207" };
+export function colorHex(name) { return COLOR_HEX[String(name || "").toLowerCase()] || "#B8C2CC"; }
+
+/** Label text for a remembered object: "green barrel", "fire extinguisher". */
+export function objectLabel(o) { return `${o.color ? o.color + " " : ""}${prettyName(o.class)}`; }
+
+const overlaps = (a, b, gap) => a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
+
+/**
+ * Greedy label layout. items: [{text, ax, ay, r}] (anchor point in px, marker radius r) in priority order; `measure(text)` -> width px;
+ * lineH = text height. `taken` = rectangles already used (e.g. room titles). Every label is tried at 8 positions around its anchor and the first
+ * one that is inside [0,w]x[0,h] and overlaps nothing placed so far wins; if none is free the least-overlapping inside position is used, so a
+ * label is ALWAYS inside the map. Returns [{text, x, y, w, h, ax, ay}] with (x,y) the top-left of the text box.
+ */
+export function placeLabels(items, w, h, measure, lineH = 16, taken = [], margin = 4) {
+  const placed = taken.map((t) => ({ ...t }));
+  const out = [];
+  for (const it of items) {
+    const tw = measure(it.text), r = (it.r ?? 4) + 4;
+    const cand = [[r, -lineH / 2], [-r - tw, -lineH / 2], [-tw / 2, -r - lineH], [-tw / 2, r], [r, -r - lineH], [-r - tw, -r - lineH], [r, r], [-r - tw, r]];
+    let best = null, bestScore = Infinity;
+    for (const [dx, dy] of cand) {
+      let x = it.ax + dx, y = it.ay + dy;
+      const cx = Math.min(Math.max(x, margin), Math.max(margin, w - tw - margin)), cy = Math.min(Math.max(y, margin), Math.max(margin, h - lineH - margin));
+      const clamped = Math.abs(cx - x) + Math.abs(cy - y);
+      x = cx; y = cy;
+      const box = { x, y, w: tw, h: lineH };
+      const hits = placed.reduce((n, p) => n + (overlaps(box, p, 2) ? 1 : 0), 0);
+      const score = hits * 1000 + clamped;
+      if (score < bestScore) { bestScore = score; best = box; if (score === 0) break; }
+    }
+    placed.push(best);
+    out.push({ text: it.text, ...best, ax: it.ax, ay: it.ay });
+  }
+  return out;
+}
+
+/** Shortest signed angle difference b - a in radians. */
+export function angDiff(a, b) { return Math.atan2(Math.sin(b - a), Math.cos(b - a)); }

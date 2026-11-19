@@ -673,3 +673,20 @@ class TokenSource(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PlannedPathTest(unittest.TestCase):
+    def test_snapshot_has_planned_path_while_walking_and_none_when_idle(self):
+        from brain.mock.backend import MockBackend
+        from web.api.telemetry import MockTelemetry
+
+        class Host:
+            lock = None
+            agent = type("A", (), {"layer": type("L", (), {"backend": MockBackend()})()})()
+
+        t = MockTelemetry(Host())
+        self.assertEqual(t.snapshot()["path"], [])
+        self.assertTrue(Host.agent.layer.backend.go_to(place="room B").ok)
+        path = t.snapshot()["path"]
+        self.assertGreaterEqual(len(path), 2)
+        self.assertEqual(path[-1], [4.5, 0.0])

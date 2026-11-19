@@ -18,54 +18,67 @@
 </head>
 <body>
 <header class="top">
-  <div class="brand"><span class="logo" aria-hidden="true"></span><h1>Gurdy</h1></div>
+  <div class="brand"><span class="logo" aria-hidden="true"></span><h1>Gurdy</h1><span class="sub">Mission control</span></div>
   <div class="conn" id="conn" role="status"><span class="dot"></span><span id="connText">connecting</span></div>
+  <div class="chip" id="batChip" title="Battery"><span class="k">Battery</span><span class="mono" id="tBat">–</span><span class="mini"><i id="tBatBar"></i></span><span class="tag" id="tSim" hidden>sim</span></div>
+  <div class="chip legchip" id="legChip" title="Legs"><span class="k">Legs</span><span class="legdots" id="tLegs"></span><span id="tLegText" class="mono">–</span></div>
   <button class="estop" id="estop" type="button" aria-label="Emergency stop">E-STOP</button>
 </header>
-<div class="banner demo" id="demoBanner" hidden>Demo: simulated robot. Nothing here controls a real robot.</div>
-<div class="banner" id="estopBanner" hidden>Emergency stop is active. The robot is holding still.</div>
-<div class="banner warn" id="staleBanner" hidden>Robot is busy thinking; showing the last known state.</div>
+<div class="banners">
+  <div class="banner demo" id="demoBanner" hidden>Demo: simulated robot. Nothing here controls a real robot.</div>
+  <div class="banner" id="estopBanner" hidden>Emergency stop is active. The robot is holding still.</div>
+  <div class="banner warn" id="staleBanner" hidden>Robot is busy thinking; showing the last known state.</div>
+</div>
 
-<main>
-  <section class="view" id="view-map" aria-label="Map">
-    <div class="card map-card"><canvas id="map"></canvas></div>
-    <div class="card readout" id="poseCard">
-      <div><span class="k">x</span><span class="v mono" id="px">–</span></div>
-      <div><span class="k">y</span><span class="v mono" id="py">–</span></div>
-      <div><span class="k">heading</span><span class="v mono" id="ph">–</span></div>
-      <div><span class="k">place</span><span class="v" id="pplace">–</span></div>
+<main id="app">
+  <section class="view active" id="view-map" aria-label="Map">
+    <div class="card map-card">
+      <canvas id="map"></canvas>
+      <div class="readout" id="poseCard">
+        <div><span class="k">x</span><span class="v mono" id="px">–</span></div>
+        <div><span class="k">y</span><span class="v mono" id="py">–</span></div>
+        <div><span class="k">heading</span><span class="v mono" id="ph">–</span></div>
+        <div><span class="k">place</span><span class="v" id="pplace">–</span></div>
+      </div>
     </div>
   </section>
 
-  <section class="view" id="view-chat" aria-label="Chat" hidden>
-    <div class="card chat-list" id="chatList" aria-live="polite"></div>
-    <form class="chat-form" id="chatForm" autocomplete="off">
-      <input id="chatInput" type="text" maxlength="500" placeholder="Tell the robot what to do" enterkeyhint="send" aria-label="Message">
-      <button type="submit" class="send">Send</button>
-    </form>
-  </section>
-
-  <section class="view" id="view-status" aria-label="Status" hidden>
+  <section class="view" id="view-status" aria-label="Status">
     <div class="grid">
       <div class="card stat"><span class="k">Mode</span><span class="big" id="sMode">–</span></div>
       <div class="card stat"><span class="k">Task</span><span class="big" id="sTask">–</span></div>
       <div class="card stat"><span class="k">Speed</span><span class="big mono" id="sSpeed">–</span></div>
       <div class="card stat"><span class="k">Uptime</span><span class="big mono" id="sTime">–</span></div>
     </div>
-    <div class="card">
+    <div class="card phone-only">
       <div class="row"><span class="k">Battery</span><span class="tag" id="sSim" hidden>simulated</span><span class="v mono" id="sBat">–</span></div>
       <div class="bar"><div id="sBatBar"></div></div>
     </div>
-    <div class="card">
+    <div class="card phone-only">
       <div class="row"><span class="k">Legs</span><span class="v" id="sLegSummary">–</span></div>
       <div class="legs" id="legs"></div>
     </div>
-    <div class="card"><div class="row"><span class="k">Known objects</span><span class="v mono" id="sObjCount">–</span></div><ul class="objs" id="objList"></ul></div>
+    <div class="card objcard"><div class="row"><span class="k">Known objects</span><span class="v mono" id="sObjCount">–</span></div><ul class="objs" id="objList"></ul></div>
   </section>
 
-  <section class="view" id="view-alerts" aria-label="Alerts" hidden>
-    <div class="card"><div class="row"><span class="k">Active now</span><span class="v mono" id="aCount">0</span></div><ul class="alerts" id="alertNow"></ul></div>
-    <div class="card"><div class="row"><span class="k">Earlier</span></div><ul class="alerts" id="alertHist"></ul></div>
+  <section class="view" id="view-chat" aria-label="Chat">
+    <div class="card chatcard">
+      <div class="k cardtitle">Chat</div>
+      <div class="chat-list" id="chatList" aria-live="polite"></div>
+      <form class="chat-form" id="chatForm" autocomplete="off">
+        <input id="chatInput" type="text" maxlength="500" placeholder="Tell the robot what to do" enterkeyhint="send" aria-label="Message">
+        <button type="submit" class="send">Send</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="view" id="view-alerts" aria-label="Alerts">
+    <div class="card">
+      <div class="row"><span class="k">Alerts</span><span class="v mono" id="aCount">0</span></div>
+      <ul class="alerts" id="alertNow"></ul>
+      <div class="row earlier"><span class="k">Earlier</span></div>
+      <ul class="alerts" id="alertHist"></ul>
+    </div>
   </section>
 </main>
 

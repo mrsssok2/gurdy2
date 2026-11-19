@@ -8,7 +8,7 @@ def make_agent():
     from brain.mock import MockBackend
     from brain.tools import ToolLayer
     b = MockBackend()
-    return Agent(ToolLayer(b), KeywordLLM(b.known_places))
+    return Agent(ToolLayer(b), KeywordLLM(b.known_places, smart=True))
 
 
 def build_host():

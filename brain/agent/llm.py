@@ -49,12 +49,21 @@ class ScriptedLLM:
 class KeywordLLM:
     """The Gurdy-1.0-style baseline as an agent planner: regex parse, template reply. No learning."""
 
-    def __init__(self, places_fn):
+    def __init__(self, places_fn, smart: bool = False):
+        """`smart=True` first normalises common phrasings (`phrasing.normalize`: "enter room b", "take me to ..."); the default stays the
+        plain Gurdy-1.0-style baseline that the evaluation compares against."""
         self.places_fn = places_fn
+        self.smart = smart
 
     def plan(self, system, state, tools, utterance, tool_results):
         from ..eval.keyword_parser import parse
-        return parse(utterance, self.places_fn())
+        places = self.places_fn()
+        if self.smart:
+            from .phrasing import normalize
+            r = parse(normalize(utterance, places), places)
+            if "calls" in r:
+                return r
+        return parse(utterance, places)
 
     def respond(self, system, utterance, tool_results, feedback=None):
         from .templates import summarize_results
