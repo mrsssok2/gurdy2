@@ -11,6 +11,8 @@ respond: free text. Thinking is off (`think: false`), temperature 0.
 """
 from __future__ import annotations
 
+import http.client
+
 import json
 import os
 import time
@@ -19,6 +21,7 @@ import urllib.request
 from typing import Any
 
 from ..tools import TOOLS
+from .llm import LLMUnavailable
 
 SYSTEM_RULES = """You are Gurdy, a six-legged robot. You turn the user's request into tool calls, or you ask, or you refuse.
 You know NO facts about the world (places, objects, colours, distances, battery). Use query tools for facts and never state a name, number or direction that a tool result did not contain.
@@ -140,7 +143,13 @@ class OllamaLLM:
         try:
             d = json.load(urllib.request.urlopen(req, timeout=self.timeout))
         except urllib.error.HTTPError as e:
-            raise RuntimeError(f"Ollama {self.host}: HTTP {e.code} {e.read()[:200]!r} (model {self.model})") from e
+            detail = f"Ollama {self.host}: HTTP {e.code} {e.read()[:200]!r} (model {self.model})"
+            if e.code == 404:                                   # the server answers but does not have this model
+                raise LLMUnavailable(detail, "My language model is not installed right now.") from e
+            raise RuntimeError(detail) from e
+        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError, http.client.HTTPException) as e:
+            # Errno 111 (refused), unreachable host, timeout, dropped connection: the model server is not reachable from here
+            raise LLMUnavailable(f"Ollama {self.host} not reachable ({type(e).__name__}: {e}); model {self.model}") from e
         self.stats.append({"kind": kind, "wall_s": round(time.perf_counter() - t0, 3), "prompt_eval": d.get("prompt_eval_count"),
                            "out_tokens": d.get("eval_count"), "load_s": round(d.get("load_duration", 0) / 1e9, 3)})
         return d["message"]["content"]

@@ -98,6 +98,7 @@ The token is in the part after `#`: it is never sent to the server in the URL an
 | Script: "Tailscale not found" | Install on Windows (step 2). The script looks for `tailscale.exe` (WSL interop) and `C:\Program Files\Tailscale`. |
 | Script: "not connected (NeedsLogin…)" | Tray icon → Log in / Connect. |
 | `serve` error mentioning HTTPS / certificates | Step 3: enable HTTPS Certificates, run the script again. |
+| Every command says "My language model is not running right now." | The agent container cannot reach Ollama. `scripts/start_web_robot.sh` now tests this itself (it tries every address a container could use and runs one real prompt inside the agent container before printing READY, otherwise it stops with the reason). Run it again; if it says no container can reach Ollama, check `ss -ltn | grep 11435` (must show `*:11435`). |
 | Phone: page does not load | Tailscale on in the phone app? Other VPN off? PowerShell `tailscale serve status` shows the entry? Robot script still running? |
 | Phone: loads but "Invalid token" / asks for the token | Use the exact URL of this run (the token changes every start). |
 | Page loads, no mic button | Voice was not started: use `… tailscale voice`; `docker logs gurdy_speech`. |

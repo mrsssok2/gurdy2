@@ -12,18 +12,12 @@ cd "$(dirname "$0")/.."
 export MODEL=${MODEL:-gurdy-sft-400} GUI=${GUI:-false} MEMORY=${MEMORY:-true} VOICE=${VOICE:-false} VAD=${VAD:-false}; PORT=11435
 mkdir -p "$HOME/.gurdy"
 if [ -n "$(docker ps -q)" ]; then echo "Other containers are running (docker ps). Stop them first (one heavy workload at a time)."; exit 1; fi
-if ! curl -sf "localhost:$PORT/api/tags" >/dev/null; then
-  echo "starting Ollama on :$PORT ..."
-  OLLAMA_HOST=0.0.0.0:$PORT OLLAMA_MODELS=$HOME/ollama_models LD_LIBRARY_PATH=/usr/lib/wsl/lib nohup "$HOME/ollama/bin/ollama" serve > /tmp/ollama_gurdy.log 2>&1 &
-  for _ in $(seq 30); do curl -sf "localhost:$PORT/api/tags" >/dev/null && break; sleep 1; done
-fi
-curl -s "localhost:$PORT/api/tags" | grep -q "\"$MODEL" || { echo "model $MODEL not in Ollama (see brain/tools/Modelfile.sft)"; exit 1; }
-curl -s "localhost:$PORT/api/generate" -d "{\"model\":\"$MODEL\",\"keep_alive\":\"30m\"}" >/dev/null   # load the model before the sim competes for RAM
+source scripts/lib_ollama.sh
+ollama_prepare "$MODEL" || exit 1    # starts Ollama if needed, exact model check, finds an address containers can reach (exports OLLAMA_URL)
 # other models still resident in Ollama (it keeps them 5 min) would eat the VRAM that Whisper needs: unload everything except $MODEL
 for m in $(curl -s "localhost:$PORT/api/ps" | python3 -c "import sys,json;print(' '.join(x['name'] for x in json.load(sys.stdin).get('models',[])))" 2>/dev/null); do
   case "$m" in "$MODEL"|"$MODEL":*) ;; *) curl -s "localhost:$PORT/api/generate" -d "{\"model\":\"$m\",\"keep_alive\":0}" >/dev/null ;; esac
 done
-export OLLAMA_URL=http://$(hostname -I | cut -d' ' -f1):$PORT
 if [ "$VOICE" = true ]; then   # the agent runs headless in the sim container and serves text on gurdy_agent:8765 (compose network); the voice container talks to it
   docker compose run --rm -T --name gurdy_agent -e OLLAMA_URL -e MODEL -e GUI -e MEMORY -e DETECTOR_LOG -v "$HOME/.gurdy:/home/ubuntu/.gurdy" sim bash -c '
     cd ~/gurdy2 && source ros2_ws/install/setup.bash && export PYTHONPATH=$HOME/gurdy2:$HOME/gurdy2/gurdy_core:$HOME/gurdy2/sim_mujoco:$PYTHONPATH

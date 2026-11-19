@@ -23,7 +23,7 @@ from .executor import MissionExecutor
 from .grounding import GroundedReply, collect_facts, grounded_reply, violations
 from .fuzzy import suggest_object, suggest_place, suggest_verb
 from .guard import _is_state_change, guard_plan, normalize_call, unknown_noun
-from .llm import LLM
+from .llm import LLM, LLMUnavailable
 from .refs import resolve_other
 from . import rooms
 from .answer_clock import AnswerClock
@@ -153,6 +153,16 @@ class Agent:
         the traceback goes to stderr (the agent log) and pending questions are dropped so the next turn starts clean."""
         try:
             return self._say(utterance, stt_confidence, started_at)
+        except LLMUnavailable as e:                              # the model server is down / unreachable: a plain sentence, details in the log
+            import sys
+            print(f"[agent] language model unavailable: {e}", file=sys.stderr, flush=True)
+            self.errors.append(f"LLMUnavailable: {e}")
+            try:
+                self.gate.clear()
+            except Exception:                                    # noqa: BLE001
+                pass
+            self.pending_fix = self.pending_room = self.followup = None
+            return TurnResult(e.user_text, [], [{"outcome": "error", "rule": "llm_unavailable"}], 0, {})
         except Exception as e:                                   # noqa: BLE001
             import sys
             import traceback

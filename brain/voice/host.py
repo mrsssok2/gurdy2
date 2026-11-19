@@ -17,6 +17,13 @@ import time
 from typing import Callable
 
 
+def _error_text(e: BaseException) -> str:
+    """What the robot says when a turn crashed: a plain sentence for "the language model is unreachable", else the generic message."""
+    if hasattr(e, "user_text"):
+        return e.user_text
+    return f"Something went wrong: {type(e).__name__}: {e}"
+
+
 class AgentHost:
     def __init__(self, agent, pump_s: float = 0.25, sim_speed: float | None = None):
         self.agent, self.pump_s = agent, pump_s
@@ -37,7 +44,7 @@ class AgentHost:
                 import sys
                 import traceback
                 traceback.print_exc(file=sys.stderr)
-                return f"Something went wrong: {type(e).__name__}: {e}"
+                return _error_text(e)
 
     def spoken_done(self) -> None:
         """The robot finished speaking (a question's answer window starts now)."""
@@ -91,7 +98,7 @@ class AgentHost:
                     import sys
                     import traceback
                     traceback.print_exc(file=sys.stderr)
-                    msgs = [f"Something went wrong: {type(e).__name__}: {e}"]
+                    msgs = [_error_text(e)]
                 last = now
                 for m in msgs:
                     for fn in list(self.listeners):
@@ -135,7 +142,7 @@ def serve(host: AgentHost, port: int, bind: str = "0.0.0.0") -> threading.Thread
             try:
                 text = host.say(r.get("text", ""), r.get("conf"), r.get("started_ago"))
             except BaseException as e:                                # noqa: BLE001
-                text = f"Something went wrong: {type(e).__name__}: {e}"
+                text = _error_text(e)
             send({"op": "reply", "id": r.get("id"), "text": text})
         try:
             for line in f:

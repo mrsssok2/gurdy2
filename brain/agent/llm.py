@@ -11,6 +11,15 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 
+class LLMUnavailable(RuntimeError):
+    """The language model cannot be reached or does not have the model (Ollama down, wrong address, model missing). `user_text` is what the
+    robot says; the technical detail (`str(e)`) goes to the agent log only."""
+
+    def __init__(self, detail: str, user_text: str = "My language model is not running right now."):
+        super().__init__(detail)
+        self.user_text = user_text
+
+
 class LLM(Protocol):
     def plan(self, system: str, state: str, tools: list[dict], utterance: str, tool_results: list[dict]) -> dict: ...
     def respond(self, system: str, utterance: str, tool_results: list[dict], feedback: str | None = None) -> str: ...

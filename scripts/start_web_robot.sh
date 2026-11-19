@@ -19,14 +19,8 @@ export GURDY_WEB_TOKEN="${GURDY_WEB_TOKEN:-$(python3 -c 'import secrets;print(se
 mkdir -p "$HOME/.gurdy"
 if [ -n "$(docker ps -q)" ]; then echo "Other containers are running (docker ps). Stop them first (one heavy workload at a time):"; docker ps --format '  {{.Names}}'; exit 1; fi
 if [ "$MODEL" != keyword ]; then
-  if ! curl -sf "localhost:$PORT/api/tags" >/dev/null; then
-    echo "starting Ollama on :$PORT ..."
-    OLLAMA_HOST=0.0.0.0:$PORT OLLAMA_MODELS=$HOME/ollama_models LD_LIBRARY_PATH=/usr/lib/wsl/lib nohup "$HOME/ollama/bin/ollama" serve > /tmp/ollama_gurdy.log 2>&1 &
-    for _ in $(seq 30); do curl -sf "localhost:$PORT/api/tags" >/dev/null && break; sleep 1; done
-  fi
-  curl -s "localhost:$PORT/api/tags" | grep -q "\"$MODEL" || { echo "model $MODEL not in Ollama (use MODEL=keyword to run without an LLM)"; exit 1; }
-  curl -s "localhost:$PORT/api/generate" -d "{\"model\":\"$MODEL\",\"keep_alive\":\"30m\"}" >/dev/null   # load the model before the sim competes for RAM
-  export OLLAMA_URL=http://$(hostname -I | cut -d' ' -f1):$PORT
+  source scripts/lib_ollama.sh
+  ollama_prepare "$MODEL" || exit 1      # starts Ollama if needed, checks the exact model, finds an address the containers can reach, exports OLLAMA_URL
 fi
 if $TAIL; then source scripts/lib_tailscale.sh; ts_check || exit 1; fi      # fail fast, before the 2-minute start-up
 PORTS=(-p "$PUBLISH:8080:8080"); EXTRA=()
@@ -69,6 +63,7 @@ for _ in $(seq 400); do
   sleep 1
 done
 grep -q "access token:" "$LOG" || { echo "the web app did not start in time"; tail -25 "$LOG"; exit 1; }
+if [ "$MODEL" != keyword ]; then ollama_verify_in gurdy_agent "$MODEL" || exit 1; fi      # never say READY with a language model the agent cannot reach
 echo
 echo "READY. Open in the laptop browser:  http://localhost:8080/#token=$GURDY_WEB_TOKEN"
 [ "$PUBLISH" = 0.0.0.0 ] && echo "Phone (same Wi-Fi):                 http://<PC Wi-Fi IPv4>:8080/#token=$GURDY_WEB_TOKEN   (docs/phase7_phone.md)"
