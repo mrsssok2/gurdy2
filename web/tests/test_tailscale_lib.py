@@ -48,7 +48,7 @@ class TailscaleLibTests(unittest.TestCase):
 
     def test_missing_client(self):
         r = subprocess.run(["bash", "-c", f"cd {ROOT}; source scripts/lib_tailscale.sh; ts_check; echo rc=$?"],
-                           env={"PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
+                           env={"PATH": "/usr/bin:/bin", "TAILSCALE_WIN_PATH": "/nonexistent/tailscale.exe"}, capture_output=True, text=True)
         self.assertIn("Install it on Windows", r.stdout)
 
     def test_start_scripts_never_publish_to_the_lan_for_tailscale_alone(self):

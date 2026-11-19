@@ -3,13 +3,13 @@
 #   ts_check          -> finds the client, checks it is logged in and running, sets TS_HOST (this PC's name on the tailnet); returns 1 with a hint otherwise
 #   ts_start [port]   -> `serve --bg --https=443 http://127.0.0.1:<port>` (default 8080), sets TS_URL (https://<host>/)
 #   ts_stop           -> `serve --https=443 off` (only our serve entry; other serve settings stay)
-# Override the client with TAILSCALE_BIN=... (tests use a stub).
+# Override the client with TAILSCALE_BIN=... (tests use a stub); TAILSCALE_WIN_PATH overrides where tailscale.exe is looked for on the Windows side.
 _ts() { "$TS_BIN" "$@" 2>&1 | tr -d '\r'; return "${PIPESTATUS[0]}"; }
 
 ts_find() {
   if [ -n "${TAILSCALE_BIN:-}" ]; then TS_BIN=$TAILSCALE_BIN
   elif command -v tailscale.exe >/dev/null 2>&1; then TS_BIN=$(command -v tailscale.exe)
-  elif [ -x "/mnt/c/Program Files/Tailscale/tailscale.exe" ]; then TS_BIN="/mnt/c/Program Files/Tailscale/tailscale.exe"
+  elif [ -x "${TAILSCALE_WIN_PATH:-/mnt/c/Program Files/Tailscale/tailscale.exe}" ]; then TS_BIN="${TAILSCALE_WIN_PATH:-/mnt/c/Program Files/Tailscale/tailscale.exe}"
   elif command -v tailscale >/dev/null 2>&1; then TS_BIN=$(command -v tailscale)
   else return 1; fi
 }
