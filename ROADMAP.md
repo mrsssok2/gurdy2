@@ -303,7 +303,7 @@ criteria are 5.A–5.K below (formerly numbered 5.1–5.11); the build order is 
 ---
 
 ## Phase 6 — Robot Incident Graph (robot-ops)
-**PAUSED (2026-11-18) after step 1** (incident data model + SQLite `IncidentStore`, `ops/incidents`, commit 405c10c). Phase 7 runs first; Phase 6 **resumes at step 2** (event/metric schema, exporter, replay) after Phase 7.
+**PAUSED (2026-11-18) after step 1** (incident data model + SQLite `IncidentStore`, `ops/incidents`, commit 405c10c). Phase 7 is done (except the public demo deployment), so Phase 6 **resumes at step 2** (event/metric schema, exporter, replay) next.
 Design (2026-11-17, plan only): **`docs/phase6_design.md`** (incident definition, data flow, storage, root-cause linking, brain queries, stack budget, milestones 6.1–6.9, ~19 working days estimated).
 - [ ] Telemetry/log exporter: ROS 2 → Redpanda (also from rosbag replay)
 - [ ] Event normalizer (schema), fingerprinting, embeddings → Qdrant
@@ -321,15 +321,18 @@ Design (2026-11-17, plan only): **`docs/phase6_design.md`** (incident definition
 ---
 
 ## Phase 7 — Mission control + polish
-Design (2026-11-18): **`docs/phase7_design.md`** (dashboard panels, API + WebSocket, stdlib server + static no-build frontend instead of Next.js — flagged for the user's decision, auth, phone access, steps 1–8).
-- [x] Step 1: API server skeleton on the MockBackend (`web/api`: REST + WebSocket + token auth + chat log + e-stop; 23 tests `python3 -m unittest web.tests.test_api_server`)
-- [~] Step 2: dashboard page (`web/app`: dark theme, bottom tabs Map / Chat / Status / Alerts, always-visible E-STOP, canvas map, token login, WebSocket reconnect). Written, NOT yet opened in a browser (none on this machine; only structure tests). Fonts Inter 400 / Space Grotesk 600+700 / JetBrains Mono 400+700 bundled as latin woff2 in `web/app/fonts/` with OFL licences (from @fontsource 5.3.0), system fallbacks kept.
-- [~] Step 3 (PWA, code only): `manifest.json`, generated icons (`scripts/make_web_icons.py`: 192 / 512 / maskable / apple-touch), `sw.js` (app shell only; never `/api` or `/ws`), iOS/Android meta tags, `docs/phase7_phone.md` (WSL2 port forwarding / mirrored networking, firewall, Add to Home Screen). Structure tests only; NOT tried on a phone; plain-http LAN has no service worker (documented).
-- [~] Step 3b (public demo mode, code only): `python3 -m web.api --demo` (`GurdyWebServer(demo=True)`): MockBackend ONLY (refused at construction / reset for anything else), no token, banner "Demo: simulated robot", per-IP rate limits (`web/api/limits.py`), 200-char messages, 3 WS per IP, idle timeout, world reset every N min, `--trust-proxy`, `$PORT`. 43 web tests. Hosting comparison `docs/phase7_hosting.md` (prices unverified). Not deployed, `--demo` entry point not run end to end (needs langgraph / brain image).
-- [ ] Next.js/TypeScript app: rosbridge, three.js 3D robot view, map, camera, chat, incidents page
-- [ ] Docker compose profiles per part
-- [ ] GitHub Actions CI (lint + unit tests; ROS build/test job)
-- [ ] README with GIFs and result tables; project website
+**Status (2026-11-19): done except the public demo deployment** (and the open polish items at the end). Design: `docs/phase7_design.md`; decision taken: stdlib Python server + no-build static frontend instead of Next.js / rosbridge / three.js (nothing to install, runs in the existing images, offline-capable).
+- [x] API server (`web/api`: REST + WebSocket + shared-token auth + chat log; E-STOP without the agent lock, latched `/estop` on the real robot + Release button)
+- [x] Dashboard PWA (`web/app`): laptop dashboard + phone layout with tab bar, canvas map (robot, walked trail, planned path, remembered objects in their colours, collision-free labels), status / battery / legs / alerts, chat with suggestion chips, installable (manifest + service worker). Checked in Chrome on a laptop and on an Android phone, and with headless screenshots of both layouts
+- [x] Mock world generated from the Gazebo `flat_lab` files (`brain/mock/lab_world.py`) so the demo shows what the real lab contains
+- [x] Real robot in Gazebo: ROS telemetry (pose, `/map`, trail, Nav2 plan, semantic-map objects, battery, legs, alerts), camera panel with detection boxes; `scripts/start_web_robot.sh` (one heavy stack, RAM measured: peak 4.7 GiB WSL with LLM + voice)
+- [x] Voice in the browser: hold-to-talk, Whisper on the GPU + Piper (`brain/voice/speech_service.py`), stop fast path, yes/no hint, hallucination filter, transcript bubble with confidence, spoken replies with mute; https with a local CA for LAN (`docs/phase7_voice.md`)
+- [x] Private remote access from anywhere: Tailscale Serve (tailnet-only https, valid certificate), `scripts/start_web_robot.sh tailscale voice` (`docs/phase7_remote.md`); used from a phone on mobile data
+- [x] Docker compose profile `web`, one-command start scripts; README section with screenshots
+- [x] LLM-unreachable fix: agent says "My language model is not running right now.", start script checks the model from inside the container before READY
+- [~] Public demo mode (`python3 -m web.api --demo`: MockBackend only, no token, rate limits, no voice, periodic reset; hosting comparison `docs/phase7_hosting.md`, prices unverified): code + tests done, **not deployed** — this is the remaining Phase 7 item
+- [ ] GitHub Actions CI (lint + unit tests; ROS build/test job) and a project website — still open (no `.github/workflows` yet)
+- [ ] Optional: three.js 3D robot view, incidents page (after Phase 6 resumes)
 
 **AC**
 - Fresh clone → each phase's demo starts with one documented command.

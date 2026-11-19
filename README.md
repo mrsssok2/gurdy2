@@ -12,7 +12,17 @@ Spoken English goes through push-to-talk, Whisper on the GPU and the same agent 
 |---|---|---|
 | Go to room B and find the red box: it reports the box is really in room A | Go home: arrives 0.1 m from the goal | Stop heard in 0.3 s, then find the red box |
 
-Stack: fine-tuned Qwen3-1.7B (LoRA, Ollama) as the planner · PPO-trained RL gait · slam_toolbox + Nav2 · YOLO11 trained on self-generated synthetic images. Everything runs offline: ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL2) · MIT.
+## Mission control app (laptop + phone)
+
+A PWA mission-control dashboard: live SLAM map, planned path, camera with detections, chat + hold-to-talk voice and an E-STOP. It works on a laptop and a phone, and privately from anywhere via Tailscale (`scripts/start_web_robot.sh tailscale voice`, [setup](docs/phase7_remote.md)).
+
+![Mission control on the laptop: map with the planned path, camera with detections, chat, status](docs/images/gurdy_dashboard_gazebo.png)
+
+| <img src="docs/images/gurdy_phone_voice_chat.png" width="300"> | <img src="docs/images/gurdy_phone_map.png" width="300"> |
+|---|---|
+| Voice from my phone over 4G: Whisper on the laptop GPU, fine-tuned LLM, E-STOP latch and release | Phone map: planned path through the doorway and the walked trail |
+
+Stack: fine-tuned Qwen3-1.7B (LoRA, Ollama) as the planner · PPO-trained RL gait · slam_toolbox + Nav2 · YOLO11 trained on self-generated synthetic images · mission-control web app (stdlib Python server + no-build PWA, Tailscale Serve for private remote access). Everything runs offline (the remote link is optional): ROS 2 Jazzy · Gazebo Harmonic · MuJoCo · Docker (WSL2) · MIT.
 
 **Demo (68 s):** [docs/videos/gurdy2_demo.mp4](docs/videos/gurdy2_demo.mp4) — tripod gait vs the RL policy on a 12° slope and 4 cm steps
 (MuJoCo), then autonomous exploration of a lab from an empty map (Gazebo + Nav2 + slam_toolbox).
@@ -29,6 +39,8 @@ Runtime:
 flowchart TB
   U["👤 User<br/>typed or spoken command"] --> V["🎤 Voice<br/>Whisper STT · Piper TTS"]
   V --> B
+  WEB["📱 Mission control (PWA)<br/>map · camera · chat · hold-to-talk · E-STOP<br/>laptop + phone · Tailscale"] -->|text · audio · E-STOP| B
+  WEB -.->|audio| V
   subgraph B["🧠 LLM brain (LangGraph)"]
     LLM["Qwen3-1.7B<br/>QLoRA fine-tuned · Ollama"] --> S["🛡️ Safety layer<br/>validator · confirmations · refusals"]
     S --> G["✅ Grounding check<br/>no fact without a tool result"]
@@ -47,11 +59,12 @@ flowchart TB
   POL -->|18 joint targets| SIM["🌍 Gazebo Harmonic<br/>hexapod · lidar · RGB-D · IMU"]
   SIM --> LOC --> NAV
   SIM --> PER
+  ROS -.->|pose · map · path · camera · alerts| WEB
 ```
 
 The LLM decides what to do, Nav2 decides where to go,
 and the RL policy decides how to move the 18 joints.
-(Typed and spoken commands both drive the same agent; voice code: `brain/voice`.)
+(Typed and spoken commands, from the terminal or the web app, drive the same agent; voice code: `brain/voice`, web app: `web/`.)
 
 Training:
 
@@ -74,6 +87,7 @@ flowchart LR
 | LLM brain, 40 unseen casual phrasings | base 42.5 % → fine-tuned **72.5 %** (current agent code; test set written by an AI assistant, not by humans) | [OOD eval](docs/results/phase5_eval_sft_v2.md) |
 | Hallucinated replies | 0 hallucinated replies reached the user (28 checked; the grounding check blocks any fact not in that turn's tool results: 0 needed blocking for the fine-tuned model, 4 for the base model) | [SFT eval](docs/results/phase5_eval_sft.md) |
 | Live LLM-driven Gazebo missions | 9/9 typed missions completed (go-to, find, patrol, stop, refusal, clarification) | [live test](docs/results/phase5_live_test.md) |
+| Final Gazebo evaluation (27 scripted missions, fresh stack per mission, judged against ground truth) | **85 % (23/27)** succeeded, 0 falls, 0 false claims; median stop latency 0.94 s; one run per mission, no variance | [final eval](docs/results/phase5_final_eval.md) |
 | Voice (read-aloud, 43 real clips) | word error rate 3.7 %, exact-command accuracy 86 %, speech-to-text ~0.3 s per clip on the GPU | [voice eval](docs/results/phase5_eval_sft_v2.md) |
 | Leg-failure adaptation (negative result) | missed the < 40 % criterion, worse than the open-loop tripod; not deployed | [Experiment B](docs/results/exp_B_leg_failure.md) |
 
@@ -109,11 +123,12 @@ Without the LLM: `docker compose up sim` starts the walking robot in Gazebo (tel
 ## Known limitations
 - **LLM:** 72.5 % on unseen casual phrasing; it still invents tool names and unsupported actions on some inputs (nothing invented was executed). The OOD set is assistant-written; noisy-speech cases in the main set are hand-written, not real Whisper output. The 9-mission live test was typed; voice was checked live on a few commands and on 43 read-aloud clips, not on a full mission suite.
 - **Hexapod walking:** policies stand still for tiny commands from rest (handled at deployment by lifting Nav2 commands to ≥ 0.09 m/s); steps ≥ 4 cm still fail 17–37 % of episodes for every controller.
+- **Web app:** used on Chrome (laptop) and Android Chrome (phone over Tailscale); not tried on iOS; the public demo is not deployed. Battery and the leg faults shown are simulated.
 - **Sim only:** no real robot. Sim-to-sim gap up to 14 points (31 on one combined segment). Leg-failure adaptation did not work.
 - **Single runs:** Nav2, exploration and detector-in-Gazebo were run once per setting, in one world (`flat_lab` / `semantic_lab`); no variance estimates.
 - **Perception:** a table and a cylinder are still labelled `box` (7 false tracks in the lab run); detector trained on synthetic images only. Battery is simulated.
 - Gazebo RTF drops to ~0.35–0.6 with Nav2 + policy + detector; results are in sim time.
 
-## Status (2026-11-18)
+## Status (2026-11-19)
 
-Phases 0–4 done. Phase 5 core (LLM brain, live Gazebo test) done; SFT v2 was trained and evaluated (not better, default stays `gurdy-sft-400`); the final Gazebo eval (5.11) is running. Phases 6–9 not started. See [ROADMAP.md](ROADMAP.md) and [CLAUDE.md](CLAUDE.md).
+Phases 0–4 and the Phase 5 core (LLM brain, 27-mission Gazebo evaluation) are done. Phase 7 (mission-control web app, voice in the browser, private remote access) is done except deploying the public demo. Phase 6 (robot incident graph) is paused after step 1; Phases 8–9 are not started. See [ROADMAP.md](ROADMAP.md) and [CLAUDE.md](CLAUDE.md).
