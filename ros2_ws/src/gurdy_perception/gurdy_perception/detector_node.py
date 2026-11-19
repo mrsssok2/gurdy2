@@ -94,6 +94,7 @@ class DetectorNode(Node):
         self.pub_json = self.create_publisher(String, "semantic_map/objects", QoSProfile(
             depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE))
         self.pub_dbg = self.create_publisher(Image, "detector/debug_image", 1) if g("debug_image") else None
+        self.pub_boxes = self.create_publisher(String, "detector/boxes", 1)      # 2D boxes of the last processed frame (dashboard overlay)
         self.create_timer(5.0, self.log_stats)
 
     def on_info(self, m: CameraInfo):
@@ -109,6 +110,9 @@ class DetectorNode(Node):
         self.n["frames"] += 1
         rgb, depth = image_to_numpy(rgb_m), image_to_numpy(depth_m)
         dets = self.det(np.ascontiguousarray(rgb))
+        self.pub_boxes.publish(String(data=json.dumps({
+            "stamp": t, "w": int(rgb.shape[1]), "h": int(rgb.shape[0]),
+            "boxes": [{"name": d.name, "score": round(float(d.score), 3), "box": [round(float(v), 1) for v in d.box]} for d in dets]})))
         frame = self.get_parameter("target_frame").value
         try:
             tr = self.tf.lookup_transform(frame, rgb_m.header.frame_id, rgb_m.header.stamp,

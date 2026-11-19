@@ -53,6 +53,18 @@ class AgentHost:
         except Exception:
             pass
         self.agent.layer.call("stop")
+        be = self.agent.layer.backend
+        if callable(getattr(be, "estop", None)):          # real robot: also latch /estop (policy stands, gate blocks velocity) until released
+            try:
+                be.estop(True)
+            except Exception:                              # noqa: BLE001  (the stop above already happened)
+                pass
+
+    def release_estop(self) -> None:
+        """Release a latched e-stop (real robot only; the mock world has no latch)."""
+        be = self.agent.layer.backend
+        if callable(getattr(be, "estop", None)):
+            be.estop(False)
 
     def is_moving(self) -> bool:
         return self.agent.executor.state == "running"

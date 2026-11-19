@@ -10,6 +10,7 @@ Auth: one shared token (env GURDY_WEB_TOKEN, else random and printed once by the
 WebSocket needs it except /api/health; static files are public (they contain no secrets)."""
 from __future__ import annotations
 
+import base64
 import hmac
 import json
 import mimetypes
@@ -238,6 +239,14 @@ class GurdyWebServer:
         self.host.estop()
         self.chat.add("system", "Emergency stop sent.")
 
+    def release_estop(self) -> bool:
+        fn = getattr(self.host, "release_estop", None)
+        if fn is None or self.demo:
+            return False
+        fn()
+        self.chat.add("system", "Emergency stop released.")
+        return True
+
     def broadcast(self, obj: dict) -> None:
         frame = ws.encode_frame(ws.OP_TEXT, json.dumps(obj, separators=(",", ":")).encode())
         with self._clients_lock:
@@ -365,6 +374,12 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._json(self.app.state())
             if u.path == "/api/map":
                 return self._json(self.app.telemetry.map())
+            if u.path == "/api/camera":      # real robot only: one JPEG (base64) + the detector's 2D boxes; the page polls it at ~2 Hz
+                cam = getattr(self.app.telemetry, "camera", None)
+                c = cam() if cam else None
+                if c is None:
+                    return self._json({"available": False})
+                return self._json({"available": True, **{k: v for k, v in c.items() if k != "jpeg"}, "jpeg_b64": base64.b64encode(c["jpeg"]).decode()})
             if u.path == "/api/messages":
                 try:
                     since = int((q.get("since") or ["0"])[0])
@@ -387,6 +402,8 @@ class _Handler(BaseHTTPRequestHandler):
                 return
             self.app.estop()
             return self._json({"ok": True})
+        if u.path == "/api/estop/release":
+            return self._json({"ok": self.app.release_estop()})
         if u.path == "/api/say":
             body = self._body()
             if body is None:
@@ -462,6 +479,8 @@ class _Handler(BaseHTTPRequestHandler):
                 return send_json({"type": "error", "error": "too many stop requests, slow down"})
             self.app.estop()
             send_json({"type": "ack", "op": "estop"})
+        elif op == "release":
+            send_json({"type": "ack", "op": "release", "ok": self.app.release_estop()})
         elif op == "say":
             text = cmd.get("text")
             if not isinstance(text, str) or not text.strip() or len(text) > self.app.max_text:

@@ -18,6 +18,9 @@ def main() -> None:
     ap.add_argument("--memory-db", default=None, help="SQLite file: objects / missions / places survive restarts (per --map-id)")
     ap.add_argument("--serve", type=int, default=None, metavar="PORT",
                     help="also serve the agent to a voice client (brain.voice.cli --remote HOST:PORT); the typed chat keeps working")
+    ap.add_argument("--web", type=int, default=None, metavar="PORT",
+                    help="also serve the mission-control dashboard (web/app) on this port, with telemetry from ROS; token = $GURDY_WEB_TOKEN or random (printed)")
+    ap.add_argument("--web-bind", default="0.0.0.0", help="address the dashboard listens on inside the container (the compose / docker -p mapping decides who can reach it)")
     ap.add_argument("--ollama", default=None, help="model name; needs OLLAMA_URL")
     a = ap.parse_args()
     from ..agent.graph import Agent
@@ -38,20 +41,29 @@ def main() -> None:
         from ..agent.ollama_llm import OllamaLLM
         llm = OllamaLLM(model=a.ollama, constrain=not a.ollama.startswith("gurdy-sft"))   # fine-tuned model: unconstrained (phase5_eval_sft.md)
     else:
-        llm = KeywordLLM(be.known_places)
+        llm = KeywordLLM(be.known_places, smart=True)
     agent = Agent(ToolLayer(be), llm)
     from .chat_ui import Chat
     chat = Chat(agent, be.known_places, prompt="> ")
     print("Gurdy (ROS). Type a command; 'status' line = '?'; '!estop' / '!release' = emergency stop latch; 'quit' to exit.")
-    if a.serve:
+    if a.serve or a.web:
         from ..voice.host import AgentHost, serve
         host = AgentHost(agent)
-        host.lock = chat.lock                 # typed chat and voice share ONE agent lock
-        host.start()                          # the chat's own pump thread is not started when voice serves (one pump, spoken + printed)
+        host.lock = chat.lock                 # typed chat, voice and web share ONE agent lock
+        host.start()                          # the chat's own pump thread is not started when voice / web serves (one pump, spoken + printed)
         host.on_message(lambda m: chat.say_async("Gurdy: " + m))
-        serve(host, a.serve)
-        print(f"voice server on :{a.serve}", flush=True)
-        if not sys.stdin.isatty():            # started without a terminal (voice mode of start_agent_chat.sh): just serve
+        if a.serve:
+            serve(host, a.serve)
+            print(f"voice server on :{a.serve}", flush=True)
+        if a.web:
+            from web.api.ros_extras import RosExtras
+            from web.api.ros_telemetry import RosTelemetry
+            from web.api.server import GurdyWebServer
+            tel = RosTelemetry(host, port, RosExtras(port.node))
+            srv = GurdyWebServer(host, telemetry=tel, bind=a.web_bind, port=a.web).start()
+            print(f"mission control on port {srv.port} (real robot)", flush=True)
+            print(f"access token: {srv.token}", flush=True)
+        if not sys.stdin.isatty():            # started without a terminal (voice / web mode of the start scripts): just serve
             threading.Event().wait()
     else:
         chat.start()                       # progress, alerts and new objects arrive on their own, without breaking what you type

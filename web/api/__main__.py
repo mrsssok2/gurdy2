@@ -30,7 +30,7 @@ def main() -> None:
         print(f"DEMO mode on http://{a.bind}:{srv.port}/  (simulated robot only, no token, resets every {a.demo_reset_min:g} min)", flush=True)
     else:
         from brain.voice.cli import build_local_host
-        host, _ = build_local_host(a.ollama)
+        host, _ = build_local_host(a.ollama, lab=True)
         host.start()
         srv = GurdyWebServer(host, bind=a.bind, port=a.port, trust_proxy=a.trust_proxy).start()
         print(f"mission control on http://{a.bind}:{srv.port}/  (mock world)")

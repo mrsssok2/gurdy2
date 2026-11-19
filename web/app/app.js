@@ -63,6 +63,11 @@ async function estop() {
   try { await api("/api/estop", { method: "POST", body: "{}" }); } catch (e) { addChat({ seq: -1, role: "system", text: "E-stop failed to send: " + e.message }); }
 }
 
+async function releaseEstop() {
+  if (send({ op: "release" })) return;
+  try { await api("/api/estop/release", { method: "POST", body: "{}" }); } catch (e) { addChat({ seq: -1, role: "system", text: "Release failed: " + e.message }); }
+}
+
 async function say(text) {
   if (send({ op: "say", text })) return;
   try { await api("/api/say", { method: "POST", body: JSON.stringify({ text }) }); await pollChat(); } catch (e) { addChat({ seq: -1, role: "system", text: "Not sent: " + e.message }); }
@@ -110,6 +115,7 @@ function onState(st) {
   renderLegs(st.legs || {});
   renderObjects(st.objects || []);
   renderAlerts(st.alerts || []);
+  if (!st.camera_available) $("cam").hidden = true;
   kick();
 }
 
@@ -294,6 +300,33 @@ function frame() {
 function kick() { S.dirty = true; S.settled = false; if (S.tab === "map" || isDesktop()) { if (!S.raf) S.raf = requestAnimationFrame(frame); } }
 const isDesktop = () => window.matchMedia("(min-width: 900px)").matches;
 
+// ---------------------------------------------------------------- camera (real robot: JPEG + detector boxes, polled at ~2 Hz while visible)
+const cam = { busy: false, img: new Image(), timer: 0 };
+async function pollCamera() {
+  if (cam.busy || document.hidden || !(S.state && S.state.camera_available)) return;
+  cam.busy = true;
+  try {
+    const c = await api("/api/camera");
+    $("cam").hidden = !c.available;
+    if (!c.available) return;
+    await new Promise((res, rej) => { cam.img.onload = res; cam.img.onerror = rej; cam.img.src = "data:image/jpeg;base64," + c.jpeg_b64; });
+    const cv = $("camCanvas"), g = cv.getContext("2d");
+    if (cv.width !== c.w || cv.height !== c.h) { cv.width = c.w; cv.height = c.h; }
+    g.drawImage(cam.img, 0, 0, c.w, c.h);
+    const sx = c.w / (c.boxes_w || c.w), sy = c.h / (c.boxes_h || c.h);
+    g.font = "600 13px Inter, system-ui, sans-serif"; g.textBaseline = "top"; g.lineWidth = 2;
+    for (const b of c.boxes || []) {
+      const [x1, y1, x2, y2] = b.box, label = `${prettyName(b.name)} ${Math.round(b.score * 100)}%`;
+      g.strokeStyle = "#2DD4BF"; g.strokeRect(x1 * sx, y1 * sy, (x2 - x1) * sx, (y2 - y1) * sy);
+      const tw = g.measureText(label).width + 8, ly = Math.max(0, y1 * sy - 17);
+      g.fillStyle = "#2DD4BF"; g.fillRect(x1 * sx, ly, tw, 17);
+      g.fillStyle = "#062B27"; g.fillText(label, x1 * sx + 4, ly + 2);
+    }
+    $("camInfo").textContent = (c.boxes || []).length ? `${c.boxes.length} detected` : "";
+  } catch { /* a failed poll just leaves the last picture */ } finally { cam.busy = false; }
+}
+setInterval(pollCamera, 500);
+
 // ---------------------------------------------------------------- UI wiring
 function showTab(name) {
   S.tab = name;
@@ -311,6 +344,7 @@ function askToken(err) {
 
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => showTab(t.dataset.view)));
 $("estop").addEventListener("click", estop);
+$("release").addEventListener("click", releaseEstop);
 $("chatForm").addEventListener("submit", (e) => { e.preventDefault(); const i = $("chatInput"), t = i.value.trim(); if (t) { i.value = ""; say(t); } });
 $("loginForm").addEventListener("submit", () => { S.token = $("tokenInput").value.trim(); $("tokenInput").value = ""; store("gurdy_token", S.token); connect(); });
 window.addEventListener("resize", kick);

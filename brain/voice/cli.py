@@ -24,12 +24,13 @@ from .audio import FRAME_N, AplaySink, ArecordSource, frames, read_wav
 from .pipeline import VoiceConfig, VoicePipeline
 
 
-def build_local_host(ollama: str | None):
+def build_local_host(ollama: str | None, lab: bool = False):
+    """`lab=True`: the mock world generated from the Gazebo flat_lab files (web dashboard); default: the evaluation mock world."""
     from ..agent.graph import Agent
-    from ..mock import MockBackend
+    from ..mock import MockBackend, gazebo_flat_lab
     from ..tools import ToolLayer
     from .host import AgentHost
-    b = MockBackend()
+    b = MockBackend(gazebo_flat_lab() if lab else None)
     if ollama:
         from ..agent.ollama_llm import OllamaLLM
         llm = OllamaLLM(model=ollama, constrain=not ollama.startswith("gurdy-sft"))

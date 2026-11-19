@@ -70,3 +70,14 @@ Phase 6 is paused after its step 1 (`405c10c`) and resumes at step 2 after Phase
 - Threading: the agent is not thread-safe (`AgentHost.lock`); telemetry reads must never block e-stop. Mitigation above (lock timeout, stale flag, estop without lock). Tested.
 - WSL2 networking for the phone is the most likely time sink (step 6).
 - A stdlib server has no HTTP/2, no compression and little hardening; acceptable for a LAN robot, so keep the "no internet exposure without a tunnel + HTTPS" rule.
+
+## 8. Step 5 result (2026-11-19): the dashboard on the real robot in Gazebo
+
+`scripts/start_web_robot.sh [lan]` starts Gazebo (headless) + Nav2 + policy + detector + monitors + the agent + the web app in ONE container (`sim` image) and prints
+the URL with the token. The web server runs inside `brain.ros.run_text --web 8080`, next to the agent, so it reads the same `RclpyPort` the agent uses (no second ROS client):
+`web/api/ros_telemetry.py` (pure: pose, speed, battery, legs, alerts, mode / task via `backend.status()`, objects from `semantic_map/objects`, trail, no agent lock) and
+`web/api/ros_extras.py` (rclpy: Nav2 `/plan`, `/camera/image`, new `detector/boxes` JSON from the detector node). The map is the robot's own `/map`, turned into rectangles.
+The page polls `GET /api/camera` (JPEG base64 + boxes) at ~2 Hz into a small panel. E-STOP on the page = stop the mission + latch `/estop` (policy stands, gate blocks velocity); a
+Release button on the red banner frees it (`POST /api/estop/release`, WS op `release`); commands are refused while latched.
+Measured (keyword planner and gurdy-sft-400 runs, headless, flat_lab): container 1.6 GiB, WSL used <= 4.0 GiB of 8, GPU 2.1 GiB with the LLM (0.5 GiB without); start-up under 100 s.
+Honest notes: the real detector calls the green cylinder a `box` and shows occasional false boxes (toolbox / traffic cone) in the camera panel; the trail is sampled only while a page is connected.

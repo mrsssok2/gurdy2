@@ -5,9 +5,9 @@ from __future__ import annotations
 def make_agent():
     from brain.agent.graph import Agent
     from brain.agent.llm import KeywordLLM
-    from brain.mock import MockBackend
+    from brain.mock import MockBackend, gazebo_flat_lab
     from brain.tools import ToolLayer
-    b = MockBackend()
+    b = MockBackend(gazebo_flat_lab())            # the real Gazebo flat_lab layout, generated from its files
     return Agent(ToolLayer(b), KeywordLLM(b.known_places, smart=True))
 
 

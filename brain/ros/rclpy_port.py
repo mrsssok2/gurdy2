@@ -165,6 +165,13 @@ class RclpyPort:
         v = m.data[j * m.info.width + i]
         return "unknown" if v < 0 else ("occupied" if v >= 65 else "free")
 
+    def occupancy(self):
+        """The current /map as (width, height, resolution, origin_x, origin_y, data) or None (for the dashboard)."""
+        m = self._map
+        if m is None:
+            return None
+        return m.info.width, m.info.height, m.info.resolution, m.info.origin.position.x, m.info.origin.position.y, m.data
+
     def mapped_fraction(self):
         """Known share of the interior rectangle `interior_bounds` (xmin, xmax, ymin, ymax); None without bounds."""
         m = self._map

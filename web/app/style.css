@@ -49,9 +49,17 @@ h1, h2, .big { font-family: var(--head); }
 
 .banners { flex: none; }
 .banner { margin: 10px var(--gut) 0; padding: 10px 14px; border-radius: 12px; background: #D9303622; border: 1px solid var(--estop); color: #FFB4B7; font-size: 14px; animation: fade .25s var(--ease); }
+.banner.estopb { display: flex; align-items: center; gap: 12px; } .banner.estopb span { flex: 1; }
+.relbtn { height: 36px; padding: 0 16px; border-radius: 10px; border: 1px solid #FFB4B7; background: transparent; color: #FFD6D8; font: 700 14px var(--head); cursor: pointer; transition: background .15s; } .relbtn:hover { background: #FFB4B722; }
 .banner.warn { background: #F5A52422; border-color: var(--warn); color: #FFD9A0; }
 .banner.demo { background: #2DD4BF18; border-color: var(--accent); color: var(--accent); text-align: center; font-family: var(--head); font-weight: 600; }
 @keyframes fade { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* ---- camera picture-in-picture (real robot only) */
+.cam { position: absolute; top: 12px; right: 12px; width: 210px; margin: 0; border-radius: 12px; overflow: hidden; background: #0B0E13; border: 1px solid var(--line); box-shadow: 0 8px 24px #0008; animation: fade .25s var(--ease); }
+.cam canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; background: #000; }
+.cam figcaption { display: flex; justify-content: space-between; gap: 8px; padding: 4px 10px; white-space: nowrap; letter-spacing: .04em; }
+.cam figcaption .mono { text-transform: none; letter-spacing: 0; color: var(--accent); }
 
 /* ---- content (phone first: one view at a time) */
 main { flex: 1; min-height: 0; padding: 0; position: relative; }
@@ -120,6 +128,7 @@ dialog h2 { margin: 0 0 6px; } dialog p { color: var(--muted); margin: 0 0 12px;
   .chip#batChip { display: flex; height: 36px; padding: 0 10px; gap: 8px; } .chip#batChip .k, .chip#batChip .mini, .chip#batChip .tag { display: none; }
   .estop { min-width: 84px; height: 42px; padding: 0 14px; }
   .conn #connText { display: none; }
+  .cam { width: 150px; top: 8px; right: 8px; }
   .brand h1 { font-size: 20px; }
   .objcard { flex: none; }
 }
